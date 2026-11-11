@@ -7,15 +7,16 @@ import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { Button } from '@/components/ui/button'
 import { DataTooltip } from '@/components/ui/data-tooltip'
-import { Empty } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
+import { buildBaseTooltip, CHART_COLORS, getChartThemeColors, SERIES_PALETTE, SERIES_PALETTE_V6_DARK, SERIES_PALETTE_V6_LIGHT } from '@/utils/chartTheme'
 import { buildChartViews, PING_CHART_VIEWS } from '@/utils/chartViews'
 import { fetchPingHistory, HISTORY_MAX_POINTS } from '@/utils/pingHistory'
 import { groupPingTasksByStack, parsePingTaskName, pingStackLabel } from '@/utils/pingStack'
 import { cutPeakValues, interpolateNullsLinear } from '@/utils/recordHelper'
+import { CARD_SURFACE_CLASS, segmentClass, TAB_TRIGGER_CLASS, TOGGLE_BASE_CLASS, toggleClass } from '@/utils/uiClasses'
 import '@/utils/echarts' // 共享 ECharts 配置
 
 const props = defineProps<{
@@ -27,50 +28,7 @@ const { pickSurfaceClass } = useBackgroundSurface()
 const isDark = computed(() => appStore.isDark)
 
 // 图表主题相关颜色
-const chartThemeColors = computed(() => ({
-  text: isDark.value ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)',
-  textSecondary: isDark.value ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.55)',
-  textTertiary: isDark.value ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)',
-  borderColor: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
-  splitLineColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
-  tooltipBg: isDark.value ? 'rgba(40, 40, 40, 0.95)' : 'rgba(255, 255, 255, 0.8)',
-  tooltipShadow: isDark.value ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.06)',
-  crosshairColor: isDark.value ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
-}))
-
-// 优化后的图表配色方案（多任务时使用）
-const chartColors = [
-  '#FF6B6B', // 珊瑚红
-  '#4ECDC4', // 青绿色
-  '#A78BFA', // 紫罗兰
-  '#60A5FA', // 天蓝色
-  '#FFB347', // 琥珀黄
-  '#F472B6', // 粉红色
-  '#34D399', // 翠绿色
-  '#FB923C', // 橙色
-]
-
-// 双栈时 v6 用同色系的另一档，与 v4 拉开明度差（顺序与 chartColors 对应）：亮色模式取 700-800 深色，暗色模式取 600 饱和色（浅色在深底上会发白、各线路分不清）
-const chartColorsV6Light = [
-  '#9F1239',
-  '#0F766E',
-  '#6D28D9',
-  '#1D4ED8',
-  '#B45309',
-  '#BE185D',
-  '#047857',
-  '#C2410C',
-]
-const chartColorsV6Dark = [
-  '#E11D48',
-  '#0D9488',
-  '#7C3AED',
-  '#2563EB',
-  '#D97706',
-  '#DB2777',
-  '#059669',
-  '#EA580C',
-]
+const chartThemeColors = computed(() => getChartThemeColors(isDark.value))
 
 // 从 publicSettings 获取记录保留时间
 const maxPingRecordPreserveTime = computed(() => appStore.publicSettings?.ping_record_preserve_time || 168)
@@ -286,12 +244,12 @@ const showDateInAxis = computed(() => selectedHours.value >= 24)
 const taskMeta = computed(() => {
   const meta = new Map<number, { color: string, stack: 'v4' | 'v6' | null, base: string }>()
   groupPingTasksByStack(tasks.value, t => t.name).forEach((group, groupIndex) => {
-    const paletteIndex = groupIndex % chartColors.length
-    const v6Palette = isDark.value ? chartColorsV6Dark : chartColorsV6Light
+    const paletteIndex = groupIndex % SERIES_PALETTE.length
+    const v6Palette = isDark.value ? SERIES_PALETTE_V6_DARK : SERIES_PALETTE_V6_LIGHT
     for (const { stack, item } of group.items) {
       const color = stack === 'v6'
         ? v6Palette[paletteIndex]!
-        : chartColors[paletteIndex]!
+        : SERIES_PALETTE[paletteIndex]!
       meta.set(item.id, { color, stack, base: group.base })
     }
   })
@@ -303,7 +261,7 @@ const hasDualStack = computed(() => [
 ].some(m => m.stack === 'v6'))
 
 function getTaskColor(taskId: number): string {
-  return taskMeta.value.get(taskId)?.color ?? chartColors[0]!
+  return taskMeta.value.get(taskId)?.color ?? SERIES_PALETTE[0]
 }
 
 // 最新值统计（从服务端 tasks 获取，保持颜色顺序）
@@ -327,7 +285,7 @@ const latestValues = computed(() => {
     return {
       ...task,
       latestValue: latestMap.get(task.id) ?? null,
-      color: meta?.color ?? chartColors[0]!,
+      color: meta?.color ?? SERIES_PALETTE[0],
       stack: meta?.stack ?? null,
     }
   })
@@ -454,34 +412,7 @@ function isStackSelected(stack: 'v4' | 'v6'): boolean {
 // ==================== 图表配置 ====================
 
 // 通用 Tooltip 配置
-const baseTooltipConfig = computed(() => ({
-  trigger: 'axis' as const,
-  confine: false,
-  backgroundColor: chartThemeColors.value.tooltipBg,
-  borderColor: 'transparent',
-  borderWidth: 0,
-  borderRadius: 6,
-  textStyle: {
-    color: chartThemeColors.value.text,
-    fontSize: 12,
-    lineHeight: 20,
-  },
-  extraCssText: `backdrop-filter: blur(5px);z-index:9;box-shadow:0 0 0 1px ${chartThemeColors.value.tooltipShadow}, 0 0 16px ${chartThemeColors.value.tooltipShadow}`,
-  axisPointer: {
-    type: 'cross' as const,
-    crossStyle: {
-      color: chartThemeColors.value.textTertiary,
-    },
-    lineStyle: {
-      color: chartThemeColors.value.crosshairColor,
-      width: 1,
-      type: 'dashed' as const,
-    },
-    shadowStyle: {
-      color: chartThemeColors.value.crosshairColor,
-    },
-  },
-}))
+const baseTooltipConfig = computed(() => buildBaseTooltip(chartThemeColors.value, true))
 
 const pingChartOption = computed(() => {
   const taskList = selectedTasks.value
@@ -518,11 +449,14 @@ const pingChartOption = computed(() => {
             symbol: ['none', 'none'],
             animation: false,
             label: { show: false },
+            // 丢包统一用红色：红色只表示「差」，不跟随线路色
             lineStyle: {
-              color,
+              color: CHART_COLORS.loss,
               width: 1,
               type: isV6 ? 'dashed' as const : 'solid' as const,
-              opacity: 0.55,
+              opacity: hours >= 168
+                ? 0.2
+                : 0.35,
             },
             data: lossMarkerIndexes.map(index => ({
               xAxis: index,
@@ -566,8 +500,8 @@ const pingChartOption = computed(() => {
             // 通过任务名找到对应的任务ID，再获取颜色
             const task = tasks.value.find(t => t.name === item.seriesName)
             const color = task
-              ? colorMap.get(task.id) || chartColors[0]
-              : chartColors[0]
+              ? colorMap.get(task.id) || SERIES_PALETTE[0]
+              : SERIES_PALETTE[0]
             const isV6 = task
               ? taskMeta.value.get(task.id)?.stack === 'v6'
               : false
@@ -656,49 +590,48 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <!-- 时间选择器 -->
-    <Tabs v-model="selectedView" class="w-full items-center">
-      <div class="min-w-0 flex-1 overflow-x-auto pointer-events-auto">
+    <!-- 时间选择器；窄屏时筛选按钮换到第二行，避免把范围标签挤掉 -->
+    <Tabs v-model="selectedView" class="w-full flex-row flex-wrap items-center gap-2">
+      <div class="min-w-0 overflow-x-auto pointer-events-auto max-md:basis-full md:flex-1">
         <TabsList :class="pickSurfaceClass('w-max h-8 bg-background/60 rounded-md', 'w-max h-8 bg-background/50 backdrop-blur-xl rounded-md')">
           <TabsTrigger
             v-for="view in availableViews" :key="view.label" :value="view.label"
-            class="h-6.5 flex-none shrink-0 text-xs border-none data-[state=active]:text-emerald-600 shadow-none rounded-sm"
+            :class="TAB_TRIGGER_CLASS"
           >
             {{ view.label }}
           </TabsTrigger>
         </TabsList>
       </div>
-      <div class="md:flex-1" />
-      <div class="flex gap-2 items-center">
-        <template v-if="hasDualStack">
+      <div v-if="tasks.length > 0" class="flex items-center gap-2">
+        <div v-if="hasDualStack" class="inline-flex rounded-md bg-muted/70 p-0.5" role="group" aria-label="协议栈">
           <Button
-            variant="ghost" size="xs" class="h-7 rounded-sm border-none bg-background/60 hover:bg-background"
-            :class="[isStackSelected('v4') && 'bg-background !text-emerald-600']"
+            variant="ghost" size="xs" class="h-6.5" :class="[TOGGLE_BASE_CLASS, segmentClass(selectedTaskIds.length === tasks.length)]"
+            :aria-pressed="selectedTaskIds.length === tasks.length"
+            @click="showAllTasks()"
+          >
+            全部
+          </Button>
+          <Button
+            variant="ghost" size="xs" class="h-6.5" :class="[TOGGLE_BASE_CLASS, segmentClass(isStackSelected('v4'))]"
+            :aria-pressed="isStackSelected('v4')"
             @click="showStackTasks('v4')"
           >
             IPv4
           </Button>
           <Button
-            variant="ghost" size="xs" class="h-7 rounded-sm border-none bg-background/60 hover:bg-background"
-            :class="[isStackSelected('v6') && 'bg-background !text-emerald-600']"
+            variant="ghost" size="xs" class="h-6.5" :class="[TOGGLE_BASE_CLASS, segmentClass(isStackSelected('v6'))]"
+            :aria-pressed="isStackSelected('v6')"
             @click="showStackTasks('v6')"
           >
             IPv6
           </Button>
-        </template>
+        </div>
+        <!-- 全选 / 全不选是动作，不画成选中态 -->
         <Button
-          variant="ghost" size="xs" class="h-7 rounded-sm border-none bg-background/60 hover:bg-background"
-          :class="[selectedTaskIds.length === tasks.length && 'bg-background !text-emerald-600']"
-          @click="showAllTasks"
+          variant="ghost" size="xs" :class="[TOGGLE_BASE_CLASS, toggleClass(false)]"
+          @click="selectedTaskIds.length === tasks.length ? hideAllTasks() : showAllTasks()"
         >
-          全选
-        </Button>
-        <Button
-          variant="ghost" size="xs" class="h-7 rounded-sm border-none bg-background/60 hover:bg-background"
-          :class="[!selectedTaskIds.length && 'bg-background !text-emerald-600']"
-          @click="hideAllTasks"
-        >
-          全不选
+          {{ selectedTaskIds.length === tasks.length ? '全不选' : '全选' }}
         </Button>
       </div>
     </Tabs>
@@ -708,8 +641,8 @@ onMounted(() => {
       <div v-if="error" class="text-red-500 py-8 text-center">
         {{ error }}
       </div>
-      <div v-else-if="tasks.length === 0 && !loading" class="py-8">
-        <Empty description="暂无延迟数据" />
+      <div v-else-if="tasks.length === 0 && !loading" class="py-6 text-center text-xs text-muted-foreground">
+        这段时间没有延迟数据，节点可能未配置延迟监测
       </div>
 
       <template v-else>
@@ -720,15 +653,21 @@ onMounted(() => {
         >
           <div
             v-for="group in latestValueGroups" :key="group.base"
-            class="flex flex-col gap-1 rounded-md p-2 transition-all bg-background/60 hover:bg-background hover:shadow-[0_0_0_1px] hover:shadow-emerald-600/10"
+            class="flex flex-col gap-1 p-3"
+            :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
           >
-            <div class="flex gap-2 items-center">
-              <div class="rounded h-4 w-1" :style="{ backgroundColor: group.items[0]?.item.color }" />
-              <span class="text-sm font-semibold truncate">{{ group.base }}</span>
+            <div class="grid grid-cols-[2rem_repeat(3,minmax(0,1fr))_1.5rem] items-center gap-x-2">
+              <div class="col-span-2 flex min-w-0 items-center gap-2">
+                <div class="h-4 w-1 shrink-0 rounded" :style="{ backgroundColor: group.items[0]?.item.color }" />
+                <span class="truncate text-sm font-semibold">{{ group.base }}</span>
+              </div>
+              <span class="text-right text-[11px] text-muted-foreground">丢包</span>
+              <span class="text-right text-[11px] text-muted-foreground" title="P99 与 P50 的比值，越大越不稳定">波动</span>
+              <span />
             </div>
             <div
               v-for="{ stack, item: task } in group.items" :key="task.id"
-              class="flex cursor-pointer select-none items-center gap-1.5 rounded-sm text-xs text-muted-foreground transition-opacity"
+              class="grid cursor-pointer select-none grid-cols-[2rem_repeat(3,minmax(0,1fr))_1.5rem] items-center gap-x-2 rounded-sm text-xs text-muted-foreground transition-opacity"
               :class="[!selectedTaskIds.includes(task.id) && 'opacity-30']"
               @click="toggleTask(task.id)"
             >
@@ -738,18 +677,14 @@ onMounted(() => {
                 :class="stack === 'v6' ? 'border-dashed' : ''"
                 :style="{ borderColor: task.color, color: task.color }"
               >{{ stack === 'v6' ? 'v6' : 'v4' }}</span>
-              <span class="font-medium" title="平均延迟">
-                {{ task.avg !== undefined ? `${Math.round(task.avg)}ms` : '-' }}
+              <span v-else />
+              <span class="num font-medium text-foreground" title="平均延迟">
+                {{ task.avg !== undefined ? `${Math.round(task.avg)} ms` : '--' }}
               </span>
-              <span class="opacity-60">·</span>
-              <span title="丢包率">{{ task.loss.toFixed(2) }}%</span>
-              <template v-if="task.p99_p50_ratio !== undefined">
-                <span class="opacity-60">·</span>
-                <span title="波动率">{{ task.p99_p50_ratio.toFixed(2) }}</span>
-              </template>
-              <div class="flex-1" />
-              <DataTooltip placement="left" content-class="!rounded p-3 w-60 backdrop-blur">
-                <Button variant="ghost" size="icon-xs" class="text-slate-500" @click.stop>
+              <span class="num text-right">{{ task.loss.toFixed(2) }}%</span>
+              <span class="num text-right">{{ task.p99_p50_ratio !== undefined ? task.p99_p50_ratio.toFixed(2) : '--' }}</span>
+              <DataTooltip placement="left" content-class="w-60 p-3">
+                <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="线路详情" @click.stop>
                   <Icon icon="carbon:information" :width="14" :height="14" />
                 </Button>
                 <template #content>
@@ -806,35 +741,35 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-2 items-center py-2">
+        <div class="flex flex-wrap gap-2 items-center">
           <!-- 延迟可视化开关 -->
           <Button
-            variant="ghost" size="xs" class="h-7 rounded-sm border-none bg-background/60 hover:bg-background"
-            :class="[showDelay && 'bg-background !text-emerald-600']" @click="showDelay = !showDelay"
+            variant="ghost" size="xs" :class="[TOGGLE_BASE_CLASS, toggleClass(showDelay)]"
+            :aria-pressed="showDelay" @click="showDelay = !showDelay"
           >
             延迟
           </Button>
           <!-- 丢包可视化开关 -->
           <Button
-            variant="ghost" size="xs" class="h-7 rounded-sm border-none bg-background/60 hover:bg-background"
-            :class="[showLoss && 'bg-background !text-emerald-600']" @click="showLoss = !showLoss"
+            variant="ghost" size="xs" :class="[TOGGLE_BASE_CLASS, toggleClass(showLoss)]"
+            :aria-pressed="showLoss" @click="showLoss = !showLoss"
           >
             丢包
           </Button>
           <!-- 平滑峰值开关 -->
           <div class="flex gap-2 items-center">
             <Button
-              variant="ghost" size="xs" class="h-7 rounded-sm border-none bg-background/60 hover:bg-background"
-              :class="[cutPeak && 'bg-background !text-emerald-600']" @click="cutPeak = !cutPeak"
+              variant="ghost" size="xs" :class="[TOGGLE_BASE_CLASS, toggleClass(cutPeak)]"
+              :aria-pressed="cutPeak" @click="cutPeak = !cutPeak"
             >
               平滑峰值
             </Button>
             <DataTooltip
               content="使用 EWMA 算法平滑数据并过滤突变值"
               placement="top"
-              :content-class="pickSurfaceClass('whitespace-nowrap text-[11px]', 'whitespace-nowrap text-[11px] backdrop-blur-xl')"
+              content-class="whitespace-nowrap"
             >
-              <Button variant="ghost" size="icon-xs" class="text-slate-500">
+              <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="平滑峰值说明">
                 <Icon icon="carbon:information" :width="14" :height="14" />
               </Button>
             </DataTooltip>
@@ -843,8 +778,8 @@ onMounted(() => {
 
         <!-- 图表 -->
         <div
-          class="h-80 rounded-md p-4 transition-all"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xl')"
+          class="h-80 p-4"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <VChart :option="pingChartOption" autoresize />
         </div>

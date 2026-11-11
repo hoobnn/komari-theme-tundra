@@ -283,18 +283,18 @@ const themeColors = computed(() => {
       dark: 1,
       mapBrightness: 4,
       baseColor: [0.32, 0.33, 0.4] as [number, number, number],
-      markerColor: [0.4, 0.7, 1.0] as [number, number, number],
+      markerColor: [0.2, 0.83, 0.6] as [number, number, number],
       glowColor: [0.2, 0.25, 0.45] as [number, number, number],
-      arcColor: [0.45, 0.75, 1.0] as [number, number, number],
+      arcColor: [0.2, 0.83, 0.6] as [number, number, number],
     }
   }
   return {
     dark: 0,
     mapBrightness: 6,
     baseColor: [1, 1, 1] as [number, number, number],
-    markerColor: [0.21, 0.51, 0.93] as [number, number, number],
+    markerColor: [0.02, 0.59, 0.41] as [number, number, number],
     glowColor: [1, 1, 1] as [number, number, number],
-    arcColor: [0.21, 0.51, 0.93] as [number, number, number],
+    arcColor: [0.06, 0.73, 0.51] as [number, number, number],
   }
 })
 
@@ -519,11 +519,11 @@ function formatRate(bytesPerSec: number): string {
           class="size-4 block absolute -bottom-2 -left-2 z-1"
         >
         <div class="relative z-2 bg-background/60 rounded py-0.5 px-1 text-xs zoom-80 items-start justify-center text-nowrap">
-          <div class="text-green-600 flex flex-row items-center gap-0.5">
-            <Icon icon="tabler:chevron-up" width="12" height="12" /> {{ formatRate(rateFor(cluster.code).up) }}
+          <div class="num flex flex-row items-center gap-0.5 text-emerald-700 dark:text-emerald-300">
+            <Icon icon="tabler:arrow-up" width="12" height="12" /> {{ formatRate(rateFor(cluster.code).up) }}
           </div>
-          <div class="text-blue-600 flex flex-row items-center gap-0.5">
-            <Icon icon="tabler:chevron-down" width="12" height="12" /> {{ formatRate(rateFor(cluster.code).down) }}
+          <div class="num flex flex-row items-center gap-0.5 text-sky-700 dark:text-sky-300">
+            <Icon icon="tabler:arrow-down" width="12" height="12" /> {{ formatRate(rateFor(cluster.code).down) }}
           </div>
         </div>
       </div>
@@ -534,12 +534,14 @@ function formatRate(bytesPerSec: number): string {
       class="absolute top-6 md:top-12 left-0 text-[10px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5"
     >
       <div v-if="onlineServers > 0" class="flex items-center gap-1">
-        <span class="inline-block size-1.5 rounded-full bg-green-600 animate-pulse" />
-        <span class="text-green-600">{{ onlineServers }}</span>
+        <span class="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span>在线</span>
+        <span class="num font-medium text-emerald-700 dark:text-emerald-300">{{ onlineServers }}</span>
       </div>
       <div v-if="offlineServers > 0" class="flex items-center gap-1">
-        <span class="inline-block size-1.5 rounded-full bg-yellow-600 animate-pulse" />
-        <span class="text-yellow-600">{{ offlineServers }}</span>
+        <span class="inline-block size-1.5 rounded-full bg-red-500" />
+        <span>离线</span>
+        <span class="num font-medium text-red-600 dark:text-red-400">{{ offlineServers }}</span>
       </div>
       <!-- <div v-if="totalServers > 0" class="flex items-center gap-1">
         <span class="inline-block size-1.5 rounded-full bg-blue-600 animate-pulse" />

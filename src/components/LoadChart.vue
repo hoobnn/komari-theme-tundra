@@ -15,10 +15,12 @@ import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { getSharedApi } from '@/utils/api'
+import { areaStops, buildBaseTooltip, CHART_COLORS, getChartThemeColors, TRAFFIC_COLORS } from '@/utils/chartTheme'
 import { buildChartViews, LOAD_CHART_VIEWS } from '@/utils/chartViews'
-import { formatBytes, formatBytesSplit } from '@/utils/helper'
+import { formatBytes } from '@/utils/helper'
 import { fillMissingTimePoints } from '@/utils/recordHelper'
 import { getSharedRpc } from '@/utils/rpc'
+import { CARD_SURFACE_CLASS, TAB_TRIGGER_CLASS } from '@/utils/uiClasses'
 import '@/utils/echarts' // 共享 ECharts 配置
 
 const props = defineProps<{
@@ -46,65 +48,19 @@ const dataUpdateInterval = computed(() => {
 // 使用 store 中的 isDark computed
 const isDark = computed(() => appStore.isDark)
 
-// Tundra 图表配色：主指标翡翠绿，其余取 Tailwind 500 档的现代色
+// 系列配色来自共享 chartTheme：主指标翡翠绿，其余取 Tailwind 500 档
 const chartColors = {
-  primary: '#10B981',
-  secondary: '#F59E0B',
-  tertiary: '#06B6D4',
-  quaternary: '#8B5CF6',
-  quinary: '#3B82F6',
+  primary: CHART_COLORS.emerald,
+  secondary: CHART_COLORS.amber,
+  tertiary: CHART_COLORS.cyan,
+  quaternary: CHART_COLORS.violet,
+  quinary: CHART_COLORS.blue,
 }
 
-function areaStops(hex: string) {
-  const n = Number.parseInt(hex.slice(1), 16)
-  const rgb = `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`
-  return [
-    { offset: 0, color: `rgba(${rgb}, 0.22)` },
-    { offset: 1, color: `rgba(${rgb}, 0.02)` },
-  ]
-}
-
-// 图表主题相关颜色
-const chartThemeColors = computed(() => ({
-  text: isDark.value ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)',
-  textSecondary: isDark.value ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.55)',
-  textTertiary: isDark.value ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.35)',
-  borderColor: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-  splitLineColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
-  tooltipBg: isDark.value ? 'rgba(28, 30, 36, 0.95)' : 'rgba(255, 255, 255, 0.8)',
-  tooltipShadow: isDark.value ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.06)',
-  crosshairColor: isDark.value ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
-}))
+const chartThemeColors = computed(() => getChartThemeColors(isDark.value))
 
 // 通用 Tooltip 配置
-const baseTooltipConfig = computed(() => ({
-  trigger: 'axis' as const,
-  confine: false,
-  backgroundColor: chartThemeColors.value.tooltipBg,
-  borderColor: 'transparent',
-  borderWidth: 0,
-  borderRadius: 6,
-  textStyle: {
-    color: chartThemeColors.value.text,
-    fontSize: 12,
-    lineHeight: 20,
-  },
-  extraCssText: `${appStore.backgroundEnabled ? 'backdrop-filter: blur(5px);' : ''}z-index:9;box-shadow:0 0 0 1px ${chartThemeColors.value.tooltipShadow}, 0 0 16px ${chartThemeColors.value.tooltipShadow}`,
-  axisPointer: {
-    type: 'cross' as const,
-    crossStyle: {
-      color: chartThemeColors.value.textTertiary,
-    },
-    lineStyle: {
-      color: chartThemeColors.value.crosshairColor,
-      width: 1,
-      type: 'dashed' as const,
-    },
-    shadowStyle: {
-      color: chartThemeColors.value.crosshairColor,
-    },
-  },
-}))
+const baseTooltipConfig = computed(() => buildBaseTooltip(chartThemeColors.value, appStore.backgroundEnabled))
 
 // 图表边距配置
 const chartMargin = {
@@ -413,7 +369,7 @@ function tooltipFormatter(buildRows: (params: TooltipParam[], record: RecordForm
 const cpuChartOption = computed(() => ({
   animation: false,
   // 全局颜色配置（确保 Tooltip 圆点颜色与线条一致）
-  color: [chartColors.primary, chartColors.secondary],
+  color: [chartColors.primary, CHART_COLORS.neutral],
   tooltip: {
     ...baseTooltipConfig.value,
     formatter: tooltipFormatter(params => params.flatMap((item) => {
@@ -482,7 +438,13 @@ const cpuChartOption = computed(() => ({
 
       showSymbol: false,
       yAxisIndex: 1,
-      lineStyle: { width: 1.5, color: chartColors.secondary, cap: 'round' as const },
+      // 负载是辅助指标，用中性灰虚线，避免盖过 CPU 曲线
+      lineStyle: {
+        width: 1.25,
+        color: CHART_COLORS.neutral,
+        cap: 'round' as const,
+        type: 'dashed' as const,
+      },
     },
   ],
 }))
@@ -686,7 +648,7 @@ const memoryChartOption = computed(() => ({
   ],
 }))
 
-// 磁盘图表
+// 硬盘图表
 const diskChartOption = computed(() => ({
   animation: false,
   color: [chartColors.tertiary],
@@ -696,7 +658,7 @@ const diskChartOption = computed(() => ({
       const diskUsed = record.disk ?? 0
       const diskTotal = record.disk_total || nodeInfo.value?.disk_total || 0
       return [
-        { color: first!.color, label: '磁盘已用', value: `${formatBytes(diskUsed)} (${usagePercent(diskUsed, diskTotal)}%)` },
+        { color: first!.color, label: '硬盘已用', value: `${formatBytes(diskUsed)} (${usagePercent(diskUsed, diskTotal)}%)` },
       ]
     }),
   },
@@ -704,7 +666,7 @@ const diskChartOption = computed(() => ({
   xAxis: baseXAxisConfig.value,
   yAxis: {
     ...baseYAxisConfig.value,
-    name: '磁盘',
+    name: '硬盘',
     nameTextStyle: {
       color: chartThemeColors.value.textSecondary,
       padding: [0, 40, 0, 0],
@@ -716,7 +678,7 @@ const diskChartOption = computed(() => ({
   },
   series: [
     {
-      name: '磁盘已用',
+      name: '硬盘已用',
       type: 'line',
       data: chartData.value.map(r => r.disk ?? 0),
       showSymbol: false,
@@ -738,19 +700,19 @@ const diskChartOption = computed(() => ({
 // 网络图表
 const networkChartOption = computed(() => ({
   animation: false,
-  color: [chartColors.quinary, chartColors.quaternary],
+  color: [TRAFFIC_COLORS.up, TRAFFIC_COLORS.down],
   tooltip: {
     ...baseTooltipConfig.value,
     formatter: tooltipFormatter(params => params.map(item => ({
       color: item.color,
-      label: item.seriesName === '下载'
-        ? '↓ 下载'
-        : '↑ 上传',
+      label: item.seriesName === '下行'
+        ? '↓ 下行'
+        : '↑ 上行',
       value: `${formatBytes(item.value ?? 0)}/s`,
     }))),
   },
   legend: {
-    data: ['下载', '上传'],
+    data: ['上行', '下行'],
     bottom: 4,
     itemWidth: 12,
     itemHeight: 12,
@@ -762,7 +724,7 @@ const networkChartOption = computed(() => ({
   xAxis: baseXAxisConfig.value,
   yAxis: {
     ...baseYAxisConfig.value,
-    name: '速度',
+    name: '速率',
     nameTextStyle: {
       color: chartThemeColors.value.textSecondary,
       padding: [0, 40, 0, 0],
@@ -774,20 +736,20 @@ const networkChartOption = computed(() => ({
   },
   series: [
     {
-      name: '下载',
-      type: 'line',
-      data: chartData.value.map(r => r.net_in ?? 0),
-
-      showSymbol: false,
-      lineStyle: { width: 1.5, color: chartColors.quinary, cap: 'round' as const },
-    },
-    {
-      name: '上传',
+      name: '上行',
       type: 'line',
       data: chartData.value.map(r => r.net_out ?? 0),
 
       showSymbol: false,
-      lineStyle: { width: 1.5, color: chartColors.quaternary, cap: 'round' as const },
+      lineStyle: { width: 1.5, color: TRAFFIC_COLORS.up, cap: 'round' as const },
+    },
+    {
+      name: '下行',
+      type: 'line',
+      data: chartData.value.map(r => r.net_in ?? 0),
+
+      showSymbol: false,
+      lineStyle: { width: 1.5, color: TRAFFIC_COLORS.down, cap: 'round' as const },
     },
   ],
 }))
@@ -948,7 +910,7 @@ onMounted(() => {
       <TabsList :class="pickSurfaceClass('h-8 bg-background/60 pointer-events-auto rounded-md', 'h-8 bg-background/50 backdrop-blur-xl pointer-events-auto rounded-md')">
         <TabsTrigger
           v-for="view in availableViews" :key="view.label" :value="view.label"
-          class="h-6.5 text-xs border-none data-[state=active]:text-emerald-600 shadow-none rounded-sm"
+          :class="TAB_TRIGGER_CLASS"
         >
           {{ view.label }}
         </TabsTrigger>
@@ -969,17 +931,16 @@ onMounted(() => {
         <!-- CPU 卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <span class="text-base font-bold">CPU</span>
-              <div v-if="latestStatus?.cpu != null" class="text-xs flex gap-0.5 items-baseline">
+              <span class="text-sm font-semibold">CPU</span>
+              <div v-if="latestStatus?.cpu != null" class="num text-xs flex gap-0.5 items-baseline">
                 <span>{{ latestStatus.cpu.toFixed(1) }}</span>
                 <span>%</span>
               </div>
-              <span v-else>-</span>
+              <span v-else>--</span>
             </div>
           </template>
           <div class="h-48">
@@ -991,17 +952,16 @@ onMounted(() => {
         <CardX
           v-if="hasGpu"
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <span class="text-base font-bold">GPU</span>
-              <div v-if="latestStatus?.gpu != null" class="text-xs flex gap-0.5 items-baseline">
+              <span class="text-sm font-semibold">GPU</span>
+              <div v-if="latestStatus?.gpu != null" class="num text-xs flex gap-0.5 items-baseline">
                 <span>{{ latestStatus.gpu.toFixed(1) }}</span>
                 <span>%</span>
               </div>
-              <span v-else>-</span>
+              <span v-else>--</span>
             </div>
           </template>
           <!-- 有设备详情时压缩图表高度，让单卡时与相邻卡片等高 -->
@@ -1023,7 +983,7 @@ onMounted(() => {
                   :status="gpuMemoryPercent(gpu.memory_used, gpu.memory_total) >= 90 ? 'warning' : 'info'"
                   class="flex-1"
                 />
-                <span class="shrink-0 text-muted-foreground">显存 {{ formatBytes(gpu.memory_used) }} / {{ formatBytes(gpu.memory_total) }}</span>
+                <span class="num shrink-0 text-muted-foreground">显存 <span class="text-foreground">{{ formatBytes(gpu.memory_used) }}</span> 共 {{ formatBytes(gpu.memory_total) }}</span>
               </div>
             </div>
           </div>
@@ -1032,25 +992,14 @@ onMounted(() => {
         <!-- 内存卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <span class="text-base font-bold">内存</span>
-              <div class="text-xs flex gap-1 items-baseline">
-                <template v-if="latestStatus?.ram != null">
-                  <span>{{ formatBytesSplit(latestStatus.ram).value }}</span>
-                  <span>{{ formatBytesSplit(latestStatus.ram).unit }}</span>
-                </template>
-                <span v-else>-</span>
-                <span>·</span>
-                <template v-if="nodeInfo?.mem_total">
-                  <span>{{
-                    formatBytesSplit(nodeInfo.mem_total).value }}</span>
-                  <span>{{ formatBytesSplit(nodeInfo.mem_total).unit }}</span>
-                </template>
-                <span v-else>-</span>
+              <span class="text-sm font-semibold">内存</span>
+              <div class="num flex items-baseline gap-1 text-xs">
+                <span>{{ latestStatus?.ram != null ? formatBytes(latestStatus.ram) : '--' }}</span>
+                <span v-if="nodeInfo?.mem_total" class="text-muted-foreground">共 {{ formatBytes(nodeInfo.mem_total) }}</span>
               </div>
             </div>
           </template>
@@ -1059,27 +1008,17 @@ onMounted(() => {
           </div>
         </CardX>
 
-        <!-- 磁盘卡片 -->
+        <!-- 硬盘卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <span class="text-base font-bold">磁盘</span>
-              <div class="text-xs flex gap-1 items-baseline">
-                <template v-if="latestStatus?.disk != null">
-                  <span>{{ formatBytesSplit(latestStatus.disk).value }}</span>
-                  <span>{{ formatBytesSplit(latestStatus.disk).unit }}</span>
-                </template>
-                <span v-else>-</span>
-                <span>·</span>
-                <template v-if="nodeInfo?.disk_total">
-                  <span>{{ formatBytesSplit(nodeInfo.disk_total).value }}</span>
-                  <span>{{ formatBytesSplit(nodeInfo.disk_total).unit }}</span>
-                </template>
-                <span v-else>-</span>
+              <span class="text-sm font-semibold">硬盘</span>
+              <div class="num flex items-baseline gap-1 text-xs">
+                <span>{{ latestStatus?.disk != null ? formatBytes(latestStatus.disk) : '--' }}</span>
+                <span v-if="nodeInfo?.disk_total" class="text-muted-foreground">共 {{ formatBytes(nodeInfo.disk_total) }}</span>
               </div>
             </div>
           </template>
@@ -1091,28 +1030,19 @@ onMounted(() => {
         <!-- 网络卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <span class="text-base font-bold">网络</span>
-              <div class="text-xs flex gap-2 items-baseline">
-                <span class="flex flex-row items-center justify-center gap-0.5">
-                  <Icon icon="tabler:chevron-up" width="12" height="12" />
-                  <template v-if="latestStatus?.net_out != null">
-                    {{ formatBytesSplit(latestStatus.net_out).value }}
-                    {{ formatBytesSplit(latestStatus.net_out).unit }}/s
-                  </template>
-                  <template v-else>-</template>
+              <span class="text-sm font-semibold">网络</span>
+              <div class="num flex items-baseline gap-2 text-xs">
+                <span class="flex items-center gap-0.5">
+                  <Icon icon="tabler:arrow-up" width="12" height="12" class="text-emerald-600 dark:text-emerald-400" />
+                  {{ latestStatus?.net_out != null ? `${formatBytes(latestStatus.net_out)}/s` : '--' }}
                 </span>
-                <span class="flex flex-row items-center justify-center gap-0.5">
-                  <Icon icon="tabler:chevron-down" width="12" height="12" />
-                  <template v-if="latestStatus?.net_in != null">
-                    {{ formatBytesSplit(latestStatus.net_in).value }}
-                    {{ formatBytesSplit(latestStatus.net_in).unit }}/s
-                  </template>
-                  <template v-else>-</template>
+                <span class="flex items-center gap-0.5">
+                  <Icon icon="tabler:arrow-down" width="12" height="12" class="text-sky-600 dark:text-sky-400" />
+                  {{ latestStatus?.net_in != null ? `${formatBytes(latestStatus.net_in)}/s` : '--' }}
                 </span>
               </div>
             </div>
@@ -1125,16 +1055,14 @@ onMounted(() => {
         <!-- 连接数卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <span class="text-base font-bold">连接</span>
-              <div class="text-xs flex gap-1 items-baseline">
-                <span>TCP: {{ latestStatus?.connections ?? '-' }}</span>
-                <span>·</span>
-                <span>UDP: {{ latestStatus?.connections_udp ?? '-' }}</span>
+              <span class="text-sm font-semibold">连接</span>
+              <div class="num flex items-baseline gap-2 text-xs">
+                <span><span class="text-muted-foreground">TCP</span> {{ latestStatus?.connections ?? '--' }}</span>
+                <span><span class="text-muted-foreground">UDP</span> {{ latestStatus?.connections_udp ?? '--' }}</span>
               </div>
             </div>
           </template>
@@ -1146,14 +1074,13 @@ onMounted(() => {
         <!-- 进程卡片 -->
         <CardX
           size="small"
-          class="border-none transition-all rounded-md"
-          :class="pickSurfaceClass('bg-background/60 hover:bg-background', 'bg-background/50 hover:bg-background backdrop-blur-xs')"
+          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
         >
           <template #header>
             <div class="flex items-center justify-between">
-              <span class="text-base font-bold">进程</span>
-              <span class="text-xs">
-                {{ latestStatus?.process ?? '-' }}
+              <span class="text-sm font-semibold">进程</span>
+              <span class="num text-xs">
+                {{ latestStatus?.process ?? '--' }}
               </span>
             </div>
           </template>

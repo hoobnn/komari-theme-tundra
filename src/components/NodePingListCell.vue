@@ -21,7 +21,7 @@ const { pingTable } = useNodePingDisplay(() => props.uuid)
       <span class="text-[9px] text-muted-foreground/80">{{ row.stack ?? '' }}</span>
       <DataTooltip
         v-for="cell in row.cells" :key="cell.key" placement="top" :content="cell.tooltip"
-        content-class="whitespace-pre-wrap w-max px-1.5 !leading-[1.2] text-[11px]"
+        content-class="whitespace-pre-wrap w-max"
       >
         <span class="block text-right text-[11px]" :class="cell.toneClass">{{ cell.latency }}</span>
       </DataTooltip>
@@ -31,7 +31,7 @@ const { pingTable } = useNodePingDisplay(() => props.uuid)
       >
         <DataTooltip
           v-for="bar in row.latencyBars" :key="bar.key" placement="top" :content="bar.tooltip"
-          class="h-full w-full" content-class="whitespace-pre-wrap w-max px-1.5 !leading-[1.2] text-[11px]"
+          class="h-full w-full" content-class="whitespace-pre-wrap w-max"
         >
           <span class="block h-full w-full rounded-[1px]" :class="bar.className" />
         </DataTooltip>

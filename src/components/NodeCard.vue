@@ -64,14 +64,16 @@ const metrics = computed(() => [
     value: props.node.cpu ?? 0,
     status: cpuStatus.value,
     detail: `${(props.node.load ?? 0).toFixed(2)}  ${(props.node.load5 ?? 0).toFixed(2)}  ${(props.node.load15 ?? 0).toFixed(2)}`,
-    tip: '1 / 5 / 15 分钟负载',
+    total: '',
+    tip: `1 分钟负载 ${(props.node.load ?? 0).toFixed(2)}\n5 分钟负载 ${(props.node.load5 ?? 0).toFixed(2)}\n15 分钟负载 ${(props.node.load15 ?? 0).toFixed(2)}`,
   },
   {
     key: 'mem',
     label: '内存',
     value: memPercentage.value,
     status: memStatus.value,
-    detail: `${formatBytes(props.node.ram ?? 0)} / ${formatBytes(props.node.mem_total ?? 0)}`,
+    detail: formatBytes(props.node.ram ?? 0),
+    total: `共 ${formatBytes(props.node.mem_total ?? 0)}`,
     tip: props.node.swap
       ? `Swap ${formatBytes(props.node.swap)}`
       : '',
@@ -81,7 +83,8 @@ const metrics = computed(() => [
     label: '硬盘',
     value: diskPercentage.value,
     status: diskStatus.value,
-    detail: `${formatBytes(props.node.disk ?? 0)} / ${formatBytes(props.node.disk_total ?? 0)}`,
+    detail: formatBytes(props.node.disk ?? 0),
+    total: `共 ${formatBytes(props.node.disk_total ?? 0)}`,
     tip: '',
   },
   {
@@ -89,9 +92,10 @@ const metrics = computed(() => [
     label: '流量',
     value: trafficUsedPercentage.value,
     status: 'info' as const,
-    detail: `${formatBytes(trafficUsed.value)} / ${showTrafficProgress(props.node)
-      ? formatBytes(props.node.traffic_limit)
-      : '∞'}`,
+    detail: formatBytes(trafficUsed.value),
+    total: showTrafficProgress(props.node)
+      ? `限 ${formatBytes(props.node.traffic_limit)}`
+      : '不限',
     tip: `上行 ${formatBytes(props.node.net_total_up ?? 0)}\n下行 ${formatBytes(props.node.net_total_down ?? 0)}`,
   },
 ])
@@ -117,7 +121,7 @@ function openPingDialog() {
       <div class="flex min-w-0 items-center gap-2">
         <span
           class="size-2 shrink-0 rounded-full ring-3"
-          :class="props.node.online ? 'bg-emerald-600 ring-emerald-600/15 dark:bg-emerald-400 dark:ring-emerald-400/15' : 'bg-red-600 ring-red-600/15'"
+          :class="props.node.online ? 'bg-emerald-600 ring-emerald-600/15 dark:bg-emerald-400 dark:ring-emerald-400/15' : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15'"
         />
         <div class="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight">
           {{ props.node.name }}
@@ -150,7 +154,7 @@ function openPingDialog() {
           <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
             <DataTooltip
               v-for="metric in metrics" :key="metric.key" placement="top" class="block"
-              :content="metric.tip" :content-class="[!metric.tip && '!hidden', 'whitespace-pre-wrap text-[11px]']"
+              :content="metric.tip" :content-class="[!metric.tip && '!hidden', 'whitespace-pre-wrap w-max']"
             >
               <div class="flex flex-col gap-1">
                 <div class="flex items-baseline justify-between text-xs">
@@ -158,8 +162,9 @@ function openPingDialog() {
                   <span class="num text-[13px] font-medium">{{ metric.value.toFixed(1) }}<span class="text-[11px] text-muted-foreground">%</span></span>
                 </div>
                 <ProgressThin :percentage="metric.value" :status="metric.status" :height="3" />
-                <div class="num truncate text-[11px] text-muted-foreground">
-                  {{ metric.detail }}
+                <div class="num flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+                  <span class="truncate text-foreground/75">{{ metric.detail }}</span>
+                  <span v-if="metric.total" class="shrink-0">{{ metric.total }}</span>
                 </div>
               </div>
             </DataTooltip>
@@ -215,7 +220,7 @@ function openPingDialog() {
                     >
                       <DataTooltip
                         v-for="bar in row.bars" :key="bar.key" placement="top" :content="bar.tooltip"
-                        class="h-full w-full" content-class="whitespace-pre-wrap w-max px-1.5 !leading-[1.2] text-[11px]"
+                        class="h-full w-full" content-class="whitespace-pre-wrap w-max"
                       >
                         <span class="block h-full w-full rounded-[2px]" :class="bar.className" />
                       </DataTooltip>
@@ -239,7 +244,7 @@ function openPingDialog() {
                 <span class="text-[10px] text-muted-foreground/80">{{ row.stack ?? '' }}</span>
                 <DataTooltip
                   v-for="cell in row.cells" :key="cell.key" placement="top" :content="cell.tooltip"
-                  content-class="whitespace-pre-wrap w-max px-1.5 !leading-[1.2] text-[11px]"
+                  content-class="whitespace-pre-wrap w-max"
                 >
                   <span class="block text-right text-xs" :class="cell.toneClass">{{ cell.latency }}</span>
                 </DataTooltip>

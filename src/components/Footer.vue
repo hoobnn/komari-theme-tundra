@@ -32,7 +32,8 @@ const showFiling = computed(() => showIcp.value || showPolice.value)
 
 <template>
   <VisitorInfoCard v-if="appStore.visitorInfoCardEnabled" />
-  <footer class="w-full sm:flex-row sm:gap-4 max-w-[1280px] mx-auto p-4">
+  <!-- 访客胶囊是 fixed 浮层，开启时页脚底部留出它的高度，滚到底不会压住署名 -->
+  <footer class="w-full sm:flex-row sm:gap-4 max-w-[1280px] mx-auto p-4" :class="appStore.visitorInfoCardEnabled && 'pb-16'">
     <div class="flex flex-row items-center justify-between  text-xs text-muted-foreground">
       <div class="flex gap-1 items-center">
         Powered by
@@ -40,6 +41,7 @@ const showFiling = computed(() => showIcp.value || showPolice.value)
           as="span"
           placement="top"
           :content="formattedServerVersion ?? ''"
+          content-class="whitespace-nowrap"
         >
           <a
             href="https://github.com/komari-monitor/komari" target="_blank" rel="noopener noreferrer"
@@ -55,6 +57,7 @@ const showFiling = computed(() => showIcp.value || showPolice.value)
           as="span"
           placement="top"
           :content="`v${buildVersion}\n${buildGitHash}`"
+          content-class="whitespace-pre w-max"
         >
           <a
             href="https://github.com/hoobnn/komari-theme-tundra" target="_blank" rel="noopener noreferrer"

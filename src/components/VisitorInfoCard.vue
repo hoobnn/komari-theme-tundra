@@ -441,7 +441,7 @@ onMounted(async () => {
           >
           <div
             v-else
-            class="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/10 text-emerald-600"
+            class="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
           >
             <Icon :icon="item.icon" :width="14" :height="14" />
           </div>

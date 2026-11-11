@@ -71,8 +71,8 @@ const sitename = computed(() => appStore.publicSettings?.sitename || 'Komari Mon
         </h3>
       </div>
       <div class="flex items-center gap-2">
-        <DataTooltip v-for="button in actionButtons" :key="button.action" :content="button.title" placement="left" content-class="whitespace-nowrap text-[11px] px-2">
-          <Button variant="ghost" size="icon-sm" @click="handleButtonClick(button.action)">
+        <DataTooltip v-for="button in actionButtons" :key="button.action" :content="button.title" placement="left" content-class="whitespace-nowrap">
+          <Button variant="ghost" size="icon-sm" :aria-label="button.title" @click="handleButtonClick(button.action)">
             <Icon :icon="button.icon" :width="18" :height="18" />
           </Button>
         </DataTooltip>

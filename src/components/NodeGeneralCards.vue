@@ -159,8 +159,8 @@ const exchangeRateRows = computed(() => financeRateCurrencies.map((currency) => 
     baseSymbol: CURRENCY_SYMBOLS[exchangeRateBaseCurrency.value],
     targetSymbol: CURRENCY_SYMBOLS[currency],
     rate: new Intl.NumberFormat('zh-CN', {
-      maximumFractionDigits: 6,
-      minimumFractionDigits: 6,
+      maximumFractionDigits: 4,
+      minimumFractionDigits: 4,
     }).format(rate),
   }
 }))
@@ -187,10 +187,9 @@ onMounted(() => {
 
     <div :class="cardGridClass">
       <CardX
-        hoverable
-        class="group h-full rounded-xl border transition-colors"
+        class="h-full rounded-xl border"
         :class="[
-          pickSurfaceClass('bg-card shadow-xs hover:border-foreground/20', 'bg-card/60 hover:border-foreground/20 backdrop-blur-xs'),
+          pickSurfaceClass('bg-card shadow-xs', 'bg-card/60 backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-1 row-start-1' : 'col-span-1 row-start-1 col-start-1 min-h-18 md:min-h-24 md:row-start-1 md:col-start-1',
         ]"
         content-class="h-full !p-3"
@@ -198,31 +197,29 @@ onMounted(() => {
         <div class="flex h-full flex-col justify-between gap-1">
           <div class="flex items-start justify-between">
             <span class="text-xs text-muted-foreground">内存用量</span>
-            <Icon
-              icon="tabler:cash" :width="20" :height="20"
-              class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
-            />
+            <span class="num hidden truncate text-[11px] text-muted-foreground sm:inline">
+              共 {{ formattedMemoryTotal.value }} {{ formattedMemoryTotal.unit }}
+            </span>
           </div>
           <Transition v-bind="metricSwitchTransitionProps">
             <div
               :key="`memory-${summaryTransitionKey}`" class="flex items-baseline gap-1 min-w-0"
               :style="getMetricSwitchStyle(0)"
             >
-              <span class="num text-lg md:text-[28px] font-semibold leading-none">
+              <span class="num truncate text-lg lg:text-2xl xl:text-[28px] font-semibold leading-none">
                 {{ formattedMemoryUsed.value }}
               </span>
               <span class="text-[11px] md:text-xs font-medium text-muted-foreground truncate">
-                {{ formattedMemoryUsed.unit }} / {{ formattedMemoryTotal.value }} {{ formattedMemoryTotal.unit }}
+                {{ formattedMemoryUsed.unit }}
               </span>
             </div>
           </Transition>
         </div>
       </CardX>
       <CardX
-        hoverable
-        class="group h-full rounded-xl border transition-colors"
+        class="h-full rounded-xl border"
         :class="[
-          pickSurfaceClass('bg-card shadow-xs hover:border-foreground/20', 'bg-card/60 hover:border-foreground/20 backdrop-blur-xs'),
+          pickSurfaceClass('bg-card shadow-xs', 'bg-card/60 backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-1 row-start-2' : 'col-span-1 row-start-2 col-start-1 min-h-18 md:min-h-24 md:row-start-1 md:col-start-2',
         ]"
         content-class="h-full !p-3"
@@ -230,20 +227,19 @@ onMounted(() => {
         <div class="flex h-full flex-col justify-between gap-1">
           <div class="flex items-start justify-between">
             <span class="text-xs text-muted-foreground">硬盘用量</span>
-            <Icon
-              icon="tabler:server-2" :width="20" :height="20"
-              class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
-            />
+            <span class="num hidden truncate text-[11px] text-muted-foreground sm:inline">
+              共 {{ formattedDiskTotal.value }} {{ formattedDiskTotal.unit }}
+            </span>
           </div>
           <Transition v-bind="metricSwitchTransitionProps">
             <div
               :key="`disk-${summaryTransitionKey}`" class="flex items-baseline gap-1 min-w-0"
               :style="getMetricSwitchStyle(1)"
             >
-              <span class="num text-lg md:text-[28px] font-semibold leading-none">{{ formattedDiskUsed.value
+              <span class="num truncate text-lg lg:text-2xl xl:text-[28px] font-semibold leading-none">{{ formattedDiskUsed.value
               }}</span>
               <span class="text-[11px] md:text-xs font-medium text-muted-foreground truncate">
-                {{ formattedDiskUsed.unit }} / {{ formattedDiskTotal.value }} {{ formattedDiskTotal.unit }}
+                {{ formattedDiskUsed.unit }}
               </span>
             </div>
           </Transition>
@@ -254,29 +250,28 @@ onMounted(() => {
         :class="showVisualPanel ? 'col-span-4 row-span-1 col-start-5 row-start-1' : 'col-span-1 row-start-1 col-start-2 min-h-18 md:min-h-24 md:row-start-1 md:col-start-3'"
       >
         <CardX
-          hoverable
-          class="group h-full rounded-xl border transition-colors"
+          class="h-full cursor-pointer rounded-xl border transition-colors"
           :class="pickSurfaceClass('bg-card shadow-xs hover:border-foreground/20', 'bg-card/60 hover:border-foreground/20 backdrop-blur-xs')"
           content-class="h-full !p-3" @click="openFinanceCard = !openFinanceCard"
         >
           <div class="flex h-full flex-col justify-between gap-1">
             <div class="flex items-start justify-between">
               <span class="text-xs text-muted-foreground">剩余价值</span>
-              <Icon
-                icon="tabler:cash" :width="20" :height="20"
-                class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
-              />
+              <span class="flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                {{ formattedRemainingValue.currency }}
+                <Icon
+                  icon="tabler:chevron-down" :width="14" :height="14"
+                  class="transition-transform" :class="openFinanceCard ? 'rotate-180' : ''"
+                />
+              </span>
             </div>
             <Transition v-bind="metricSwitchTransitionProps">
               <div
                 :key="`remaining-value-${summaryTransitionKey}`" class="flex items-baseline gap-1 min-w-0"
                 :style="getMetricSwitchStyle(2)"
               >
-                <span class="num text-lg md:text-[28px] font-semibold leading-none">
+                <span class="num truncate text-lg lg:text-2xl xl:text-[28px] font-semibold leading-none">
                   {{ formattedRemainingValue.symbol }}{{ formattedRemainingValue.value }}
-                </span>
-                <span class="block truncate text-[11px] md:text-xs font-medium text-muted-foreground">
-                  {{ formattedRemainingValue.currency }}
                 </span>
               </div>
             </Transition>
@@ -284,9 +279,9 @@ onMounted(() => {
         </CardX>
         <CardX
           hoverable
-          class="absolute top-0 left-1/2 z-20 h-42 w-[260%] max-w-88 -translate-x-[50%] -translate-y-[25%] rounded-md border-none shadow-[0_0_20px,0_0_0_1px] shadow-emerald-600/10 transition-all"
+          class="absolute top-0 left-1/2 z-20 h-42 w-[260%] max-w-88 -translate-x-[50%] -translate-y-[25%] rounded-xl border shadow-lg transition-all"
           :class="[
-            pickSurfaceClass('bg-background', 'bg-background/50 backdrop-blur-lg'),
+            pickSurfaceClass('bg-popover', 'bg-popover/80 backdrop-blur-lg'),
             openFinanceCard ? 'opacity-100 scale-100  -translate-y-[5%]' : 'opacity-0 pointer-events-none scale-50',
           ]"
           content-class="h-full !p-4" @click="openFinanceCard = false"
@@ -350,10 +345,9 @@ onMounted(() => {
         </CardX>
       </div>
       <CardX
-        hoverable
-        class="group h-full rounded-xl border transition-colors"
+        class="h-full rounded-xl border"
         :class="[
-          pickSurfaceClass('bg-card shadow-xs hover:border-foreground/20', 'bg-card/60 hover:border-foreground/20 backdrop-blur-xs'),
+          pickSurfaceClass('bg-card shadow-xs', 'bg-card/60 backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-5 row-start-2' : 'col-span-1 row-start-2 col-start-2 min-h-18 md:min-h-24 md:row-start-1 md:col-start-4',
         ]"
         content-class="h-full !p-3"
@@ -361,22 +355,18 @@ onMounted(() => {
         <div class="flex h-full flex-col justify-between gap-1">
           <div class="flex items-start justify-between">
             <span class="text-xs text-muted-foreground">累计流量</span>
-            <Icon
-              icon="tabler:download" :width="20" :height="20"
-              class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
-            />
           </div>
           <DataTooltip
             as="span" placement="top"
             :content="`↑ ${formattedTrafficUp.value} ${formattedTrafficUp.unit}\n↓ ${formattedTrafficDown.value} ${formattedTrafficDown.unit}`"
-            class="min-w-0" content-class="whitespace-pre px-2 py-1 left-0 -translate-x-0 leading-normal"
+            class="min-w-0" content-class="whitespace-pre w-max left-0 -translate-x-0"
           >
             <Transition v-bind="metricSwitchTransitionProps">
               <div
                 :key="`traffic-${summaryTransitionKey}`" class="flex items-baseline gap-1"
                 :style="getMetricSwitchStyle(3)"
               >
-                <span class="inline-block num text-lg md:text-[28px] font-semibold leading-none">
+                <span class="inline-block num text-lg lg:text-2xl xl:text-[28px] font-semibold leading-none">
                   {{ totalTrafficTooltip.value }}
                 </span>
                 <span class="inline-block text-[11px] md:text-xs font-medium text-muted-foreground">
@@ -389,10 +379,9 @@ onMounted(() => {
       </CardX>
 
       <CardX
-        hoverable
-        class="group h-full rounded-xl border transition-colors"
+        class="h-full rounded-xl border"
         :class="[
-          pickSurfaceClass('bg-card shadow-xs hover:border-foreground/20', 'bg-card/60 hover:border-foreground/20 backdrop-blur-xs'),
+          pickSurfaceClass('bg-card shadow-xs', 'bg-card/60 backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-9 row-start-1' : 'col-span-1 row-start-1 col-start-3 min-h-18 md:min-h-24 md:row-start-1 md:col-start-5',
         ]"
         content-class="h-full !p-3"
@@ -400,17 +389,13 @@ onMounted(() => {
         <div class="flex h-full flex-col justify-between gap-1">
           <div class="flex items-start justify-between">
             <span class="text-xs text-muted-foreground">实时上行</span>
-            <Icon
-              icon="tabler:chevrons-up" :width="20" :height="20"
-              class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
-            />
           </div>
           <Transition v-bind="metricSwitchTransitionProps">
             <div
               :key="`speed-up-${summaryTransitionKey}`" class="flex items-baseline gap-1"
               :style="getMetricSwitchStyle(4)"
             >
-              <span class="num text-lg md:text-[28px] font-semibold leading-none">{{ formattedSpeedUp.value
+              <span class="num truncate text-lg lg:text-2xl xl:text-[28px] font-semibold leading-none">{{ formattedSpeedUp.value
               }}</span>
               <span class="text-[11px] md:text-xs font-medium text-muted-foreground">{{ formattedSpeedUp.unit }}</span>
             </div>
@@ -418,10 +403,9 @@ onMounted(() => {
         </div>
       </CardX>
       <CardX
-        hoverable
-        class="group h-full rounded-xl border transition-colors"
+        class="h-full rounded-xl border"
         :class="[
-          pickSurfaceClass('bg-card shadow-xs hover:border-foreground/20', 'bg-card/60 hover:border-foreground/20 backdrop-blur-xs'),
+          pickSurfaceClass('bg-card shadow-xs', 'bg-card/60 backdrop-blur-xs'),
           showVisualPanel ? 'col-span-4 row-span-1 col-start-9 row-start-2' : 'col-span-1 row-start-2 col-start-3 min-h-18 md:min-h-24 md:row-start-1 md:col-start-6',
         ]"
         content-class="h-full !p-3"
@@ -429,17 +413,13 @@ onMounted(() => {
         <div class="flex h-full flex-col justify-between gap-1">
           <div class="flex items-start justify-between">
             <span class="text-xs text-muted-foreground">实时下行</span>
-            <Icon
-              icon="tabler:chevrons-down" :width="20" :height="20"
-              class="text-slate-500/20 group-hover:text-slate-500 transition-colors"
-            />
           </div>
           <Transition v-bind="metricSwitchTransitionProps">
             <div
               :key="`speed-down-${summaryTransitionKey}`" class="flex items-baseline gap-1"
               :style="getMetricSwitchStyle(5)"
             >
-              <span class="num text-lg md:text-[28px] font-semibold leading-none">
+              <span class="num truncate text-lg lg:text-2xl xl:text-[28px] font-semibold leading-none">
                 {{ formattedSpeedDown.value }}
               </span>
               <span class="text-[11px] md:text-xs font-medium text-muted-foreground">{{ formattedSpeedDown.unit

@@ -48,51 +48,69 @@ export interface NodePingTable {
   rows: NodePingTableRow[]
 }
 
-// 文字色：正常延迟保持中性，只有很快 / 偏慢 / 很差才上色
-function latencyTextTone(value: number): string {
-  if (!value)
-    return 'text-muted-foreground'
+// 文字与柱条共用同一组阈值：延迟 快 ≤80 / 正常 ≤180 / 慢 ≤240 / 差；丢包 正常 ≤1 / 偏高 ≤6 / 差
+type PingTier = 'fast' | 'normal' | 'slow' | 'bad'
+
+function latencyTier(value: number): PingTier {
   if (value <= 80)
-    return 'text-emerald-600 dark:text-emerald-400'
+    return 'fast'
   if (value <= 180)
-    return 'text-foreground'
+    return 'normal'
   if (value <= 240)
-    return 'text-amber-600 dark:text-amber-400'
-  return 'text-red-600 dark:text-red-400'
+    return 'slow'
+  return 'bad'
+}
+
+function lossTier(loss: number): PingTier {
+  if (loss <= 1)
+    return 'fast'
+  if (loss <= 6)
+    return 'slow'
+  return 'bad'
+}
+
+// 文字色：正常保持中性，只有很快 / 偏慢 / 很差才上色（浅色用 700 档保证小字对比度）
+const LATENCY_TEXT_TONES: Record<PingTier, string> = {
+  fast: 'text-emerald-700 dark:text-emerald-400',
+  normal: 'text-foreground',
+  slow: 'text-amber-700 dark:text-amber-400',
+  bad: 'text-red-600 dark:text-red-400',
+}
+
+// 丢包低于 1% 视为正常，文字不上色
+const LOSS_TEXT_TONES: Record<PingTier, string> = {
+  ...LATENCY_TEXT_TONES,
+  fast: 'text-muted-foreground',
+}
+
+// 柱条：快 / 丢包正常为实心翡翠绿，延迟正常为浅翡翠绿（不用灰，避免和「无数据」混淆）
+const BAR_TONES: Record<PingTier, string> = {
+  fast: 'bg-emerald-500 dark:bg-emerald-400/90',
+  normal: 'bg-emerald-500/55 dark:bg-emerald-400/50',
+  slow: 'bg-amber-400 dark:bg-amber-400/90',
+  bad: 'bg-red-500 dark:bg-red-500/90',
+}
+
+// 0 ms 是同城探测的真实值；没有样本的情况在上游用 -1 或 hasData 区分
+function latencyTextTone(value: number): string {
+  if (value < 0)
+    return 'text-muted-foreground'
+  return LATENCY_TEXT_TONES[latencyTier(value)]
 }
 
 function lossTextTone(loss: number): string {
-  if (loss <= 1)
-    return 'text-muted-foreground'
-  if (loss <= 6)
-    return 'text-amber-600 dark:text-amber-400'
-  return 'text-red-600 dark:text-red-400'
-}
-
-// 柱条色阶：翡翠绿 → 浅翡翠 → 琥珀 → 橙 → 红，阈值与文字色一致
-const BAR_TONES = [
-  'bg-emerald-500 dark:bg-emerald-400/90',
-  'bg-emerald-400/60 dark:bg-emerald-400/60',
-  'bg-amber-400 dark:bg-amber-400/90',
-  'bg-orange-500 dark:bg-orange-500/90',
-  'bg-red-500 dark:bg-red-500/90',
-] as const
-
-const BAR_THRESHOLDS: Record<NodePingMetric, readonly number[]> = {
-  latency: [80, 180, 240, 300],
-  loss: [1, 3, 6, 9],
+  return LOSS_TEXT_TONES[lossTier(loss)]
 }
 
 function barTone(metric: NodePingMetric, value: number): string {
-  const index = BAR_THRESHOLDS[metric].findIndex(limit => value <= limit)
-  return BAR_TONES[index === -1
-    ? BAR_TONES.length - 1
-    : index]!
+  return BAR_TONES[metric === 'latency'
+    ? latencyTier(value)
+    : lossTier(value)]
 }
 
 function formatTaskLatency(stat: NodePingPerTaskStat) {
   if (stat.avgLatency < 0)
-    return { latency: '--', toneClass: 'text-rose-500' }
+    return { latency: '--', toneClass: 'text-red-600 dark:text-red-400' }
   const ms = Math.round(stat.avgLatency)
   return {
     latency: String(ms),

@@ -250,7 +250,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
               <div v-if="col.key === 'status'" class="flex justify-center">
                 <span
                   class="size-2 rounded-full ring-3"
-                  :class="node.online ? 'bg-emerald-600 ring-emerald-600/15 dark:bg-emerald-400 dark:ring-emerald-400/15' : 'bg-red-600 ring-red-600/15'"
+                  :class="node.online ? 'bg-emerald-600 ring-emerald-600/15 dark:bg-emerald-400 dark:ring-emerald-400/15' : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15'"
                 />
               </div>
 
@@ -309,7 +309,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
                   role="button"
                   tabindex="0"
                   class="outline-none"
-                  :aria-label="`${node.name} 延迟 / 丢包`"
+                  :aria-label="`查看 ${node.name} 的延迟与丢包`"
                   @click.stop="openPingDialog(node)"
                   @keydown.enter.stop.prevent="openPingDialog(node)"
                   @keydown.space.stop.prevent="openPingDialog(node)"
@@ -322,32 +322,30 @@ function getRowTransitionStyle(index: number): Record<string, string> {
               </div>
 
               <!-- CPU -->
-              <div v-else-if="col.key === 'cpu'" class="group">
-                <div class="space-y-1">
-                  <div class="text-[10px] text-muted-foreground truncate">
-                    <span class="inline group-hover:hidden">
+              <div v-else-if="col.key === 'cpu'">
+                <DataTooltip placement="top" class="block" content-class="w-max">
+                  <div class="space-y-1">
+                    <div class="num truncate text-[11px] text-muted-foreground">
                       {{ (node.cpu ?? 0).toFixed(1) }}%
-                    </span>
-                    <span class="hidden group-hover:inline">
-                      {{ node.load.toFixed(2) ?? 0 }}, {{ node.load5.toFixed(2) ?? 0 }}, {{ node.load15.toFixed(2) ?? 0
-                      }}
-                    </span>
+                    </div>
+                    <ProgressThin :percentage="node.cpu ?? 0" :status="getStatus(node.cpu ?? 0)" :height="4" />
                   </div>
-                  <ProgressThin :percentage="node.cpu ?? 0" :status="getStatus(node.cpu ?? 0)" :height="4" />
-                </div>
+                  <template #content>
+                    <div class="num grid grid-cols-[auto_auto] gap-x-3 whitespace-nowrap">
+                      <span class="text-muted-foreground">1 分钟负载</span><span class="text-right">{{ (node.load ?? 0).toFixed(2) }}</span>
+                      <span class="text-muted-foreground">5 分钟负载</span><span class="text-right">{{ (node.load5 ?? 0).toFixed(2) }}</span>
+                      <span class="text-muted-foreground">15 分钟负载</span><span class="text-right">{{ (node.load15 ?? 0).toFixed(2) }}</span>
+                    </div>
+                  </template>
+                </DataTooltip>
               </div>
 
               <!-- 内存 -->
-              <div v-else-if="col.key === 'mem'" class="group">
-                <DataTooltip placement="top" class="block" :content-class="[!node.swap && '!hidden']">
+              <div v-else-if="col.key === 'mem'">
+                <DataTooltip placement="top" class="block" content-class="w-max">
                   <div class="space-y-1">
-                    <div class="text-[10px] text-muted-foreground truncate">
-                      <span class="inline group-hover:hidden">
-                        {{ getMemPercentage(node).toFixed(1) }}%
-                      </span>
-                      <span class="hidden group-hover:inline">
-                        {{ formatBytes(node.ram ?? 0) }} / {{ formatBytes(node.mem_total ?? 0) }}
-                      </span>
+                    <div class="num truncate text-[11px] text-muted-foreground">
+                      {{ getMemPercentage(node).toFixed(1) }}%
                     </div>
                     <ProgressThin
                       :percentage="getMemPercentage(node)"
@@ -355,45 +353,49 @@ function getRowTransitionStyle(index: number): Record<string, string> {
                     />
                   </div>
                   <template #content>
-                    <div class="flex items-center justify-between gap-3 whitespace-nowrap">
-                      <span class="text-background/70">Swap</span>
-                      <span>{{ formatBytes(node.swap ?? 0) }}</span>
+                    <div class="num grid grid-cols-[auto_auto] gap-x-3 whitespace-nowrap">
+                      <span class="text-muted-foreground">已用</span><span class="text-right">{{ formatBytes(node.ram ?? 0) }}</span>
+                      <span class="text-muted-foreground">总量</span><span class="text-right">{{ formatBytes(node.mem_total ?? 0) }}</span>
+                      <template v-if="node.swap">
+                        <span class="text-muted-foreground">Swap</span><span class="text-right">{{ formatBytes(node.swap) }}</span>
+                      </template>
                     </div>
                   </template>
                 </DataTooltip>
               </div>
 
               <!-- 硬盘 -->
-              <div v-else-if="col.key === 'disk'" class="group">
-                <div class="space-y-1">
-                  <div class="text-[10px] text-muted-foreground truncate">
-                    <span class="inline group-hover:hidden">
+              <div v-else-if="col.key === 'disk'">
+                <DataTooltip placement="top" class="block" content-class="w-max">
+                  <div class="space-y-1">
+                    <div class="num truncate text-[11px] text-muted-foreground">
                       {{ getDiskPercentage(node).toFixed(1) }}%
-                    </span>
-                    <span class="hidden group-hover:inline">
-                      {{ formatBytes(node.disk ?? 0) }} / {{ formatBytes(node.disk_total ?? 0) }}
-                    </span>
+                    </div>
+                    <ProgressThin
+                      :percentage="getDiskPercentage(node)"
+                      :status="getStatus(getDiskPercentage(node))" :height="4"
+                    />
                   </div>
-                  <ProgressThin
-                    :percentage="getDiskPercentage(node)"
-                    :status="getStatus(getDiskPercentage(node))" :height="4"
-                  />
-                </div>
+                  <template #content>
+                    <div class="num grid grid-cols-[auto_auto] gap-x-3 whitespace-nowrap">
+                      <span class="text-muted-foreground">已用</span><span class="text-right">{{ formatBytes(node.disk ?? 0) }}</span>
+                      <span class="text-muted-foreground">总量</span><span class="text-right">{{ formatBytes(node.disk_total ?? 0) }}</span>
+                    </div>
+                  </template>
+                </DataTooltip>
               </div>
 
               <!-- 流量 -->
-              <div v-else-if="col.key === 'traffic'" class="group">
-                <DataTooltip placement="top" class="flex items-center gap-2" content-class="mb-1.5">
+              <div v-else-if="col.key === 'traffic'">
+                <DataTooltip placement="top" class="flex items-center gap-2" content-class="w-max">
                   <div class="space-y-1 w-full">
-                    <div class="text-[10px] text-muted-foreground truncate">
-                      <span class="inline group-hover:hidden">
+                    <div class="num truncate text-[11px] text-muted-foreground">
+                      <template v-if="showTrafficProgress(node)">
                         {{ getTrafficUsedPercentage(node).toFixed(1) }}%
-                      </span>
-                      <span class="hidden group-hover:inline">
-                        {{ formatBytes(getTrafficUsed(node)) }} /
-                        <template v-if="showTrafficProgress(node)">{{ formatBytes(node.traffic_limit) }}</template>
-                        <template v-else>∞</template>
-                      </span>
+                      </template>
+                      <template v-else>
+                        {{ formatBytes(getTrafficUsed(node)) }}
+                      </template>
                     </div>
                     <TrafficProgress
                       :upload="node.net_total_up ?? 0" :download="node.net_total_down ?? 0"
@@ -402,27 +404,24 @@ function getRowTransitionStyle(index: number): Record<string, string> {
                     />
                   </div>
                   <template #content>
-                    <span class="flex flex-row gap-0.5 items-center whitespace-nowrap">
-                      <Icon icon="tabler:chevron-up" width="12" height="12" />
-                      {{ formatBytes(node.net_total_up ?? 0) }}
-                    </span>
-                    <span class="flex flex-row gap-0.5 items-center whitespace-nowrap">
-                      <Icon icon="tabler:chevron-down" width="12" height="12" />
-                      {{ formatBytes(node.net_total_down ?? 0) }}
-                    </span>
+                    <div class="num grid grid-cols-[auto_auto] gap-x-3 whitespace-nowrap">
+                      <span class="text-muted-foreground">上行</span><span class="text-right">{{ formatBytes(node.net_total_up ?? 0) }}</span>
+                      <span class="text-muted-foreground">下行</span><span class="text-right">{{ formatBytes(node.net_total_down ?? 0) }}</span>
+                      <span class="text-muted-foreground">额度</span><span class="text-right">{{ showTrafficProgress(node) ? formatBytes(node.traffic_limit) : '不限' }}</span>
+                    </div>
                   </template>
                 </DataTooltip>
               </div>
 
               <!-- 速率 -->
               <div v-else-if="col.key === 'rate'">
-                <div class="text-[10px] flex flex-col ">
-                  <span class="text-emerald-600 flex flex-row gap-1 items-center">
-                    <Icon icon="tabler:chevron-up" width="12" height="12" />
+                <div class="num flex flex-col text-[11px]">
+                  <span class="flex flex-row items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                    <Icon icon="tabler:arrow-up" width="12" height="12" />
                     {{ formatBytesPerSecond(node.net_out ?? 0) }}
                   </span>
-                  <span class="text-blue-600 flex flex-row gap-1 items-center">
-                    <Icon icon="tabler:chevron-down" width="12" height="12" />
+                  <span class="flex flex-row items-center gap-1 text-sky-700 dark:text-sky-300">
+                    <Icon icon="tabler:arrow-down" width="12" height="12" />
                     {{ formatBytesPerSecond(node.net_in ?? 0) }}
                   </span>
                 </div>
@@ -437,7 +436,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
             <div class="grid gap-2 items-center justify-center" :style="gridStyle">
               <div class="h-full space-y-1" :style="offlineOverlayContentStyle">
                 <div class="text-sm font-semibold truncate">
-                  <span class="text-red-500">离线</span> {{ node.name }}
+                  <span class="text-red-600 dark:text-red-400">离线</span> {{ node.name }}
                 </div>
                 <div class="text-xs text-muted-foreground">
                   {{ formatOfflineTime(node) }}

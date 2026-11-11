@@ -157,7 +157,7 @@ onBeforeUnmount(removeDocumentListeners)
       v-if="hasTooltip && (isOpen || isHoverOpen)"
       role="tooltip"
       :class="cn(
-        'pointer-events-none absolute z-20 hidden rounded bg-foreground/80 p-1 text-[10px] leading-none text-background shadow-lg group-hover/data-tooltip:block group-focus-within/data-tooltip:block whitespace-normal break-words',
+        'pointer-events-none absolute z-20 hidden rounded-md border bg-popover px-2 py-1 text-[11px] leading-snug text-popover-foreground shadow-md group-hover/data-tooltip:block group-focus-within/data-tooltip:block whitespace-normal break-words',
         isOpen && 'block',
         placementClass[placement],
         props.contentClass,
