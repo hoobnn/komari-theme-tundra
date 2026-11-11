@@ -15,17 +15,21 @@ interface InitConfig {
   wsReconnectInterval?: number
   /** WebSocket 最大重连次数（失败后回落 POST） */
   wsMaxReconnectAttempts?: number
-  /** 后端健康检查超时（毫秒） */
-  healthCheckTimeout?: number
-  /** POST 模式连续失败次数阈值 */
-  postFailureThreshold?: number
+  /** 轮询连续失败多少次才提示连接错误 */
+  pollFailureThreshold?: number
+  /** 首次加载失败后的重试间隔（毫秒） */
+  initRetryInterval?: number
 }
 
 const DEFAULT_CONFIG: Required<InitConfig> = {
   wsReconnectInterval: 3000,
   wsMaxReconnectAttempts: 5,
-  healthCheckTimeout: 5000,
-  postFailureThreshold: 3,
+  pollFailureThreshold: 3,
+  initRetryInterval: 5000,
+}
+
+function isPageVisible(): boolean {
+  return typeof document === 'undefined' || document.visibilityState === 'visible'
 }
 
 /** 初始化状态管理 */
@@ -41,6 +45,10 @@ class InitManager {
   private useWebSocket: boolean | null = null // 根据主题配置决定
   private wsCloseUnsubscribe: (() => void) | null = null
   private wsErrorUnsubscribe: (() => void) | null = null
+  private pollFailures = 0
+  private initPromise: Promise<void> | null = null
+  private initRetryTimer: ReturnType<typeof setTimeout> | null = null
+  private lifecycleBound = false
   constructor(config: InitConfig = {}) {
     this.config = {
       ...DEFAULT_CONFIG,
@@ -73,7 +81,20 @@ class InitManager {
       console.warn('[InitManager] Already initialized')
       return
     }
+    // 重试与回到前台可能同时触发，共用同一次初始化
+    if (this.initPromise)
+      return this.initPromise
 
+    this.initPromise = this.runInit()
+    try {
+      await this.initPromise
+    }
+    finally {
+      this.initPromise = null
+    }
+  }
+
+  private async runInit(): Promise<void> {
     try {
       // 1. 测试后端服务是否正常
       await this.healthCheck()
@@ -97,9 +118,115 @@ class InitManager {
     }
     catch (error) {
       console.error('[InitManager] Initialization failed:', error)
-      // 即使失败也解除加载状态，显示错误页面
+      // 即使失败也解除加载状态，显示错误页面；后台继续重试，恢复后自动加载
       this.appStore.loading = false
+      this.appStore.connectionError = true
+      this.scheduleInitRetry()
       throw error
+    }
+    finally {
+      this.bindLifecycleEvents()
+    }
+  }
+
+  /**
+   * 首次加载失败（手机弱网、切后台时打开等）后定时重试，成功即清掉错误提示
+   */
+  private scheduleInitRetry(): void {
+    if (this.initRetryTimer || this.isInitialized)
+      return
+    this.initRetryTimer = setTimeout(async () => {
+      this.initRetryTimer = null
+      if (this.isInitialized)
+        return
+      if (!isPageVisible()) {
+        // 不在前台时不重试，回到前台由 resume() 触发
+        return
+      }
+      try {
+        await this.init()
+        this.appStore.connectionError = false
+      }
+      catch {
+        // init 内部已安排下一次重试
+      }
+    }, this.config.initRetryInterval)
+  }
+
+  /**
+   * 监听页面前后台切换与网络恢复。手机切后台或锁屏时系统会掐断 WebSocket 并冻结定时器，
+   * 回到前台后先恢复连接再立即刷新，而不是让旧连接上的请求超时报错。
+   */
+  private bindLifecycleEvents(): void {
+    if (this.lifecycleBound || typeof window === 'undefined')
+      return
+    this.lifecycleBound = true
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
+    window.addEventListener('online', this.handleOnline)
+    window.addEventListener('pageshow', this.handlePageShow)
+  }
+
+  private unbindLifecycleEvents(): void {
+    if (!this.lifecycleBound)
+      return
+    this.lifecycleBound = false
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
+    window.removeEventListener('online', this.handleOnline)
+    window.removeEventListener('pageshow', this.handlePageShow)
+  }
+
+  private handleVisibilityChange = (): void => {
+    if (isPageVisible())
+      this.resume()
+    else
+      this.stopPolling()
+  }
+
+  private handleOnline = (): void => {
+    this.resume()
+  }
+
+  private handlePageShow = (event: PageTransitionEvent): void => {
+    // 从 bfcache 恢复的页面，连接早已失效
+    if (event.persisted)
+      this.resume()
+  }
+
+  /**
+   * 回到前台 / 网络恢复：未初始化的继续初始化，已初始化的重连并立即刷新一次
+   */
+  private resume(): void {
+    if (!isPageVisible())
+      return
+
+    if (!this.isInitialized) {
+      this.clearInitRetryTimer()
+      this.init()
+        .then(() => {
+          this.appStore.connectionError = false
+        })
+        .catch(() => {})
+      return
+    }
+
+    // 旧的失败计数来自后台期间，不再作数
+    this.pollFailures = 0
+
+    if (this.useWebSocket === true && !this.rpc.getClient().isWebSocketOpen()) {
+      // 回到前台是新的开始，不计入之前的重连次数，避免误回落到 POST
+      this.clearReconnectTimer()
+      this.nodesStore.updateWsState('reconnecting', 0)
+      this.connectWebSocket()
+    }
+
+    this.startPolling()
+    this.poll()
+  }
+
+  private clearInitRetryTimer(): void {
+    if (this.initRetryTimer) {
+      clearTimeout(this.initRetryTimer)
+      this.initRetryTimer = null
     }
   }
 
@@ -278,6 +405,12 @@ class InitManager {
       return
     }
 
+    // 后台时不重连（定时器会被冻结，白白消耗重连次数），回到前台由 resume() 处理
+    if (!isPageVisible()) {
+      this.nodesStore.updateWsState('disconnected')
+      return
+    }
+
     const attempts = this.nodesStore.wsReconnectAttempts
 
     // 达到最大重连次数，回落到 POST 模式
@@ -338,7 +471,10 @@ class InitManager {
   private startPolling(): void {
     if (this.pollTimer) {
       clearInterval(this.pollTimer)
+      this.pollTimer = null
     }
+    if (!isPageVisible())
+      return
 
     this.pollTimer = setInterval(() => {
       this.poll()
@@ -373,6 +509,7 @@ class InitManager {
       this.nodesStore.updateNodeStatuses(statusesResult)
 
       // 连接恢复正常，重置错误状态
+      this.pollFailures = 0
       this.appStore.connectionError = false
     }
     catch (error) {
@@ -383,8 +520,18 @@ class InitManager {
         console.error('[InitManager] Poll error:', error)
       }
 
-      // 一次失败就显示错误
-      this.appStore.connectionError = true
+      // 后台或离线时的失败不算数，回到前台会重新拉取
+      if (!isPageVisible() || (typeof navigator !== 'undefined' && navigator.onLine === false))
+        return
+
+      // 偶发失败（移动网络抖动、切换基站）不打扰用户，连续失败才提示
+      this.pollFailures += 1
+      if (this.pollFailures >= this.config.pollFailureThreshold)
+        this.appStore.connectionError = true
+
+      // WebSocket 已断开但还没触发重连时补一次
+      if (this.useWebSocket === true && !this.rpc.getClient().isWebSocketOpen())
+        this.scheduleReconnect()
     }
     finally {
       this.isPolling = false
@@ -407,6 +554,8 @@ class InitManager {
   destroy(): void {
     this.stopPolling()
     this.clearReconnectTimer()
+    this.clearInitRetryTimer()
+    this.unbindLifecycleEvents()
     this.wsCloseUnsubscribe?.()
     this.wsErrorUnsubscribe?.()
     this.wsCloseUnsubscribe = null

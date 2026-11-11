@@ -157,8 +157,8 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
         variant="destructive"
         :class="pickSurfaceClass('border-none bg-red-400/10 rounded-md', 'border-none bg-red-400/10 backdrop-blur-xs rounded-md')"
       >
-        <AlertTitle>RPC 服务错误</AlertTitle>
-        <AlertDescription>连接服务器失败，请检查网络设置或刷新页面后再试。</AlertDescription>
+        <AlertTitle>暂时连不上服务器</AlertTitle>
+        <AlertDescription>正在自动重连，恢复后数据会自动刷新。</AlertDescription>
       </Alert>
     </div>
 

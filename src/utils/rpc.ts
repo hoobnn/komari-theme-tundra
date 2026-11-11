@@ -295,6 +295,16 @@ export class RpcError extends Error {
   }
 }
 
+// WebSocket 单次调用超时；半开连接（手机切后台后常见）靠它尽快发现，再由 HTTP 重试
+const WS_CALL_TIMEOUT_MS = 10_000
+
+/** 客户端侧的传输层错误（WebSocket 断开、超时），区别于服务端返回的 JSON-RPC 错误 */
+class RpcTransportError extends RpcError {}
+
+function isTransportError(error: RpcError): boolean {
+  return error instanceof RpcTransportError
+}
+
 /** RpcClient 配置选项 */
 interface RpcClientOptions {
   baseUrl?: string
@@ -535,7 +545,7 @@ export class RpcClient {
           this.ws = null
         }
 
-        this.rejectPendingRequests(new RpcError(-32000, closeReason))
+        this.rejectPendingRequests(new RpcTransportError(-32000, closeReason))
         this.notifyWebSocketClose(closeInfo)
 
         if (!isSettled) {
@@ -568,7 +578,7 @@ export class RpcClient {
 
       const timer = setTimeout(() => {
         this.pendingRequests.delete(id)
-        reject(new RpcError(-32001, 'Request timeout'))
+        reject(new RpcTransportError(-32001, 'Request timeout'))
       }, timeoutMs)
 
       this.pendingRequests.set(id, {
@@ -585,7 +595,7 @@ export class RpcClient {
         // 异常情况：连接断开了，拒绝请求
         this.pendingRequests.delete(id)
         clearTimeout(timer)
-        reject(new RpcError(-32000, 'WebSocket not connected'))
+        reject(new RpcTransportError(-32000, 'WebSocket not connected'))
       }
     })
   }
@@ -604,10 +614,27 @@ export class RpcClient {
    * 调用 RPC 方法
    */
   async call<T>(method: string, params?: Record<string, unknown> | unknown[]): Promise<T> {
-    if (this.useWebSocket) {
-      return this.callWebSocket<T>(method, params)
+    if (!this.useWebSocket)
+      return this.callHttp<T>(method, params)
+
+    // WebSocket 未就绪（建立中 / 重连中 / 被系统掐断）时走 HTTP，重连交给 InitManager
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN)
+      return this.callHttp<T>(method, params)
+
+    try {
+      return await this.callWebSocket<T>(method, params, WS_CALL_TIMEOUT_MS)
     }
-    return this.callHttp<T>(method, params)
+    catch (error) {
+      // 传输层失败（断线、超时）用 HTTP 重试一次；服务端返回的业务错误照常抛出
+      if (error instanceof RpcError && isTransportError(error))
+        return this.callHttp<T>(method, params)
+      throw error
+    }
+  }
+
+  /** WebSocket 当前是否处于可用状态 */
+  isWebSocketOpen(): boolean {
+    return !!this.ws && this.ws.readyState === WebSocket.OPEN
   }
 
   /**
@@ -637,7 +664,7 @@ export class RpcClient {
   close(): void {
     if (this.ws) {
       this.manualCloseRequested = true
-      this.rejectPendingRequests(new RpcError(-32000, 'WebSocket closed by client'))
+      this.rejectPendingRequests(new RpcTransportError(-32000, 'WebSocket closed by client'))
       this.ws.close()
     }
   }
