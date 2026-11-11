@@ -37,6 +37,8 @@ Repo guide for `komari-theme-tundra` (Tundra, a Komari theme derived from Tokinx
 - `.github/workflows/release-on-version-bump.yml` the only CI workflow
 - `docs/preview.png` release preview image (a real screenshot of the live panel)
 - `komari-theme.json` theme manifest consumed by the zip build
+- `CHANGELOG.md` user-facing release notes; the Release body is taken from it
+- `scripts/publish.ts` version bump + changelog release; `scripts/release-notes.ts` CI release body
 - `vite.config.ts` build, chunking (rolldown `codeSplitting` groups), zip packaging (`fflate`)
 - `package.json` root commands and pinned dependency versions
 - `bun.lock` resolved lockfile (managed by bun)
@@ -85,9 +87,35 @@ Do not change zip naming, manifest filename, or preview filename without updatin
 
 Source of truth: `.github/workflows/release-on-version-bump.yml`
 
-On every push to `master` CI runs `bun install --frozen-lockfile` and `bun run build`. When the version in `package.json` changed (it must match `komari-theme.json`), it tags `v<version>` and publishes a GitHub release with the zip attached. Bump both files together with `bun run publish`.
+On every push to `master` CI runs `bun install --frozen-lockfile`. When the version in `package.json` changed (it must match `komari-theme.json`), it extracts that version's section from `CHANGELOG.md` (`scripts/release-notes.ts`, fails if missing or empty), runs `bun run build`, tags `v<version>` and publishes a GitHub release whose body is the changelog section, with the zip attached.
 
 There is no test suite.
+
+## 发版规则
+
+Release notes and version numbers are user-facing; follow these rules for every release.
+
+### 版本号（SemVer，当前处于 0.x）
+
+- **patch**（0.1.x → 0.1.y）：修复、细节和展示改进，不新增设置项，不改变已有设置的含义。
+- **minor**（0.x → 0.y）：新功能模块、新增或改名的主题设置项（`komari-theme.json` 的 `configuration`）、需要使用者留意的外观大改。
+- **major**（1.0 之后才用）：不兼容的设置变更，例如删除设置项或改变存储键，导致升级后旧设置失效。
+- 版本号只增不减。已发布的 tag 和 Release 不改写、不复用；发错就再发一个新版本修正。
+
+### 更新内容（CHANGELOG.md）
+
+- 改动合入 `master` 时，同一个提交里在 `## [未发布]` 下补一条；发版时脚本把它整理成版本段落。
+- 只写使用者能感知到的变化，分 `### 新增`、`### 改进`、`### 修复` 三类，没有的分类省略；纯重构、依赖升级、CI 调整不写，除非影响使用。
+- 每条一行，中文，说清「哪里、变成什么样」；不写提交哈希、文件名、内部函数名，不写「优化了若干细节」这种空话。
+- Release 说明直接取 CHANGELOG 对应段落，不在 GitHub 上另写。
+
+### 发版流程
+
+1. `bun run lint`、`bun run build` 通过，必要时在本地预览里看过改动。
+2. 确认 `## [未发布]` 已写好本次内容。
+3. `bun run publish`（或 `bun run publish -v 0.2.0` 指定版本）：校验「未发布」非空，改 `package.json`、`komari-theme.json` 的版本号，把「未发布」改成 `## [x.y.z] - 日期` 并更新底部对比链接，暂存这三个文件。
+4. 单独提交 `chore: 发布 x.y.z`，推送 `master`。CI 自动打 tag、构建并发布带 zip 的 Release。
+5. 从 Release 下载 zip，在面板「主题管理」上传覆盖，刷新后确认页脚显示的主题版本号是新版本。
 
 ## Where to look
 

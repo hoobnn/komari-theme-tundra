@@ -39,6 +39,8 @@ const appStore = useAppStore()
 const { pickSurfaceClass } = useBackgroundSurface()
 const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
 
+// 列表只在 ≥1024px 出现（更窄时固定卡片视图）。最小列宽合计 878px + 10 个 8px 间距，
+// 1024 宽时行内可用约 982px，不出现横向滚动；更宽时多出的空间优先给节点名，其次给标签。
 const columns: ColumnConfig[] = [
   {
     key: 'status',
@@ -55,49 +57,49 @@ const columns: ColumnConfig[] = [
   {
     key: 'name',
     label: '节点',
-    width: 'minmax(160px, 1fr)',
+    width: 'minmax(150px, 1.6fr)',
     sortable: true,
   },
   {
     key: 'tags',
     label: '标签',
-    width: 'minmax(180px, 1fr)',
+    width: 'minmax(72px, 1fr)',
     sortable: false,
   },
   {
     key: 'cpu',
     label: 'CPU',
-    width: '100px',
+    width: '68px',
     sortable: true,
   },
   {
     key: 'mem',
     label: '内存',
-    width: '100px',
+    width: '68px',
     sortable: true,
   },
   {
     key: 'disk',
     label: '硬盘',
-    width: '100px',
+    width: '68px',
     sortable: true,
   },
   {
     key: 'traffic',
     label: '流量',
-    width: '100px',
+    width: '68px',
     sortable: true,
   },
   {
     key: 'rate',
     label: '速率',
-    width: '80px',
+    width: '76px',
     sortable: true,
   },
   {
     key: 'networks',
     label: '延迟与丢包',
-    width: '232px',
+    width: '228px',
     sortable: false,
   },
 ]
@@ -273,7 +275,7 @@ function getRowTransitionStyle(index: number): Record<string, string> {
                     v-if="hasRegion(node.region)" :src="getFlagSrc(node.region)"
                     :alt="getRegionDisplayName(node.region)" class="h-3.5 w-5 shrink-0 rounded-[2px] object-cover"
                   >
-                  <span class="truncate">{{ node.name }}</span>
+                  <span class="truncate" :title="node.name">{{ node.name }}</span>
                 </div>
                 <div class="flex flex-row text-[11px] text-muted-foreground/70">
                   <DataTooltip
@@ -303,7 +305,8 @@ function getRowTransitionStyle(index: number): Record<string, string> {
 
               <!-- 标签 -->
               <div v-else-if="col.key === 'tags'">
-                <div class="flex flex-wrap gap-1 items-center">
+                <!-- 窄屏时标签最多两行，超出部分隐藏，悬停看全部 -->
+                <div class="flex max-h-[44px] flex-wrap items-center gap-1 overflow-hidden" :title="getCustomTags(node).join('、')">
                   <Badge
                     v-for="(tag, tagIndex) in getCustomTags(node)" :key="tagIndex" variant="outline"
                     class="rounded-md border-transparent bg-muted px-1.5 !text-[11px] font-normal text-muted-foreground"

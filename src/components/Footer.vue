@@ -23,7 +23,16 @@ onMounted(async () => {
   }
 })
 
-const formattedServerVersion = computed(() => serverVersion.value?.version ?? null)
+// 主控版本可能带或不带 v 前缀，统一成 v1.6.1；拿不到时不显示
+const formattedServerVersion = computed(() => {
+  const version = serverVersion.value?.version?.trim()
+  if (!version)
+    return null
+  return /^v/i.test(version)
+    ? version
+    : `v${version}`
+})
+const serverHash = computed(() => serverVersion.value?.hash?.slice(0, 7) ?? '')
 
 const showIcp = computed(() => appStore.icpEnabled && appStore.icpNumber)
 const showPolice = computed(() => appStore.policeEnabled && appStore.policeNumber)
@@ -34,13 +43,13 @@ const showFiling = computed(() => showIcp.value || showPolice.value)
   <VisitorInfoCard v-if="appStore.visitorInfoCardEnabled" />
   <!-- 访客胶囊是 fixed 浮层，开启时页脚底部留出它的高度，滚到底不会压住署名 -->
   <footer class="w-full sm:flex-row sm:gap-4 max-w-[1280px] mx-auto p-4" :class="appStore.visitorInfoCardEnabled && 'pb-16'">
-    <div class="flex flex-row items-center justify-between  text-xs text-muted-foreground">
-      <div class="flex gap-1 items-center">
+    <div class="flex flex-col items-start gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-center gap-1 whitespace-nowrap">
         Powered by
         <DataTooltip
           as="span"
           placement="top"
-          :content="formattedServerVersion ?? ''"
+          :content="serverHash"
           content-class="whitespace-nowrap"
         >
           <a
@@ -48,15 +57,17 @@ const showFiling = computed(() => showIcp.value || showPolice.value)
             class="transition-opacity hover:opacity-80"
           >
             <span class="font-medium text-foreground">Komari Monitor</span>
+            <span v-if="formattedServerVersion" class="num ml-1">{{ formattedServerVersion }}</span>
           </a>
         </DataTooltip>
       </div>
-      <div class="flex flex-wrap gap-1 items-center">
+      <!-- 右侧留出「回到顶部」按钮（fixed bottom-8 right-8 size-10）的位置，滚到底时不压字 -->
+      <div class="flex items-center gap-1 whitespace-nowrap sm:pr-16 min-[1440px]:pr-0">
         Theme by
         <DataTooltip
           as="span"
           placement="top"
-          :content="`v${buildVersion}\n${buildGitHash}`"
+          :content="buildGitHash"
           content-class="whitespace-pre w-max"
         >
           <a
@@ -64,6 +75,7 @@ const showFiling = computed(() => showIcp.value || showPolice.value)
             class="transition-opacity hover:opacity-80"
           >
             <span class="font-medium text-foreground">Tundra</span>
+            <span class="num ml-1">v{{ buildVersion }}</span>
           </a>
         </DataTooltip>
       </div>

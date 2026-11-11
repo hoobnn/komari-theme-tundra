@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
 import { createInterface } from 'node:readline/promises'
+import { readChangelog, releaseUnreleased, writeChangelog } from './changelog'
 
 const VERSION_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Z.-]+)?$/i
 const VERSION_FIELD_RE = /^(\s*"version"\s*:\s*")([^"]*)(")/m
@@ -110,15 +111,23 @@ async function main(): Promise<void> {
     throw new Error(`Invalid version: ${version}`)
   }
 
-  const files = ['package.json', 'komari-theme.json']
+  const previous = readPackageVersion()
+  const now = new Date()
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  // 先整理更新日志：「未发布」为空会直接报错，版本号不会被改动
+  const changelog = releaseUnreleased(readChangelog(), version, previous, date)
 
-  for (const file of files) {
+  const files = ['package.json', 'komari-theme.json', 'CHANGELOG.md']
+
+  for (const file of files.slice(0, 2)) {
     updateVersionField(resolve(process.cwd(), file), version)
   }
+  writeChangelog(changelog)
 
   gitAdd(files)
-  console.log(`Prepared release version ${version}`)
+  console.log(`Prepared release version ${version} (${previous} -> ${version})`)
   console.log(`Staged: ${files.join(', ')}`)
+  console.log(`Next: git commit -m "chore: 发布 ${version}" && git push origin master`)
 }
 
 main().catch((error) => {
