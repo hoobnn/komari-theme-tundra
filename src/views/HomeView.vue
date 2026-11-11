@@ -57,8 +57,8 @@ function clearSearch(): void {
   debouncedSearchText.value = ''
 }
 
-// 窄屏下列表要横向滚动、基本不可用，统一渲染卡片；不改写用户保存的视图偏好
-const isWideScreen = useMediaQuery('(min-width: 768px)')
+// 列表最小宽度约 1150px，窄于 1024 时基本只能横向滚动，统一渲染卡片；不改写用户保存的视图偏好
+const isWideScreen = useMediaQuery('(min-width: 1024px)')
 const effectiveViewMode = computed(() => isWideScreen.value
   ? appStore.nodeViewMode
   : 'card')

@@ -58,7 +58,7 @@ export interface NodePingPerTaskStat {
 }
 
 export const NODE_PING_BAR_COUNT = 10
-const CACHE_VERSION = 7
+const CACHE_VERSION = 8
 const CACHE_KEY_PREFIX = 'komari-theme-tundra:node-ping-stats'
 const FULL_LOSS_EPSILON = 1e-6
 const PING_RECORD_REFRESH_INTERVAL_MS = 60_000
@@ -424,9 +424,12 @@ function buildStats(records: PingRecord[], tasks: PingTaskInfo[], splitStacks = 
     .map(point => point.loss)
     .filter(isFiniteNumber)
 
+  // 全部丢包时没有有效延迟样本，用 -1 区分，避免显示成 0 ms
   const avgLatency = latencyValues.length
     ? average(latencyValues)
-    : average(historyLatencyValues)
+    : historyLatencyValues.length
+      ? average(historyLatencyValues)
+      : -1
   const avgLoss = taskLossValues.length
     ? average(taskLossValues)
     : average(historyLossValues)

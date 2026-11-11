@@ -195,9 +195,9 @@ onMounted(() => {
         content-class="h-full !p-3"
       >
         <div class="flex h-full flex-col justify-between gap-1">
-          <div class="flex items-start justify-between">
-            <span class="text-xs text-muted-foreground">内存用量</span>
-            <span class="num hidden truncate text-[11px] text-muted-foreground sm:inline">
+          <div class="flex items-start justify-between gap-2">
+            <span class="shrink-0 whitespace-nowrap text-xs text-muted-foreground">内存用量</span>
+            <span class="num hidden min-w-0 truncate text-[11px] text-muted-foreground xl:inline">
               共 {{ formattedMemoryTotal.value }} {{ formattedMemoryTotal.unit }}
             </span>
           </div>
@@ -225,9 +225,9 @@ onMounted(() => {
         content-class="h-full !p-3"
       >
         <div class="flex h-full flex-col justify-between gap-1">
-          <div class="flex items-start justify-between">
-            <span class="text-xs text-muted-foreground">硬盘用量</span>
-            <span class="num hidden truncate text-[11px] text-muted-foreground sm:inline">
+          <div class="flex items-start justify-between gap-2">
+            <span class="shrink-0 whitespace-nowrap text-xs text-muted-foreground">硬盘用量</span>
+            <span class="num hidden min-w-0 truncate text-[11px] text-muted-foreground xl:inline">
               共 {{ formattedDiskTotal.value }} {{ formattedDiskTotal.unit }}
             </span>
           </div>

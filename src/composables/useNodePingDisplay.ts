@@ -239,13 +239,14 @@ export function useNodePingDisplay(uuid: MaybeRefOrGetter<string>) {
       const avgLatency = part ? part.avgLatency : pingStats.avgLatency.value
       const avgLoss = part ? part.avgLoss : pingStats.avgLoss.value
       const label = pingStackLabel(stack)
+      const hasLatency = hasData && avgLatency >= 0
       return {
         stack,
         cells,
-        latency: hasData
+        latency: hasLatency
           ? `${Math.round(avgLatency)}`
           : '--',
-        latencyTone: hasData
+        latencyTone: hasLatency
           ? latencyTextTone(avgLatency)
           : MUTED_TONE,
         loss: hasData

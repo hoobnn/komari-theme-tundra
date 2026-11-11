@@ -621,15 +621,46 @@ export class RpcClient {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN)
       return this.callHttp<T>(method, params)
 
+    const socket = this.ws
     try {
       return await this.callWebSocket<T>(method, params, WS_CALL_TIMEOUT_MS)
     }
     catch (error) {
       // 传输层失败（断线、超时）用 HTTP 重试一次；服务端返回的业务错误照常抛出
-      if (error instanceof RpcError && isTransportError(error))
+      if (error instanceof RpcError && isTransportError(error)) {
+        // 超时但 socket 仍显示 OPEN = 半开连接：立即弃用，否则之后每次调用都要先白等一轮超时
+        if (error.code === -32001)
+          this.abandonStaleWebSocket(socket)
         return this.callHttp<T>(method, params)
+      }
       throw error
     }
+  }
+
+  /**
+   * 弃用一条已失效但浏览器仍报告 OPEN 的连接，并通知监听方重连。
+   * 先解绑回调再关闭，防止旧连接迟到的 close 事件把新建立的连接当成断线。
+   */
+  private abandonStaleWebSocket(socket: WebSocket | null): void {
+    if (!socket || this.ws !== socket || socket.readyState !== WebSocket.OPEN)
+      return
+    this.ws = null
+    socket.onopen = null
+    socket.onmessage = null
+    socket.onerror = null
+    socket.onclose = null
+    try {
+      socket.close(4000, 'Stale connection')
+    }
+    catch {
+      // 关闭失败不影响后续重连
+    }
+    this.rejectPendingRequests(new RpcTransportError(-32000, 'Stale WebSocket abandoned'))
+    this.notifyWebSocketClose({
+      event: new CloseEvent('close', { code: 4000, reason: 'Stale connection', wasClean: false }),
+      manuallyClosed: false,
+      url: socket.url,
+    })
   }
 
   /** WebSocket 当前是否处于可用状态 */
