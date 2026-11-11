@@ -1,0 +1,224 @@
+import dayjs from 'dayjs'
+
+/** 字节单位常量 */
+const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const
+const LAST_BYTE_UNIT = BYTE_UNITS.at(-1)
+
+/** 时间单位配置（秒为单位） */
+const TIME_UNITS = [
+  { value: 86400, label: '天' },
+  { value: 3600, label: '小时' },
+  { value: 60, label: '分钟' },
+  { value: 1, label: '秒' },
+] as const
+
+/** 运行时间格式化精度类型 */
+export type UptimeFormat = 'day' | 'hour' | 'minute' | 'second'
+
+/** 字节格式化精度配置 */
+export interface ByteDecimalsConfig {
+  /** B 精确位数，-1 为不显示此单位 */
+  B?: number
+  /** KB 精确位数，-1 为不显示此单位 */
+  KB?: number
+  /** MB 精确位数，-1 为不显示此单位 */
+  MB?: number
+  /** GB 精确位数，-1 为不显示此单位 */
+  GB?: number
+  /** TB 及以上精确位数，-1 为不显示此单位 */
+  TB?: number
+}
+
+/** 默认字节精度配置 */
+const DEFAULT_BYTE_DECIMALS: ByteDecimalsConfig = {
+  B: 0,
+  KB: 0,
+  MB: 1,
+  GB: 1,
+  TB: 1,
+}
+
+/**
+ * 格式化字节数为可读单位
+ * @param bytes 字节数
+ * @param decimals 小数位数
+ * @returns 格式化后的字符串，如 "1.5 GB"
+ */
+export function formatBytes(bytes: number, decimals = 1): string {
+  if (bytes === 0)
+    return '0 B'
+
+  const k = 1024
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const unit = BYTE_UNITS[i] ?? LAST_BYTE_UNIT
+  return `${(bytes / k ** i).toFixed(decimals)} ${unit}`
+}
+
+/**
+ * 格式化字节数为可读单位（支持自定义精度配置）
+ * @param bytes 字节数
+ * @param config 精度配置
+ * @returns 格式化后的字符串，如 "1.5 GB"
+ */
+export function formatBytesWithConfig(bytes: number, config?: ByteDecimalsConfig): string {
+  const { value, unit } = formatBytesSplit(bytes, config)
+  return `${value} ${unit}`
+}
+
+/**
+ * 格式化字节数为分离的数值和单位（支持自定义精度配置）
+ * @param bytes 字节数
+ * @param config 精度配置
+ * @returns 分离的数值和单位，如 { value: "1.5", unit: "GB" }
+ */
+export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { value: string, unit: string } {
+  const mergedConfig = {
+    ...DEFAULT_BYTE_DECIMALS,
+    ...config,
+  }
+
+  if (bytes === 0) {
+    // 0 字节时，B 被禁用就显示为 0 KB
+    return {
+      value: '0',
+      unit: mergedConfig.B === -1
+        ? 'KB'
+        : 'B',
+    }
+  }
+
+  const k = 1024
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  // PB 及以上单位使用 TB 的精度配置
+  const decimalsAt = (index: number) => {
+    const unitKey = BYTE_UNITS[index]
+    return unitKey === 'TB' || unitKey === 'PB'
+      ? mergedConfig.TB
+      : mergedConfig[unitKey as keyof ByteDecimalsConfig]
+  }
+  const format = (index: number, decimals?: number) => ({
+    value: (bytes / k ** index).toFixed(decimals),
+    unit: BYTE_UNITS[index] ?? LAST_BYTE_UNIT,
+  })
+
+  const decimals = decimalsAt(i)
+  if (decimals !== -1)
+    return format(i, decimals)
+
+  // 当前单位被禁用（-1）时，向上找第一个可用单位；都被禁用就保留一位小数
+  for (let j = i + 1; j < BYTE_UNITS.length; j++) {
+    const nextDecimals = decimalsAt(j)
+    if (nextDecimals !== -1)
+      return format(j, nextDecimals)
+  }
+  return format(i, 1)
+}
+
+/**
+ * 格式化字节速率为分离的数值和单位（支持自定义精度配置）
+ * @param bytes 字节速率
+ * @param config 精度配置
+ * @returns 分离的数值和单位，如 { value: "1.5", unit: "GB/s" }
+ */
+export function formatBytesPerSecondSplit(bytes: number, config?: ByteDecimalsConfig): { value: string, unit: string } {
+  const result = formatBytesSplit(bytes, config)
+  return { value: result.value, unit: `${result.unit}/s` }
+}
+
+/**
+ * 格式化字节速率为可读单位（支持自定义精度配置）
+ * @param bytes 字节速率
+ * @param config 精度配置
+ * @returns 格式化后的字符串，如 "1.5 GB/s"
+ */
+export function formatBytesPerSecondWithConfig(bytes: number, config?: ByteDecimalsConfig): string {
+  return `${formatBytesWithConfig(bytes, config)}/s`
+}
+
+/**
+ * 格式化运行时间（支持自定义精度）
+ * @param seconds 秒数
+ * @param format 精度格式：'day' | 'hour' | 'minute' | 'second'
+ * - 'day': 只显示天（如 "2 天"），不满一天时显示"不足 1 天"
+ * - 'hour': 显示天和小时（如 "2 天 3 小时"），不满一小时时显示"不足 1 小时"
+ * - 'minute': 显示天、小时、分钟（如 "2 天 3 小时 15 分钟"），不满一分钟时显示"不足 1 分钟"
+ * - 'second': 显示天、小时、分钟、秒（如 "2 天 3 小时 15 分钟 30 秒"）
+ * @returns 格式化后的字符串
+ */
+export function formatUptimeWithFormat(seconds: number, format: UptimeFormat = 'day'): string {
+  if (!seconds || seconds <= 0)
+    return '0 秒'
+
+  // 根据格式确定最大单位索引（从天开始）
+  const formatMaxUnitIndexMap: Record<UptimeFormat, number> = {
+    day: 0, // 只到天
+    hour: 1, // 到小时
+    minute: 2, // 到分钟
+    second: 3, // 到秒
+  }
+
+  const maxUnitIndex = formatMaxUnitIndexMap[format]
+  const parts: string[] = []
+  let remaining = seconds
+
+  for (let i = 0; i < TIME_UNITS.length; i++) {
+    const unit = TIME_UNITS[i]
+    if (!unit)
+      continue
+    const { value, label } = unit
+    const amount = Math.floor(remaining / value)
+    if (amount > 0) {
+      parts.push(`${amount} ${label}`)
+      remaining %= value
+    }
+    // 达到最大单位索引时停止
+    if (i >= maxUnitIndex) {
+      break
+    }
+  }
+
+  // 如果没有任何单位有值，显示"不足 1 X"
+  if (parts.length === 0) {
+    const fallbackUnit = TIME_UNITS[maxUnitIndex]
+    const fallbackLabel = fallbackUnit?.label ?? '秒'
+    return `不足 1 ${fallbackLabel}`
+  }
+
+  return parts.join(' ')
+}
+
+/** 状态阈值配置 */
+const STATUS_THRESHOLDS = {
+  success: 60,
+  warning: 80,
+} as const
+
+/**
+ * 根据占用百分比返回状态
+ * @param percentage 百分比
+ * @returns 状态类型
+ */
+export function getStatus(percentage: number): 'success' | 'warning' | 'error' {
+  if (percentage < STATUS_THRESHOLDS.success)
+    return 'success'
+  if (percentage < STATUS_THRESHOLDS.warning)
+    return 'warning'
+  return 'error'
+}
+
+/**
+ * 格式化时间戳为可读日期时间
+ * @param timestamp 时间戳字符串或 Date 对象
+ * @returns 格式化后的字符串，如 "2024-01-15 14:30:00"
+ */
+export function formatDateTime(timestamp: string | Date | undefined, format = 'YYYY-MM-DD HH:mm:ss'): string {
+  if (!timestamp)
+    return '-'
+
+  const date = dayjs(timestamp)
+
+  if (!date.isValid())
+    return '-'
+
+  return date.format(format)
+}
