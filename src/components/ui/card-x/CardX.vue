@@ -78,7 +78,7 @@ const segmentedFooter = computed(() => {
     >
       <div class="flex-1 min-w-0">
         <slot name="header">
-          <span class="font-medium">{{ title }}</span>
+          <span class="text-sm font-semibold">{{ title }}</span>
         </slot>
       </div>
       <div v-if="hasHeaderSlot['header-extra']" class="shrink-0">

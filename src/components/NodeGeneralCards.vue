@@ -315,7 +315,7 @@ onMounted(() => {
                 </div>
                 <select
                   :value="exchangeRateBaseCurrency"
-                  class="shrink-0 rounded-sm border border-border/70 bg-background/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus:text-foreground"
+                  class="shrink-0 rounded-sm border border-border/70 bg-background/70 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus:text-foreground"
                   aria-label="切换汇率基准币种" @click.stop @change.stop="setExchangeRateBaseCurrency"
                 >
                   <option v-for="currency in financeRateCurrencies" :key="currency" :value="currency">

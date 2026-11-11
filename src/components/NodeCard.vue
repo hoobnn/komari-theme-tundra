@@ -145,7 +145,7 @@ function openPingDialog() {
           v-if="!props.node.online"
           class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground"
         >
-          <span class="text-sm font-medium text-red-700 dark:text-red-400">离线</span>
+          <span class="text-sm font-medium text-red-600 dark:text-red-400">离线</span>
           <span class="num">{{ offlineTime }}</span>
         </div>
 
@@ -237,9 +237,9 @@ function openPingDialog() {
               :style="{ gridTemplateColumns: `1.1rem repeat(${pingTable.headers.length}, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 1fr)` }"
             >
               <span />
-              <span v-for="header in pingTable.headers" :key="header" class="truncate text-right font-sans text-[10px] text-muted-foreground">{{ header }}</span>
-              <span class="text-right font-sans text-[10px] text-muted-foreground">延迟</span>
-              <span class="text-right font-sans text-[10px] text-muted-foreground">丢包</span>
+              <span v-for="header in pingTable.headers" :key="header" class="truncate text-right font-sans text-[11px] text-muted-foreground">{{ header }}</span>
+              <span class="text-right font-sans text-[11px] text-muted-foreground">延迟</span>
+              <span class="text-right font-sans text-[11px] text-muted-foreground">丢包</span>
               <template v-for="row in pingTable.rows" :key="`${row.stack}`">
                 <span class="text-[10px] text-muted-foreground/80">{{ row.stack ?? '' }}</span>
                 <DataTooltip
@@ -265,6 +265,11 @@ function openPingDialog() {
             >
               {{ tag }}
             </Badge>
+            <!-- 没有自定义标签时用地区和系统填充占位行，避免一块空白 -->
+            <span v-if="!customTags.length" class="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+              <span v-if="hasRegion(props.node.region)" class="truncate">{{ getRegionDisplayName(props.node.region) }}</span>
+              <span class="truncate">{{ getOSName(props.node.os) }}</span>
+            </span>
           </div>
         </div>
       </div>

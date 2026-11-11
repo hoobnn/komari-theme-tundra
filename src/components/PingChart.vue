@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
-import { buildBaseTooltip, CHART_COLORS, getChartThemeColors, SERIES_PALETTE, SERIES_PALETTE_V6_DARK, SERIES_PALETTE_V6_LIGHT } from '@/utils/chartTheme'
+import { buildBaseTooltip, CHART_COLORS, DASHED_LEGEND_ICON, getChartThemeColors, SERIES_PALETTE, SERIES_PALETTE_V6_DARK, SERIES_PALETTE_V6_LIGHT } from '@/utils/chartTheme'
 import { buildChartViews, PING_CHART_VIEWS } from '@/utils/chartViews'
 import { fetchPingHistory, HISTORY_MAX_POINTS } from '@/utils/pingHistory'
 import { groupPingTasksByStack, parsePingTaskName, pingStackLabel } from '@/utils/pingStack'
@@ -523,7 +523,10 @@ const pingChartOption = computed(() => {
       itemGap: 16,
       icon: 'roundRect',
       textStyle: { fontSize: 11, color: chartThemeColors.value.textSecondary },
-      data: taskList.map(t => t.name),
+      // v6 用虚线图标，与图上的虚线对应
+      data: taskList.map(t => taskMeta.value.get(t.id)?.stack === 'v6'
+        ? { name: t.name, icon: DASHED_LEGEND_ICON }
+        : t.name),
     },
     grid: chartMargin,
     xAxis: {

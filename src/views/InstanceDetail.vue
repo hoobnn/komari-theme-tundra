@@ -260,10 +260,10 @@ const trafficProgressStyle = computed(() => ({
         <Button variant="ghost" size="icon-sm" class="bg-background/50 hover:bg-background" aria-label="返回首页" @click="router.push('/')">
           <Icon icon="tabler:arrow-left" :width="16" :height="16" />
         </Button>
-        <div class="text-lg font-bold flex gap-2 items-center">
+        <div class="flex min-w-0 items-center gap-2 text-lg font-semibold">
           <img
             :src="getFlagSrc(data.region)" :alt="getRegionDisplayName(data.region)"
-            class="size-6"
+            class="h-4 w-6 shrink-0 rounded-[2px] object-cover"
           >
           <span>{{ data.name }}</span>
         </div>

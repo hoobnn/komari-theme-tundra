@@ -15,7 +15,7 @@ import { useBackgroundSurface } from '@/composables/useBackgroundSurface'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { getSharedApi } from '@/utils/api'
-import { areaStops, buildBaseTooltip, CHART_COLORS, getChartThemeColors, TRAFFIC_COLORS } from '@/utils/chartTheme'
+import { areaStops, buildBaseTooltip, buildLegend, CHART_COLORS, DASHED_LEGEND_ICON, formatAxisBytes, getChartThemeColors, niceByteAxis, TRAFFIC_COLORS } from '@/utils/chartTheme'
 import { buildChartViews, LOAD_CHART_VIEWS } from '@/utils/chartViews'
 import { formatBytes } from '@/utils/helper'
 import { fillMissingTimePoints } from '@/utils/recordHelper'
@@ -386,7 +386,11 @@ const cpuChartOption = computed(() => ({
       return []
     })),
   },
-  grid: chartMargin,
+  legend: buildLegend(chartThemeColors.value, [
+    'CPU',
+    { name: '负载', icon: DASHED_LEGEND_ICON },
+  ]),
+  grid: chartMarginWithLegend,
   xAxis: baseXAxisConfig.value,
   yAxis: [
     {
@@ -519,7 +523,11 @@ const gpuChartOption = computed(() => ({
           : `${item.value}°C`,
     }))),
   },
-  grid: chartMargin,
+  legend: buildLegend(chartThemeColors.value, [
+    'GPU',
+    ...gpuTempSeries.value.map(t => t.name),
+  ]),
+  grid: chartMarginWithLegend,
   xAxis: baseXAxisConfig.value,
   yAxis: [
     {
@@ -604,7 +612,8 @@ const memoryChartOption = computed(() => ({
       })
     }),
   },
-  grid: chartMargin,
+  legend: buildLegend(chartThemeColors.value, ['RAM', 'Swap']),
+  grid: chartMarginWithLegend,
   xAxis: baseXAxisConfig.value,
   yAxis: {
     ...baseYAxisConfig.value,
@@ -613,9 +622,10 @@ const memoryChartOption = computed(() => ({
       color: chartThemeColors.value.textSecondary,
       padding: [0, 40, 0, 0],
     },
+    ...niceByteAxis(Math.max(...chartData.value.map(r => Math.max(r.ram ?? 0, r.swap ?? 0)), 0)),
     axisLabel: {
       ...baseYAxisConfig.value.axisLabel,
-      formatter: (val: number) => formatBytes(val),
+      formatter: (val: number) => formatAxisBytes(val),
     },
   },
   series: [
@@ -671,9 +681,10 @@ const diskChartOption = computed(() => ({
       color: chartThemeColors.value.textSecondary,
       padding: [0, 40, 0, 0],
     },
+    ...niceByteAxis(Math.max(...chartData.value.map(r => r.disk ?? 0), 0)),
     axisLabel: {
       ...baseYAxisConfig.value.axisLabel,
-      formatter: (val: number) => formatBytes(val),
+      formatter: (val: number) => formatAxisBytes(val),
     },
   },
   series: [
@@ -711,15 +722,7 @@ const networkChartOption = computed(() => ({
       value: `${formatBytes(item.value ?? 0)}/s`,
     }))),
   },
-  legend: {
-    data: ['上行', '下行'],
-    bottom: 4,
-    itemWidth: 12,
-    itemHeight: 12,
-    itemGap: 20,
-    icon: 'roundRect',
-    textStyle: { fontSize: 11, color: chartThemeColors.value.textSecondary },
-  },
+  legend: buildLegend(chartThemeColors.value, ['上行', '下行']),
   grid: chartMarginWithLegend,
   xAxis: baseXAxisConfig.value,
   yAxis: {
@@ -729,9 +732,10 @@ const networkChartOption = computed(() => ({
       color: chartThemeColors.value.textSecondary,
       padding: [0, 40, 0, 0],
     },
+    ...niceByteAxis(Math.max(...chartData.value.map(r => Math.max(r.net_in ?? 0, r.net_out ?? 0)), 0)),
     axisLabel: {
       ...baseYAxisConfig.value.axisLabel,
-      formatter: (val: number) => `${formatBytes(val)}/s`,
+      formatter: (val: number) => formatAxisBytes(val, '/s'),
     },
   },
   series: [
@@ -768,15 +772,7 @@ const connectionsChartOption = computed(() => ({
         : '-',
     }))),
   },
-  legend: {
-    data: ['TCP', 'UDP'],
-    bottom: 4,
-    itemWidth: 12,
-    itemHeight: 12,
-    itemGap: 20,
-    icon: 'roundRect',
-    textStyle: { fontSize: 11, color: chartThemeColors.value.textSecondary },
-  },
+  legend: buildLegend(chartThemeColors.value, ['TCP', 'UDP']),
   grid: chartMarginWithLegend,
   xAxis: baseXAxisConfig.value,
   yAxis: {
@@ -1037,11 +1033,11 @@ onMounted(() => {
               <span class="text-sm font-semibold">网络</span>
               <div class="num flex items-baseline gap-2 text-xs">
                 <span class="flex items-center gap-0.5">
-                  <Icon icon="tabler:arrow-up" width="12" height="12" class="text-emerald-600 dark:text-emerald-400" />
+                  <Icon icon="tabler:arrow-up" width="12" height="12" class="text-emerald-700 dark:text-emerald-300" />
                   {{ latestStatus?.net_out != null ? `${formatBytes(latestStatus.net_out)}/s` : '--' }}
                 </span>
                 <span class="flex items-center gap-0.5">
-                  <Icon icon="tabler:arrow-down" width="12" height="12" class="text-sky-600 dark:text-sky-400" />
+                  <Icon icon="tabler:arrow-down" width="12" height="12" class="text-sky-700 dark:text-sky-300" />
                   {{ latestStatus?.net_in != null ? `${formatBytes(latestStatus.net_in)}/s` : '--' }}
                 </span>
               </div>
@@ -1071,10 +1067,10 @@ onMounted(() => {
           </div>
         </CardX>
 
-        <!-- 进程卡片 -->
+        <!-- 进程卡片：有 GPU 时共 7 张，最后一张横跨整行，避免末行孤零零一张 -->
         <CardX
           size="small"
-          :class="pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')"
+          :class="[pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs'), hasGpu && 'md:col-span-2 xl:col-span-3']"
         >
           <template #header>
             <div class="flex items-center justify-between">

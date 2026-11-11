@@ -153,3 +153,62 @@ export function areaStops(hex: string) {
     { offset: 1, color: `rgba(${rgb}, 0.02)` },
   ]
 }
+
+/** 图例统一外观；双系列以上的图都带图例，不用只靠悬停分辨 */
+export function buildLegend(colors: ChartThemeColors, data: Array<string | { name: string, icon?: string }>) {
+  return {
+    data,
+    bottom: 4,
+    itemWidth: 12,
+    itemHeight: 12,
+    itemGap: 20,
+    icon: 'roundRect',
+    textStyle: { fontSize: 11, color: colors.textSecondary },
+  }
+}
+
+/** 虚线图例图标（v6 / 辅助线），与图上虚线对应 */
+export const DASHED_LEGEND_ICON = 'path://M0,4 h3 v2 h-3 Z M4.5,4 h3 v2 h-3 Z M9,4 h3 v2 h-3 Z'
+
+const BYTE_STEP_MANTISSAS = [
+  1,
+  2,
+  2.5,
+  5,
+  10,
+  20,
+  25,
+  50,
+  100,
+  200,
+  250,
+  500,
+] as const
+const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const
+
+/**
+ * 字节轴取整：刻度落在同一单位下的整数（200 MB、400 MB），不再出现 171.7 MB 这种值。
+ * 返回 ECharts 的 min / max / interval。
+ */
+export function niceByteAxis(maxValue: number, segments = 4): { min: number, max: number, interval: number } {
+  if (!Number.isFinite(maxValue) || maxValue <= 0)
+    return { min: 0, max: 1024, interval: 256 }
+  const exp = Math.min(Math.floor(Math.log(maxValue) / Math.log(1024)), BYTE_UNITS.length - 1)
+  const unit = 1024 ** exp
+  const scaled = maxValue / unit
+  const mantissa = BYTE_STEP_MANTISSAS.find(m => Math.ceil(scaled / m) <= segments) ?? 1024
+  const interval = mantissa * unit
+  return { min: 0, max: Math.ceil(maxValue / interval) * interval, interval }
+}
+
+/** 字节轴标签：整数不带小数（200 MB），非整数最多一位 */
+export function formatAxisBytes(value: number, suffix = ''): string {
+  if (value === 0)
+    return `0 B${suffix}`
+  const exp = Math.min(Math.floor(Math.log(value) / Math.log(1024)), BYTE_UNITS.length - 1)
+  const scaled = value / 1024 ** exp
+  const text = Number.isInteger(scaled)
+    ? String(scaled)
+    : scaled.toFixed(1).replace(/\.0$/, '')
+  return `${text} ${BYTE_UNITS[exp]}${suffix}`
+}

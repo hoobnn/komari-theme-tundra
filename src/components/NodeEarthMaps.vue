@@ -264,7 +264,7 @@ onMounted(async () => {
     <div class="relative flex h-88 flex-col items-center">
       <div
         v-if="totalServers > 0"
-        class="absolute top-0 right-0 z-2 text-[10px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5"
+        class="absolute top-0 right-0 z-2 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5"
       >
         <div v-if="onlineServers > 0" class="flex items-center gap-1">
           <span class="inline-block size-1.5 rounded-full bg-green-600 animate-pulse" />

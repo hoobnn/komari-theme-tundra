@@ -221,14 +221,14 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
             >
               <div
                 v-if="isWideScreen"
-                class="inline-flex h-8 rounded-md p-0.5"
-                :class="pickSurfaceClass('bg-background/60', 'bg-background/50 backdrop-blur-xs')"
+                class="inline-flex h-8 rounded-md border p-0.5 shadow-xs"
+                :class="pickSurfaceClass('bg-card', 'bg-card/60 backdrop-blur-xs')"
                 role="group" aria-label="视图"
               >
                 <Button
                   v-for="mode in viewModes" :key="mode.value"
                   variant="ghost" size="icon" :aria-label="mode.label" :aria-pressed="appStore.nodeViewMode === mode.value"
-                  class="size-7 rounded-sm shadow-none"
+                  class="size-[26px] rounded-sm shadow-none"
                   :class="appStore.nodeViewMode === mode.value
                     ? 'bg-card text-emerald-700 shadow-xs hover:bg-card hover:text-emerald-700 dark:bg-input/40 dark:text-emerald-300'
                     : 'text-muted-foreground hover:bg-transparent hover:text-foreground'"
@@ -243,9 +243,9 @@ function getNodeItemTransitionStyle(index: number): Record<string, string> {
               >
                 <Input
                   v-model="searchText" placeholder="搜索名称、地区、系统、标签" aria-label="搜索节点" autocomplete="off"
-                  class="h-8 w-full rounded-md border-none pl-7.5 shadow-none placeholder:text-muted-foreground focus:!ring-emerald-500/10"
+                  class="h-8 w-full rounded-md border pl-7.5 shadow-xs placeholder:text-muted-foreground focus:!ring-emerald-500/10"
                   :class="[
-                    pickSurfaceClass('bg-background hover:!bg-background/95 focus:!bg-background', 'bg-background/50 hover:!bg-background/60 focus:!bg-background/80 backdrop-blur-xs'),
+                    pickSurfaceClass('bg-card hover:!bg-card focus:!bg-card', 'bg-card/60 hover:!bg-card/70 focus:!bg-card/80 backdrop-blur-xs'),
                     !searchExpanded && 'cursor-pointer !pl-0 text-transparent placeholder:text-transparent',
                     searchText && 'pr-7',
                   ]"

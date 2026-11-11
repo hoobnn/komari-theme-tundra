@@ -96,8 +96,8 @@ const columns: ColumnConfig[] = [
   },
   {
     key: 'networks',
-    label: '网络',
-    width: '168px',
+    label: '延迟与丢包',
+    width: '232px',
     sortable: false,
   },
 ]
@@ -220,12 +220,24 @@ function getRowTransitionStyle(index: number): Record<string, string> {
       >
         <div
           v-for="col in columns" :key="col.key"
-          :class="[col.sortable ? 'cursor-pointer' : '', ['status', 'os'].includes(col.key) ? 'text-center' : 'text-left']"
-          @click="handleSort(col)"
+          class="flex items-center"
+          :class="['status', 'os'].includes(col.key) ? 'justify-center' : 'justify-start'"
+          :aria-sort="col.sortable ? (sortKey === col.key ? (sortDir === 1 ? 'ascending' : 'descending') : 'none') : undefined"
         >
-          <span class="text-xs text-muted-foreground">
-            {{ col.label }}{{ col.sortable && sortKey === col.key ? (sortDir === 1 ? ' ↑' : ' ↓') : '' }}
-          </span>
+          <button
+            v-if="col.sortable" type="button"
+            class="group/sort -mx-1 flex items-center gap-0.5 rounded px-1 py-0.5 text-xs transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            :class="sortKey === col.key ? 'font-medium text-foreground' : 'text-muted-foreground'"
+            @click="handleSort(col)"
+          >
+            {{ col.label }}
+            <Icon
+              :icon="sortKey === col.key ? (sortDir === 1 ? 'tabler:arrow-up' : 'tabler:arrow-down') : 'tabler:arrows-sort'"
+              width="12" height="12"
+              :class="sortKey === col.key ? 'text-emerald-700 dark:text-emerald-300' : 'opacity-40 group-hover/sort:opacity-80'"
+            />
+          </button>
+          <span v-else class="text-xs text-muted-foreground">{{ col.label }}</span>
         </div>
       </div>
 
@@ -256,10 +268,10 @@ function getRowTransitionStyle(index: number): Record<string, string> {
 
               <!-- 节点名称 -->
               <div v-else-if="col.key === 'name'" class="space-y-0.5" :class="[!node.online && 'blur-sm opacity-30']">
-                <div class="flex gap-1 items-center text-xs font-semibold">
+                <div class="flex items-center gap-1.5 text-[13px] font-semibold">
                   <img
                     v-if="hasRegion(node.region)" :src="getFlagSrc(node.region)"
-                    :alt="getRegionDisplayName(node.region)" class="size-5 rounded-sm"
+                    :alt="getRegionDisplayName(node.region)" class="h-3.5 w-5 shrink-0 rounded-[2px] object-cover"
                   >
                   <span class="truncate">{{ node.name }}</span>
                 </div>

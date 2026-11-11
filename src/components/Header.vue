@@ -17,11 +17,12 @@ const siteFavicon = ref('/favicon.ico')
 const actionButtons = computed(() => {
   const buttons = [
     {
+      // 三态循环 自动 → 浅色 → 深色 → 自动，提示里写明点击后切到哪一档
       title: appStore.themeMode === 'auto'
-        ? '自动主题'
+        ? '主题：跟随系统（点击切换为浅色）'
         : appStore.themeMode === 'light'
-          ? '浅色主题'
-          : '深色主题',
+          ? '主题：浅色（点击切换为深色）'
+          : '主题：深色（点击切换为跟随系统）',
       icon: appStore.themeMode === 'auto'
         ? 'icon-park-outline:dark-mode'
         : appStore.themeMode === 'light'
