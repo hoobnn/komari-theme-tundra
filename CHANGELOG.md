@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.2.0] - 2026-11-12
+
 ### 改进
 
 - 主题整体改用 React 重写，界面、设置和已保存的偏好保持不变；切换分组时节点卡片只保留进入动画，不再有退出和换位动画
@@ -59,7 +61,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.3...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.0...v0.1.1
