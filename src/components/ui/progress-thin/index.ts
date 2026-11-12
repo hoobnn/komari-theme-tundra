@@ -1,1 +1,2 @@
-export { default as ProgressThin } from './ProgressThin.vue'
+export { ProgressThin } from './progress-thin'
+export type { ProgressThinProps } from './progress-thin'

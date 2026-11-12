@@ -5,9 +5,9 @@ Repo guide for `komari-theme-tundra` (Tundra, a Komari theme derived from Tokinx
 ## Snapshot
 
 - Branch: `master`
-- App: Vue 3 + Vite 8 (rolldown) + reka-ui + Tailwind CSS v4 theme for Komari Monitor
+- App: React 19 (React Compiler) + Vite 8 (rolldown) + Radix UI + Tailwind CSS v4 theme for Komari Monitor
 - Package manager: `bun` (>= 1.2); `bun.lock` is committed
-- TypeScript is pinned to 6.0: TypeScript 7 is the native port and has no JS API, so `vue-tsc` cannot run on it
+- TypeScript 7 (native `tsc`) does type checking; lint is oxlint (type-aware rules via `oxlint-tsgolint`, also on TS 7) and formatting is oxfmt. Nothing in the toolchain needs the TS 5/6 JS API, so do not add ESLint, typescript-eslint or other tools that `require('typescript')`
 - Theme manifest: `komari-theme.json`
 
 ## What this repo is
@@ -39,7 +39,8 @@ Repo guide for `komari-theme-tundra` (Tundra, a Komari theme derived from Tokinx
 - `komari-theme.json` theme manifest consumed by the zip build
 - `CHANGELOG.md` user-facing release notes; the Release body is taken from it
 - `scripts/publish.ts` version bump + changelog release; `scripts/release-notes.ts` CI release body
-- `vite.config.ts` build, chunking (rolldown `codeSplitting` groups), zip packaging (`fflate`)
+- `vite.config.ts` build, React Compiler (`@rolldown/plugin-babel` + `reactCompilerPreset`), chunking (rolldown `codeSplitting` groups), zip packaging (`fflate`)
+- `.oxlintrc.json` / `.oxfmtrc.json` lint and format config
 - `package.json` root commands and pinned dependency versions
 - `bun.lock` resolved lockfile (managed by bun)
 
@@ -56,8 +57,8 @@ bun run lint
 
 Notes:
 
-- `bun run build` runs `vue-tsc --build` and then `vite build`
-- `bun run lint` runs eslint with `--fix --cache`
+- `bun run build` runs `tsc -b` and then `vite build`
+- `bun run lint` runs `oxlint --type-aware --fix` and then `oxfmt` (writes files); `bun run lint:check` only checks
 - There is no test suite in this repository
 - Do not invent `bun test` or Vitest commands here
 
@@ -141,7 +142,7 @@ Contributor density, useful for triage:
 - Treat `docs/preview.png` as release input, not just documentation art
 - Respect existing generated outputs and naming patterns, especially `komari-theme-tundra-build-<sha>.zip`
 - Root verification is lint plus build, not tests
-- UI is built on `reka-ui` + Tailwind CSS v4 (shadcn-vue style under `src/components/ui/`). Do **not** reintroduce Naive UI, UnoCSS, or SCSS — they have been removed.
+- UI is built on `radix-ui` + Tailwind CSS v4 (shadcn/ui style under `src/components/ui/`). Do **not** reintroduce Vue, Naive UI, UnoCSS, SCSS or another component library.
 
 ## Repo grounded anti-patterns
 

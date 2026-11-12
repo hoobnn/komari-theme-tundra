@@ -20,8 +20,6 @@ if (!body) {
   process.exit(1)
 }
 
-const compare = previous
-  ? `\n\n**完整变更**：${REPO_URL}/compare/v${previous}...v${version}`
-  : ''
+const compare = previous ? `\n\n**完整变更**：${REPO_URL}/compare/v${previous}...v${version}` : ''
 
 process.stdout.write(`${body}${compare}\n`)

@@ -1,1 +1,2 @@
-export { default as CardX } from './CardX.vue'
+export { CardX } from './card-x'
+export type { CardXProps } from './card-x'

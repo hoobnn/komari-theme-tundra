@@ -64,17 +64,18 @@ async function resolveVersion(): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout })
 
   try {
-    const answer = (await rl.question(
-      `Use ${nextVersion} (${currentVersion} -> ${nextVersion})? \nPress Enter to confirm, or enter another version: `,
-    )).trim()
+    const answer = (
+      await rl.question(
+        `Use ${nextVersion} (${currentVersion} -> ${nextVersion})? \nPress Enter to confirm, or enter another version: `,
+      )
+    ).trim()
 
     if (!answer) {
       return nextVersion
     }
 
     return answer
-  }
-  finally {
+  } finally {
     rl.close()
   }
 }
@@ -130,9 +131,7 @@ async function main(): Promise<void> {
   console.log(`Next: git commit -m "chore: 发布 ${version}" && git push origin master`)
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error
-    ? error.message
-    : error)
+main().catch(error => {
+  console.error(error instanceof Error ? error.message : error)
   process.exit(1)
 })

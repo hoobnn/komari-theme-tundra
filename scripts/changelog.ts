@@ -24,19 +24,13 @@ interface Section {
 
 function findSections(content: string): Section[] {
   const linkDefsAt = content.search(/^\[[^\]]+\]: /m)
-  const limit = linkDefsAt === -1
-    ? content.length
-    : linkDefsAt
-  const matches = [
-    ...content.matchAll(SECTION_RE),
-  ].filter(m => m.index! < limit)
+  const limit = linkDefsAt === -1 ? content.length : linkDefsAt
+  const matches = [...content.matchAll(SECTION_RE)].filter(m => m.index < limit)
   return matches.map((m, i) => ({
-    name: m[1]!,
-    start: m.index!,
-    bodyStart: m.index! + m[0].length,
-    end: i + 1 < matches.length
-      ? matches[i + 1]!.index!
-      : limit,
+    name: m[1],
+    start: m.index,
+    bodyStart: m.index + m[0].length,
+    end: i + 1 < matches.length ? matches[i + 1].index : limit,
   }))
 }
 
@@ -47,9 +41,7 @@ export function readChangelog(): string {
 /** 取某个版本段落的正文（不含标题行），找不到返回 null */
 export function getSectionBody(content: string, version: string): string | null {
   const section = findSections(content).find(s => s.name === version)
-  return section
-    ? content.slice(section.bodyStart, section.end).trim()
-    : null
+  return section ? content.slice(section.bodyStart, section.end).trim() : null
 }
 
 /**
@@ -58,22 +50,17 @@ export function getSectionBody(content: string, version: string): string | null 
  */
 export function releaseUnreleased(content: string, version: string, previous: string, date: string): string {
   const sections = findSections(content)
-  if (sections.some(s => s.name === version))
-    throw new Error(`CHANGELOG.md 已经有 ${version} 段落`)
+  if (sections.some(s => s.name === version)) throw new Error(`CHANGELOG.md 已经有 ${version} 段落`)
   const unreleased = sections.find(s => s.name === UNRELEASED)
-  if (!unreleased)
-    throw new Error('CHANGELOG.md 缺少「## [未发布]」段落')
+  if (!unreleased) throw new Error('CHANGELOG.md 缺少「## [未发布]」段落')
   const body = content.slice(unreleased.bodyStart, unreleased.end).trim()
-  if (!body)
-    throw new Error('CHANGELOG.md 的「未发布」为空，先写好本次更新内容再发版')
+  if (!body) throw new Error('CHANGELOG.md 的「未发布」为空，先写好本次更新内容再发版')
 
   let next = `${content.slice(0, unreleased.start)}## [${UNRELEASED}]\n\n## [${version}] - ${date}\n\n${body}\n\n${content.slice(unreleased.end)}`
 
   const unreleasedLink = new RegExp(`^\\[${UNRELEASED}\\]: .*$`, 'm')
   const links = `[${UNRELEASED}]: ${REPO_URL}/compare/v${version}...HEAD\n[${version}]: ${REPO_URL}/compare/v${previous}...v${version}`
-  next = unreleasedLink.test(next)
-    ? next.replace(unreleasedLink, links)
-    : `${next.trimEnd()}\n\n${links}\n`
+  next = unreleasedLink.test(next) ? next.replace(unreleasedLink, links) : `${next.trimEnd()}\n\n${links}\n`
   return next
 }
 

@@ -164,3 +164,40 @@
     justify-content: center;
   }
 }
+
+/* ---- VisitorInfoCard：展开时新出现的行入场（原 visitor-pill TransitionGroup） ---- */
+@keyframes visitor-pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+.visitor-pill-in {
+  animation: visitor-pill-in 280ms cubic-bezier(0.22, 1, 0.36, 1) var(--visitor-pill-delay, 0ms) both;
+}
+
+/* ---- NodeGeneralCards：指标切换入场（原 metric-switch Transition，仅保留 enter） ---- */
+@keyframes metric-switch-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+}
+
+.metric-switch-in {
+  animation: metric-switch-in 180ms cubic-bezier(0.22, 1, 0.36, 1) var(--metric-switch-delay, 0ms) both;
+}
+
+/* ---- NodeEarthGlobe ---- */
+.earth-globe-canvas {
+  contain: layout paint;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visitor-pill-in,
+  .metric-switch-in {
+    animation: none;
+  }
+}

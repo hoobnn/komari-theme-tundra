@@ -3,11 +3,11 @@ import { execSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
+import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
-import vue from '@vitejs/plugin-vue'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { zipSync } from 'fflate'
 import { defineConfig } from 'vite'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8')) as { version: string }
@@ -15,8 +15,7 @@ const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'u
 function getCommitHash(): string {
   try {
     return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
-  }
-  catch {
+  } catch {
     return 'unknown'
   }
 }
@@ -24,10 +23,8 @@ function getCommitHash(): string {
 function collectFiles(dir: string, zipPrefix: string, files: Record<string, Uint8Array>): void {
   for (const name of readdirSync(dir)) {
     const fullPath = join(dir, name)
-    if (statSync(fullPath).isDirectory())
-      collectFiles(fullPath, `${zipPrefix}/${name}`, files)
-    else
-      files[`${zipPrefix}/${name}`] = readFileSync(fullPath)
+    if (statSync(fullPath).isDirectory()) collectFiles(fullPath, `${zipPrefix}/${name}`, files)
+    else files[`${zipPrefix}/${name}`] = readFileSync(fullPath)
   }
 }
 
@@ -55,8 +52,7 @@ function komariThemeZip(): Plugin {
         ['docs/preview.png', 'preview.png'],
       ] as const) {
         const sourcePath = resolve(rootDir, source)
-        if (existsSync(sourcePath))
-          files[name] = readFileSync(sourcePath)
+        if (existsSync(sourcePath)) files[name] = readFileSync(sourcePath)
       }
       collectFiles(distDir, 'dist', files)
 
@@ -73,12 +69,7 @@ export default defineConfig({
     __BUILD_VERSION__: JSON.stringify(packageJson.version),
     __BUILD_GIT_HASH__: JSON.stringify(getCommitHash()),
   },
-  plugins: [
-    vue(),
-    vueDevTools(),
-    tailwindcss(),
-    komariThemeZip(),
-  ],
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss(), komariThemeZip()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -94,10 +85,9 @@ export default defineConfig({
       output: {
         codeSplitting: {
           groups: [
-            { name: 'vue-vendor', test: /node_modules[\\/](?:@vue|vue|vue-router|pinia)[\\/]/ },
-            { name: 'echarts', test: /node_modules[\\/](?:echarts|zrender|vue-echarts)[\\/]/ },
-            { name: 'reka-ui', test: /node_modules[\\/]reka-ui[\\/]/ },
-            { name: 'vueuse', test: /node_modules[\\/]@vueuse[\\/]/ },
+            { name: 'react-vendor', test: /node_modules[\\/](?:react|react-dom|scheduler|react-router|zustand)[\\/]/ },
+            { name: 'echarts', test: /node_modules[\\/](?:echarts|zrender)[\\/]/ },
+            { name: 'radix-ui', test: /node_modules[\\/](?:radix-ui|@radix-ui)[\\/]/ },
           ],
         },
       },

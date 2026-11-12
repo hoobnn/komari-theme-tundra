@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "singleQuote": true,
+  "jsxSingleQuote": false,
+  "semi": false,
+  "trailingComma": "all",
+  "arrowParens": "avoid",
+  "ignorePatterns": ["CHANGELOG.md", "bun.lock", "dist"]
+}

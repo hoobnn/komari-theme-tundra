@@ -8,5 +8,5 @@
  * 图标集合（每个 1MB+）打进首屏 bundle。
  */
 export async function setupIconify(): Promise<void> {
-  // no-op：交给 @iconify/vue 默认 CDN 加载策略
+  // no-op：交给 @iconify/react 默认 CDN 加载策略
 }

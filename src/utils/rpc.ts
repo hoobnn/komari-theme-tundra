@@ -77,11 +77,9 @@ function buildWebSocketUrl(baseUrl: string): string {
 
   if (resolvedUrl.protocol === 'http:') {
     resolvedUrl.protocol = 'ws:'
-  }
-  else if (resolvedUrl.protocol === 'https:') {
+  } else if (resolvedUrl.protocol === 'https:') {
     resolvedUrl.protocol = 'wss:'
-  }
-  else if (resolvedUrl.protocol !== 'ws:' && resolvedUrl.protocol !== 'wss:') {
+  } else if (resolvedUrl.protocol !== 'ws:' && resolvedUrl.protocol !== 'wss:') {
     throw new RpcError(-32000, `Unsupported WebSocket protocol: ${resolvedUrl.protocol}`)
   }
 
@@ -330,11 +328,14 @@ export class RpcClient {
   private timeout: number
   private useWebSocket: boolean
   private ws: WebSocket | null = null
-  private pendingRequests: Map<number | string, {
-    resolve: (value: unknown) => void
-    reject: (reason: unknown) => void
-    timer: ReturnType<typeof setTimeout>
-  }> = new Map()
+  private pendingRequests: Map<
+    number | string,
+    {
+      resolve: (value: unknown) => void
+      reject: (reason: unknown) => void
+      timer: ReturnType<typeof setTimeout>
+    }
+  > = new Map()
 
   private requestId = 0
   /** WebSocket 连接 Promise（用于等待正在进行的连接） */
@@ -397,14 +398,10 @@ export class RpcClient {
 
       const data: JsonRpcResponse<T> = await response.json()
       return this.handleResponse(data)
-    }
-    catch (error) {
+    } catch (error) {
       clearTimeout(timeoutId)
-      if (error instanceof RpcError)
-        throw error
-      throw new RpcError(-32000, `Network error: ${error instanceof Error
-        ? error.message
-        : String(error)}`)
+      if (error instanceof RpcError) throw error
+      throw new RpcError(-32000, `Network error: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -427,8 +424,7 @@ export class RpcClient {
     this.wsConnectPromise = this.initWebSocket()
     try {
       await this.wsConnectPromise
-    }
-    finally {
+    } finally {
       this.wsConnectPromise = null
     }
   }
@@ -471,11 +467,13 @@ export class RpcClient {
 
       try {
         socket = new WebSocket(wsUrl)
-      }
-      catch (error) {
-        reject(new RpcError(-32000, `WebSocket connection failed: ${error instanceof Error
-          ? error.message
-          : String(error)}`))
+      } catch (error) {
+        reject(
+          new RpcError(
+            -32000,
+            `WebSocket connection failed: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        )
         return
       }
 
@@ -502,7 +500,7 @@ export class RpcClient {
         settle(() => resolve())
       }
 
-      socket.onerror = (event) => {
+      socket.onerror = event => {
         this.notifyWebSocketError({ event, url: wsUrl })
 
         settle(() => {
@@ -510,29 +508,26 @@ export class RpcClient {
         })
       }
 
-      socket.onmessage = (event) => {
+      socket.onmessage = event => {
         try {
           const data: JsonRpcResponse = JSON.parse(event.data)
-          if (data.id === null)
-            return
+          if (data.id === null) return
           const pending = this.pendingRequests.get(data.id)
           if (pending) {
             clearTimeout(pending.timer)
             this.pendingRequests.delete(data.id)
             try {
               pending.resolve(this.handleResponse(data))
-            }
-            catch (error) {
+            } catch (error) {
               pending.reject(error)
             }
           }
-        }
-        catch {
+        } catch {
           // Ignore parse errors
         }
       }
 
-      socket.onclose = (event) => {
+      socket.onclose = event => {
         const isCurrentSocket = this.ws === socket
         const closeReason = event.reason || `WebSocket closed (code ${event.code})`
         const closeInfo: RpcWebSocketCloseInfo = {
@@ -564,7 +559,11 @@ export class RpcClient {
   /**
    * 调用 RPC 方法（WebSocket）
    */
-  private async callWebSocket<T>(method: string, params?: Record<string, unknown> | unknown[], timeoutMs = this.timeout): Promise<T> {
+  private async callWebSocket<T>(
+    method: string,
+    params?: Record<string, unknown> | unknown[],
+    timeoutMs = this.timeout,
+  ): Promise<T> {
     await this.ensureWebSocketReady()
 
     return new Promise((resolve, reject) => {
@@ -590,8 +589,7 @@ export class RpcClient {
       // 此时 WebSocket 应该已经打开
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify(request))
-      }
-      else {
+      } else {
         // 异常情况：连接断开了，拒绝请求
         this.pendingRequests.delete(id)
         clearTimeout(timer)
@@ -614,23 +612,19 @@ export class RpcClient {
    * 调用 RPC 方法
    */
   async call<T>(method: string, params?: Record<string, unknown> | unknown[]): Promise<T> {
-    if (!this.useWebSocket)
-      return this.callHttp<T>(method, params)
+    if (!this.useWebSocket) return this.callHttp<T>(method, params)
 
     // WebSocket 未就绪（建立中 / 重连中 / 被系统掐断）时走 HTTP，重连交给 InitManager
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN)
-      return this.callHttp<T>(method, params)
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return this.callHttp<T>(method, params)
 
     const socket = this.ws
     try {
       return await this.callWebSocket<T>(method, params, WS_CALL_TIMEOUT_MS)
-    }
-    catch (error) {
+    } catch (error) {
       // 传输层失败（断线、超时）用 HTTP 重试一次；服务端返回的业务错误照常抛出
       if (error instanceof RpcError && isTransportError(error)) {
         // 超时但 socket 仍显示 OPEN = 半开连接：立即弃用，否则之后每次调用都要先白等一轮超时
-        if (error.code === -32001)
-          this.abandonStaleWebSocket(socket)
+        if (error.code === -32001) this.abandonStaleWebSocket(socket)
         return this.callHttp<T>(method, params)
       }
       throw error
@@ -642,8 +636,7 @@ export class RpcClient {
    * 先解绑回调再关闭，防止旧连接迟到的 close 事件把新建立的连接当成断线。
    */
   private abandonStaleWebSocket(socket: WebSocket | null): void {
-    if (!socket || this.ws !== socket || socket.readyState !== WebSocket.OPEN)
-      return
+    if (!socket || this.ws !== socket || socket.readyState !== WebSocket.OPEN) return
     this.ws = null
     socket.onopen = null
     socket.onmessage = null
@@ -651,8 +644,7 @@ export class RpcClient {
     socket.onclose = null
     try {
       socket.close(4000, 'Stale connection')
-    }
-    catch {
+    } catch {
       // 关闭失败不影响后续重连
     }
     this.rejectPendingRequests(new RpcTransportError(-32000, 'Stale WebSocket abandoned'))
@@ -763,8 +755,8 @@ export class KomariRpc {
   /**
    * 获取节点最近状态记录
    */
-  async getNodeRecentStatus(uuid: string, limit?: number): Promise<{ count: number, records: StatusRecord[] }> {
-    return this.client.call<{ count: number, records: StatusRecord[] }>('common:getNodeRecentStatus', { uuid, limit })
+  async getNodeRecentStatus(uuid: string, limit?: number): Promise<{ count: number; records: StatusRecord[] }> {
+    return this.client.call<{ count: number; records: StatusRecord[] }>('common:getNodeRecentStatus', { uuid, limit })
   }
 
   // ==================== 历史记录方法 ====================
@@ -772,7 +764,7 @@ export class KomariRpc {
   /**
    * 旧版 Ping 历史记录（common:getRecords）
    */
-  async getPingRecords(params: { uuid?: string, hours?: number }): Promise<PingRecordsResponse> {
+  async getPingRecords(params: { uuid?: string; hours?: number }): Promise<PingRecordsResponse> {
     return this.client.call<PingRecordsResponse>('common:getRecords', { type: 'ping', ...params })
   }
 
@@ -786,7 +778,11 @@ export class KomariRpc {
   /**
    * 各 Ping 任务的统计（public:getPingMetricStats）
    */
-  async getPingMetricStats(params: { uuid: string, hours: number, max_points: number }): Promise<PingMetricStatsResponse> {
+  async getPingMetricStats(params: {
+    uuid: string
+    hours: number
+    max_points: number
+  }): Promise<PingMetricStatsResponse> {
     return this.client.call<PingMetricStatsResponse>('public:getPingMetricStats', { entity_id: params.uuid, ...params })
   }
 

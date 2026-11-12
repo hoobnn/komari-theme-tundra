@@ -1,1 +1,2 @@
-export { default as Empty } from './Empty.vue'
+export { Empty } from './empty'
+export type { EmptyProps } from './empty'

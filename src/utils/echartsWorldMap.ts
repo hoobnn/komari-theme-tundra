@@ -2,10 +2,7 @@ import { registerMap } from 'echarts/core'
 import { fetchWithTimeout } from '@/utils/financeHelper'
 import { emojiToRegionMap } from '@/utils/regionHelper'
 
-type WorldGeoJson = Exclude<
-  Parameters<typeof registerMap>[1],
-  string | { geoJSON: unknown } | { svg: unknown }
->
+type WorldGeoJson = Exclude<Parameters<typeof registerMap>[1], string | { geoJSON: unknown } | { svg: unknown }>
 
 const WORLD_MAP_NAME = 'komari-world'
 // 世界地图数据源：多 CDN 依次回退，避免单一 CDN 故障影响地图展示
@@ -16,19 +13,19 @@ const WORLD_GEO_JSON_URLS = [
   'https://raw.githubusercontent.com/apache/echarts-www/master/asset/map/json/world.json',
 ]
 const WORLD_MAP_CACHE_KEY_PREFIX = 'komari-theme-tundra:world-map'
-const WORLD_MAP_CACHE_KEY = `${WORLD_MAP_CACHE_KEY_PREFIX}` // :${__BUILD_GIT_HASH__}
+const WORLD_MAP_CACHE_KEY = WORLD_MAP_CACHE_KEY_PREFIX // :${__BUILD_GIT_HASH__}
 
 const ECHARTS_WORLD_NAME_TO_CODE: Record<string, string> = {
-  'aland': 'AX',
-  'andorra': 'AD',
+  aland: 'AX',
+  andorra: 'AD',
   'antigua and barb.': 'AG',
   'bosnia and herz.': 'BA',
   'br. indian ocean ter.': 'IO',
   'cayman is.': 'KY',
   'central african rep.': 'CF',
-  'congo': 'CG',
+  congo: 'CG',
   'czech rep.': 'CZ',
-  'côte d\'ivoire': 'CI',
+  "côte d'ivoire": 'CI',
   'dem. rep. congo': 'CD',
   'dem. rep. korea': 'KP',
   'dominican rep.': 'DO',
@@ -39,7 +36,7 @@ const ECHARTS_WORLD_NAME_TO_CODE: Record<string, string> = {
   'fr. s. antarctic lands': 'TF',
   'heard i. and mcdonald is.': 'HM',
   'lao pdr': 'LA',
-  'macedonia': 'MK',
+  macedonia: 'MK',
   'n. cyprus': 'CY',
   'n. mariana is.': 'MP',
   's. geo. and s. sandw. is.': 'GS',
@@ -49,7 +46,7 @@ const ECHARTS_WORLD_NAME_TO_CODE: Record<string, string> = {
   'solomon is.': 'SB',
   'st. pierre and miquelon': 'PM',
   'st. vin. and gren.': 'VC',
-  'swaziland': 'SZ',
+  swaziland: 'SZ',
   'são tomé and principe': 'ST',
   'turks and caicos is.': 'TC',
   'u.s. virgin is.': 'VI',
@@ -61,39 +58,33 @@ let worldMapRegistered = false
 
 function isValidWorldGeoJson(value: unknown): value is WorldGeoJson {
   return Boolean(
-    value
-    && typeof value === 'object'
-    && 'type' in value
-    && 'features' in value
-    && (value as { type?: unknown }).type === 'FeatureCollection'
-    && Array.isArray((value as { features?: unknown }).features),
+    value &&
+    typeof value === 'object' &&
+    'type' in value &&
+    'features' in value &&
+    (value as { type?: unknown }).type === 'FeatureCollection' &&
+    Array.isArray((value as { features?: unknown }).features),
   )
 }
 
 function pruneStaleWorldMapCache(): void {
-  if (typeof window === 'undefined')
-    return
+  if (typeof window === 'undefined') return
 
   try {
     for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
       const key = window.localStorage.key(index)
-      if (!key?.startsWith(WORLD_MAP_CACHE_KEY_PREFIX) || key === WORLD_MAP_CACHE_KEY)
-        continue
+      if (!key?.startsWith(WORLD_MAP_CACHE_KEY_PREFIX) || key === WORLD_MAP_CACHE_KEY) continue
       window.localStorage.removeItem(key)
     }
-  }
-  catch {
-  }
+  } catch {}
 }
 
 function readCachedWorldGeoJson(): WorldGeoJson | null {
-  if (typeof window === 'undefined')
-    return null
+  if (typeof window === 'undefined') return null
 
   try {
     const raw = window.localStorage.getItem(WORLD_MAP_CACHE_KEY)
-    if (!raw)
-      return null
+    if (!raw) return null
 
     const parsed = JSON.parse(raw) as { data?: unknown }
     if (!isValidWorldGeoJson(parsed.data)) {
@@ -102,15 +93,13 @@ function readCachedWorldGeoJson(): WorldGeoJson | null {
     }
 
     return parsed.data
-  }
-  catch {
+  } catch {
     return null
   }
 }
 
 function writeCachedWorldGeoJson(worldGeoJson: WorldGeoJson): void {
-  if (typeof window === 'undefined')
-    return
+  if (typeof window === 'undefined') return
 
   try {
     window.localStorage.setItem(
@@ -121,9 +110,7 @@ function writeCachedWorldGeoJson(worldGeoJson: WorldGeoJson): void {
       }),
     )
     pruneStaleWorldMapCache()
-  }
-  catch {
-  }
+  } catch {}
 }
 
 function normalizeCountryName(name: string): string {
@@ -133,15 +120,9 @@ function normalizeCountryName(name: string): string {
 function createAliasToCodeMap(): Map<string, string> {
   const aliasToCodeMap = new Map<string, string>()
   for (const info of Object.values(emojiToRegionMap)) {
-    for (const alias of [
-      info.code,
-      info.en,
-      info.zh,
-      ...info.aliases,
-    ]) {
+    for (const alias of [info.code, info.en, info.zh, ...info.aliases]) {
       const key = normalizeCountryName(alias)
-      if (!key || aliasToCodeMap.has(key))
-        continue
+      if (!key || aliasToCodeMap.has(key)) continue
       aliasToCodeMap.set(key, info.code)
     }
   }
@@ -152,19 +133,15 @@ const aliasToCodeMap = createAliasToCodeMap()
 
 function resolveCountryCode(name: string): string | null {
   const key = normalizeCountryName(name)
-  if (!key)
-    return null
+  if (!key) return null
   return ECHARTS_WORLD_NAME_TO_CODE[key] ?? aliasToCodeMap.get(key) ?? null
 }
 
 function normalizeWorldGeoJson(worldGeoJson: WorldGeoJson): WorldGeoJson {
   for (const feature of worldGeoJson.features) {
-    const name = typeof feature.properties?.name === 'string'
-      ? feature.properties.name
-      : ''
+    const name = typeof feature.properties?.name === 'string' ? feature.properties.name : ''
     const code = resolveCountryCode(name)
-    if (!code)
-      continue
+    if (!code) continue
 
     feature.properties.name = code
   }
@@ -174,24 +151,20 @@ function normalizeWorldGeoJson(worldGeoJson: WorldGeoJson): WorldGeoJson {
 
 async function loadWorldGeoJson(): Promise<WorldGeoJson> {
   const cachedWorldGeoJson = readCachedWorldGeoJson()
-  if (cachedWorldGeoJson)
-    return cachedWorldGeoJson
+  if (cachedWorldGeoJson) return cachedWorldGeoJson
 
   for (const url of WORLD_GEO_JSON_URLS) {
     try {
       const response = await fetchWithTimeout(url, 15000)
-      if (!response.ok)
-        continue
+      if (!response.ok) continue
 
-      const data = await response.json() as unknown
-      if (!isValidWorldGeoJson(data))
-        continue
+      const data = (await response.json()) as unknown
+      if (!isValidWorldGeoJson(data)) continue
 
       const worldGeoJson = normalizeWorldGeoJson(data)
       writeCachedWorldGeoJson(worldGeoJson)
       return worldGeoJson
-    }
-    catch (error) {
+    } catch (error) {
       console.warn(`加载世界地图失败: ${url}`, error)
     }
   }
@@ -200,17 +173,16 @@ async function loadWorldGeoJson(): Promise<WorldGeoJson> {
 }
 
 export async function ensureWorldMapRegistered(): Promise<string> {
-  if (worldMapRegistered)
-    return WORLD_MAP_NAME
+  if (worldMapRegistered) return WORLD_MAP_NAME
 
   if (!worldMapPromise) {
     worldMapPromise = loadWorldGeoJson()
-      .then((worldGeoJson) => {
+      .then(worldGeoJson => {
         registerMap(WORLD_MAP_NAME, worldGeoJson)
         worldMapRegistered = true
         return WORLD_MAP_NAME
       })
-      .catch((error) => {
+      .catch(error => {
         worldMapPromise = null
         throw error
       })

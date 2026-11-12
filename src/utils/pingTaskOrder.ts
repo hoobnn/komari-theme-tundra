@@ -23,12 +23,9 @@ function comparePingTaskOrder(
     const leftIndex = publicTasks.findIndex(task => task.id === leftId)
     const rightIndex = publicTasks.findIndex(task => task.id === rightId)
 
-    if (leftIndex !== -1 && rightIndex !== -1)
-      return leftIndex - rightIndex
-    if (leftIndex !== -1)
-      return -1
-    if (rightIndex !== -1)
-      return 1
+    if (leftIndex !== -1 && rightIndex !== -1) return leftIndex - rightIndex
+    if (leftIndex !== -1) return -1
+    if (rightIndex !== -1) return 1
   }
 
   const left = publicTasks.find(task => task.id === leftId)
@@ -38,13 +35,10 @@ function comparePingTaskOrder(
 
   if (Number.isFinite(leftWeight) && Number.isFinite(rightWeight)) {
     const weightDelta = leftWeight - rightWeight
-    if (weightDelta !== 0)
-      return weightDelta
-  }
-  else if (Number.isFinite(leftWeight)) {
+    if (weightDelta !== 0) return weightDelta
+  } else if (Number.isFinite(leftWeight)) {
     return -1
-  }
-  else if (Number.isFinite(rightWeight)) {
+  } else if (Number.isFinite(rightWeight)) {
     return 1
   }
 
@@ -56,10 +50,7 @@ export function sortTasksByPublicOrder<T extends { id: number }>(
   tasks: ReadonlyArray<T>,
   publicTasks: ReadonlyArray<PublicPingTaskOrderItem>,
 ): T[] {
-  if (!tasks.length)
-    return []
+  if (!tasks.length) return []
 
-  return [...tasks].sort((left, right) =>
-    comparePingTaskOrder(left.id, right.id, publicTasks),
-  )
+  return [...tasks].sort((left, right) => comparePingTaskOrder(left.id, right.id, publicTasks))
 }

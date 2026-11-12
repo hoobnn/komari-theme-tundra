@@ -1,1 +1,2 @@
-export { default as DataTooltip } from './DataTooltip.vue'
+export { DataTooltip } from './data-tooltip'
+export type { DataTooltipProps, DataTooltipPlacement } from './data-tooltip'

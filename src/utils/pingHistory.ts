@@ -30,16 +30,9 @@ function isMethodNotFoundError(err: unknown): boolean {
 }
 
 function getMetricTaskId(series: MetricSeries, point: MetricPoint): number | null {
-  const taskId = Number(
-    point.tags?.task_id
-    ?? series.tags?.task_id
-    ?? point.tag?.task_id
-    ?? series.tag?.task_id,
-  )
+  const taskId = Number(point.tags?.task_id ?? series.tags?.task_id ?? point.tag?.task_id ?? series.tag?.task_id)
 
-  return Number.isInteger(taskId)
-    ? taskId
-    : null
+  return Number.isInteger(taskId) ? taskId : null
 }
 
 /**
@@ -50,9 +43,7 @@ function getMetricTaskId(series: MetricSeries, point: MetricPoint): number | nul
  * 否则 7 天等长范围会出现大量伪断点，曲线断断续续。
  */
 function toLatencyRecord(uuid: string, taskId: number, point: MetricPoint): PingRecord {
-  const value = point.value === null || point.value < 0
-    ? -1
-    : point.value
+  const value = point.value === null || point.value < 0 ? -1 : point.value
   return {
     client: uuid,
     task_id: taskId,
@@ -79,10 +70,12 @@ async function fetchMetricHistory(uuid: string, hours: number): Promise<PingHist
     }),
     rpc.getPingMetricStats({ uuid, hours, max_points: HISTORY_MAX_POINTS }),
     // 超过 6 小时后延迟降采样不再含负数，独立查询 ping.loss 供丢包标记使用
-    rpc.queryMetrics({
-      ...metricQuery,
-      metric_keys: ['ping.loss'],
-    }).catch(() => null),
+    rpc
+      .queryMetrics({
+        ...metricQuery,
+        metric_keys: ['ping.loss'],
+      })
+      .catch(() => null),
     // getPingMetricStats 按 task_id 排序，后台拖拽顺序在 weight 上；
     // 与官方主题一致，用 getPublicPingTasks（weight ASC, id ASC）重排展示顺序
     rpc.getPublicPingTasks().catch(() => []),
@@ -90,19 +83,16 @@ async function fetchMetricHistory(uuid: string, hours: number): Promise<PingHist
 
   const records: PingRecord[] = []
   for (const series of metricResult?.series ?? []) {
-    if (series.metric_key !== 'ping.latency_ms')
-      continue
+    if (series.metric_key !== 'ping.latency_ms') continue
     for (const point of series.points ?? []) {
       const taskId = getMetricTaskId(series, point)
-      if (taskId !== null)
-        records.push(toLatencyRecord(uuid, taskId, point))
+      if (taskId !== null) records.push(toLatencyRecord(uuid, taskId, point))
     }
   }
 
   const lossRecords: PingLossRecord[] = []
   for (const series of lossResult?.series ?? []) {
-    if (series.metric_key !== 'ping.loss')
-      continue
+    if (series.metric_key !== 'ping.loss') continue
     for (const point of series.points ?? []) {
       const taskId = getMetricTaskId(series, point)
       if (taskId !== null && point.value !== null && point.value > 0)
@@ -110,29 +100,29 @@ async function fetchMetricHistory(uuid: string, hours: number): Promise<PingHist
     }
   }
 
-  const publicTaskList = Array.isArray(publicTasks)
-    ? publicTasks
-    : []
+  const publicTaskList = Array.isArray(publicTasks) ? publicTasks : []
   const publicTaskNameMap = new Map(publicTaskList.map(task => [task.id, task.name?.trim() || ''] as const))
 
-  const metricTasks: PingTaskInfo[] = (statsResult?.stats ?? []).map((task) => {
-    const id = Number(task.task_id)
-    return {
-      id,
-      name: publicTaskNameMap.get(id) || task.name || `Ping ${task.task_id}`,
-      interval: task.interval ?? 60,
-      loss: task.loss,
-      p99: task.p99,
-      p50: task.p50,
-      p99_p50_ratio: task.p99_p50_ratio,
-      min: task.min,
-      max: task.max,
-      avg: task.avg,
-      latest: task.latest,
-      total: task.total,
-      type: task.type,
-    }
-  }).filter(task => Number.isInteger(task.id))
+  const metricTasks: PingTaskInfo[] = (statsResult?.stats ?? [])
+    .map(task => {
+      const id = Number(task.task_id)
+      return {
+        id,
+        name: publicTaskNameMap.get(id) || task.name || `Ping ${task.task_id}`,
+        interval: task.interval ?? 60,
+        loss: task.loss,
+        p99: task.p99,
+        p50: task.p50,
+        p99_p50_ratio: task.p99_p50_ratio,
+        min: task.min,
+        max: task.max,
+        avg: task.avg,
+        latest: task.latest,
+        total: task.total,
+        type: task.type,
+      }
+    })
+    .filter(task => Number.isInteger(task.id))
 
   return {
     records,
@@ -148,9 +138,7 @@ async function fetchLegacyHistory(uuid: string, hours: number): Promise<PingHist
     rpc.getPublicPingTasks().catch(() => []),
   ])
 
-  const publicTaskList = Array.isArray(publicTasks)
-    ? publicTasks
-    : []
+  const publicTaskList = Array.isArray(publicTasks) ? publicTasks : []
   return {
     records: result?.records ?? [],
     tasks: sortTasksByPublicOrder(result?.tasks ?? [], publicTaskList),
@@ -162,15 +150,12 @@ export async function fetchPingHistory(uuid: string, hours: number): Promise<Pin
   let result: PingHistoryData
   if (metricRpcSupported === false) {
     result = await fetchLegacyHistory(uuid, hours)
-  }
-  else {
+  } else {
     try {
       result = await fetchMetricHistory(uuid, hours)
       metricRpcSupported = true
-    }
-    catch (err) {
-      if (!isMethodNotFoundError(err))
-        throw err
+    } catch (err) {
+      if (!isMethodNotFoundError(err)) throw err
       metricRpcSupported = false
       result = await fetchLegacyHistory(uuid, hours)
     }

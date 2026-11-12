@@ -1,6 +1,6 @@
 import type { Client, NodeStatus, NodeStatusGpu, NodeStatusPing } from '@/utils/rpc'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { useMemo } from 'react'
+import { create } from 'zustand'
 import { parseNodeGroups } from '@/utils/groupHelper'
 
 /** 流量限制类型 */
@@ -94,343 +94,246 @@ interface StatusData {
 
 const EARTH_SNAPSHOT_INTERVAL_MS = 60_000
 
-export const useNodesStore = defineStore('nodes', () => {
-  // ===== 状态 =====
-  const nodes = ref<NodeData[]>([])
-  const earthNodes = ref<NodeData[]>([])
-  const wsConnectionState = ref<WsConnectionState>('disconnected')
-  const wsReconnectAttempts = ref<number>(0)
-  let lastEarthSnapshotAt = 0
-
-  // ===== 计算属性 =====
-  /** 在线节点数量 */
-  const onlineCount = computed(() => nodes.value.filter(n => n.online).length)
-
-  /** 总节点数量 */
-  const totalCount = computed(() => nodes.value.length)
-
-  /** 所有分组 */
-  const groups = computed(() => {
-    const groupSet = new Set<string>()
-    nodes.value.forEach((n) => {
-      parseNodeGroups(n.group).forEach(group => groupSet.add(group))
-    })
-    return Array.from(groupSet)
-  })
-
-  /** 按 UUID 索引的节点映射 */
-  const nodesByUuid = computed(() => {
-    const map = new Map<string, NodeData>()
-    nodes.value.forEach((n) => {
-      map.set(n.uuid, n)
-    })
-    return map
-  })
-
-  // ===== 方法 =====
-
-  /**
-   * 从 Client 对象创建节点数据
-   */
-  function createNodeFromClient(client: Client): NodeData {
-    return {
-      uuid: client.uuid,
-      name: client.name,
-      cpu_name: client.cpu_name,
-      virtualization: client.virtualization,
-      arch: client.arch,
-      cpu_cores: client.cpu_cores,
-      os: client.os,
-      kernel_version: client.kernel_version,
-      gpu_name: client.gpu_name,
-      ipv4: client.ipv4,
-      ipv6: client.ipv6,
-      region: client.region,
-      remark: client.remark,
-      public_remark: client.public_remark,
-      mem_total: client.mem_total,
-      swap_total: client.swap_total,
-      disk_total: client.disk_total,
-      version: client.version,
-      weight: client.weight,
-      price: client.price,
-      billing_cycle: client.billing_cycle,
-      auto_renewal: client.auto_renewal,
-      currency: client.currency,
-      expired_at: client.expired_at,
-      group: client.group,
-      tags: client.tags,
-      hidden: client.hidden,
-      traffic_limit: client.traffic_limit,
-      traffic_limit_type: client.traffic_limit_type as TrafficLimitType,
-      created_at: client.created_at,
-      updated_at: client.updated_at,
-      // Status 默认值
-      online: false,
-      time: '',
-      cpu: 0,
-      gpu: 0,
-      ram: 0,
-      swap: 0,
-      load: 0,
-      load5: 0,
-      load15: 0,
-      temp: 0,
-      disk: 0,
-      net_in: 0,
-      net_out: 0,
-      net_total_up: 0,
-      net_total_down: 0,
-      process: 0,
-      connections: 0,
-      connections_udp: 0,
-      uptime: 0,
-      ping: undefined,
-    }
-  }
-
-  /**
-   * 更新节点的状态数据
-   */
-  function updateNodeStatus(node: NodeData, status: StatusData): NodeData {
-    return {
-      ...node,
-      online: status.online,
-      time: status.time,
-      cpu: status.cpu,
-      gpu: status.gpu,
-      gpu_detailed_info: status.gpu_detailed_info,
-      ram: status.ram,
-      swap: status.swap,
-      load: status.load,
-      load5: status.load5,
-      load15: status.load15,
-      temp: status.temp,
-      disk: status.disk,
-      net_in: status.net_in,
-      net_out: status.net_out,
-      net_total_up: status.net_total_up,
-      net_total_down: status.net_total_down,
-      process: status.process,
-      connections: status.connections,
-      connections_udp: status.connections_udp,
-      uptime: status.uptime,
-      ping: status.ping,
-    }
-  }
-
-  /**
-   * 从 NodeStatus 提取状态数据
-   */
-  function extractStatusData(status: NodeStatus): StatusData {
-    return {
-      online: status.online,
-      time: status.time,
-      cpu: status.cpu,
-      gpu: status.gpu,
-      gpu_detailed_info: status.gpu_detailed_info,
-      ram: status.ram,
-      swap: status.swap,
-      load: status.load,
-      load5: status.load5,
-      load15: status.load15,
-      temp: status.temp,
-      disk: status.disk,
-      net_in: status.net_in,
-      net_out: status.net_out,
-      net_total_up: status.net_total_up,
-      net_total_down: status.net_total_down,
-      process: status.process,
-      connections: status.connections,
-      connections_udp: status.connections_udp,
-      uptime: status.uptime,
-    }
-  }
-
-  /**
-   * Earth 视图共享采样快照，避免 globe / maps 各自维护定时器。
-   */
-  function refreshEarthNodes(force = false): void {
-    const now = Date.now()
-    if (!force && now - lastEarthSnapshotAt < EARTH_SNAPSHOT_INTERVAL_MS)
-      return
-
-    earthNodes.value = [...nodes.value]
-    lastEarthSnapshotAt = now
-  }
-
-  /**
-   * 初始化节点数据（首次加载）
-   */
-  function initNodes(clients: Record<string, Client>, statuses: Record<string, NodeStatus>): void {
-    const uuids = Object.keys(clients)
-    const existingUuids = new Set(nodes.value.map(n => n.uuid))
-
-    // 更新现有节点或添加新节点
-    uuids.forEach((uuid) => {
-      const client = clients[uuid]
-      if (!client)
-        return
-
-      const status = statuses[uuid]
-      const index = nodes.value.findIndex(n => n.uuid === uuid)
-
-      if (existingUuids.has(uuid) && index !== -1) {
-        // 更新现有节点
-        const baseNode = createNodeFromClient(client)
-        nodes.value[index] = status
-          ? updateNodeStatus(baseNode, extractStatusData(status))
-          : baseNode
-      }
-      else {
-        // 添加新节点
-        const newNode = createNodeFromClient(client)
-        nodes.value.push(status
-          ? updateNodeStatus(newNode, extractStatusData(status))
-          : newNode,
-        )
-      }
-    })
-
-    // 移除不存在的节点
-    const newUuids = new Set(uuids)
-    for (let i = nodes.value.length - 1; i >= 0; i--) {
-      const node = nodes.value[i]
-      if (node && !newUuids.has(node.uuid)) {
-        nodes.value.splice(i, 1)
-      }
-    }
-
-    // 按 weight 降序排序（weight 越大越靠前）
-    sortNodesByWeight()
-    refreshEarthNodes(true)
-  }
-
-  /**
-   * 按 weight 升序排序节点（weight 越小越靠前）
-   */
-  function sortNodesByWeight(): void {
-    nodes.value.sort((a, b) => a.weight - b.weight)
-  }
-
-  /**
-   * 更新节点状态（实时更新）
-   */
-  function updateNodeStatuses(statuses: Record<string, NodeStatus>): void {
-    let hasChanges = false
-
-    Object.entries(statuses).forEach(([uuid, status]) => {
-      const index = nodes.value.findIndex(n => n.uuid === uuid)
-      if (index === -1)
-        return
-
-      const node = nodes.value[index]
-      if (!node)
-        return
-
-      nodes.value[index] = updateNodeStatus(node, extractStatusData(status))
-      hasChanges = true
-    })
-
-    if (hasChanges)
-      refreshEarthNodes()
-  }
-
-  /**
-   * 更新节点基本信息
-   */
-  function updateNodeClients(clients: Record<string, Client>): void {
-    const newUuids = new Set(Object.keys(clients))
-
-    // 更新现有节点信息或添加新节点
-    Object.entries(clients).forEach(([uuid, client]) => {
-      const index = nodes.value.findIndex(n => n.uuid === uuid)
-
-      if (index !== -1) {
-        // 更新现有节点，保留状态信息
-        const currentNode = nodes.value[index]
-        if (!currentNode)
-          return
-
-        const baseNode = createNodeFromClient(client)
-        nodes.value[index] = updateNodeStatus(baseNode, {
-          online: currentNode.online,
-          time: currentNode.time,
-          cpu: currentNode.cpu,
-          gpu: currentNode.gpu,
-          gpu_detailed_info: currentNode.gpu_detailed_info,
-          ram: currentNode.ram,
-          swap: currentNode.swap,
-          load: currentNode.load,
-          load5: currentNode.load5,
-          load15: currentNode.load15,
-          temp: currentNode.temp,
-          disk: currentNode.disk,
-          net_in: currentNode.net_in,
-          net_out: currentNode.net_out,
-          net_total_up: currentNode.net_total_up,
-          net_total_down: currentNode.net_total_down,
-          process: currentNode.process,
-          connections: currentNode.connections,
-          connections_udp: currentNode.connections_udp,
-          uptime: currentNode.uptime,
-          ping: currentNode.ping,
-        })
-      }
-      else {
-        // 添加新节点（不带状态）
-        nodes.value.push(createNodeFromClient(client))
-      }
-    })
-
-    // 移除不存在的节点
-    for (let i = nodes.value.length - 1; i >= 0; i--) {
-      const node = nodes.value[i]
-      if (node && !newUuids.has(node.uuid)) {
-        nodes.value.splice(i, 1)
-      }
-    }
-
-    // 按 weight 降序排序
-    sortNodesByWeight()
-    refreshEarthNodes(true)
-  }
-
-  /**
-   * 更新 WebSocket 连接状态
-   */
-  function updateWsState(state: WsConnectionState, attempts?: number): void {
-    wsConnectionState.value = state
-    if (attempts !== undefined) {
-      wsReconnectAttempts.value = attempts
-    }
-  }
-
-  /**
-   * 清空所有节点数据
-   */
-  function clearNodes(): void {
-    nodes.value = []
-    refreshEarthNodes(true)
-  }
-
+/**
+ * 从 Client 对象创建节点数据
+ */
+function createNodeFromClient(client: Client): NodeData {
   return {
-    // 状态
-    nodes,
-    earthNodes,
-    wsConnectionState,
-    wsReconnectAttempts,
-    // 计算属性
-    onlineCount,
-    totalCount,
-    groups,
-    nodesByUuid,
-    // 方法
-    initNodes,
-    updateNodeStatuses,
-    updateNodeClients,
-    sortNodesByWeight,
-    updateWsState,
-    clearNodes,
+    uuid: client.uuid,
+    name: client.name,
+    cpu_name: client.cpu_name,
+    virtualization: client.virtualization,
+    arch: client.arch,
+    cpu_cores: client.cpu_cores,
+    os: client.os,
+    kernel_version: client.kernel_version,
+    gpu_name: client.gpu_name,
+    ipv4: client.ipv4,
+    ipv6: client.ipv6,
+    region: client.region,
+    remark: client.remark,
+    public_remark: client.public_remark,
+    mem_total: client.mem_total,
+    swap_total: client.swap_total,
+    disk_total: client.disk_total,
+    version: client.version,
+    weight: client.weight,
+    price: client.price,
+    billing_cycle: client.billing_cycle,
+    auto_renewal: client.auto_renewal,
+    currency: client.currency,
+    expired_at: client.expired_at,
+    group: client.group,
+    tags: client.tags,
+    hidden: client.hidden,
+    traffic_limit: client.traffic_limit,
+    traffic_limit_type: client.traffic_limit_type as TrafficLimitType,
+    created_at: client.created_at,
+    updated_at: client.updated_at,
+    // Status 默认值
+    online: false,
+    time: '',
+    cpu: 0,
+    gpu: 0,
+    ram: 0,
+    swap: 0,
+    load: 0,
+    load5: 0,
+    load15: 0,
+    temp: 0,
+    disk: 0,
+    net_in: 0,
+    net_out: 0,
+    net_total_up: 0,
+    net_total_down: 0,
+    process: 0,
+    connections: 0,
+    connections_udp: 0,
+    uptime: 0,
+    ping: undefined,
   }
-})
+}
+/**
+ * 更新节点的状态数据
+ */
+function updateNodeStatus(node: NodeData, status: StatusData): NodeData {
+  return {
+    ...node,
+    online: status.online,
+    time: status.time,
+    cpu: status.cpu,
+    gpu: status.gpu,
+    gpu_detailed_info: status.gpu_detailed_info,
+    ram: status.ram,
+    swap: status.swap,
+    load: status.load,
+    load5: status.load5,
+    load15: status.load15,
+    temp: status.temp,
+    disk: status.disk,
+    net_in: status.net_in,
+    net_out: status.net_out,
+    net_total_up: status.net_total_up,
+    net_total_down: status.net_total_down,
+    process: status.process,
+    connections: status.connections,
+    connections_udp: status.connections_udp,
+    uptime: status.uptime,
+    ping: status.ping,
+  }
+}
+/**
+ * 从 NodeStatus 提取状态数据
+ */
+function extractStatusData(status: NodeStatus): StatusData {
+  return {
+    online: status.online,
+    time: status.time,
+    cpu: status.cpu,
+    gpu: status.gpu,
+    gpu_detailed_info: status.gpu_detailed_info,
+    ram: status.ram,
+    swap: status.swap,
+    load: status.load,
+    load5: status.load5,
+    load15: status.load15,
+    temp: status.temp,
+    disk: status.disk,
+    net_in: status.net_in,
+    net_out: status.net_out,
+    net_total_up: status.net_total_up,
+    net_total_down: status.net_total_down,
+    process: status.process,
+    connections: status.connections,
+    connections_udp: status.connections_udp,
+    uptime: status.uptime,
+  }
+}
+
+function statusOf(node: NodeData): StatusData {
+  return {
+    online: node.online,
+    time: node.time,
+    cpu: node.cpu,
+    gpu: node.gpu,
+    gpu_detailed_info: node.gpu_detailed_info,
+    ram: node.ram,
+    swap: node.swap,
+    load: node.load,
+    load5: node.load5,
+    load15: node.load15,
+    temp: node.temp,
+    disk: node.disk,
+    net_in: node.net_in,
+    net_out: node.net_out,
+    net_total_up: node.net_total_up,
+    net_total_down: node.net_total_down,
+    process: node.process,
+    connections: node.connections,
+    connections_udp: node.connections_udp,
+    uptime: node.uptime,
+    ping: node.ping,
+  }
+}
+
+/** 按 weight 升序排序（weight 越小越靠前） */
+function sortByWeight(nodes: NodeData[]): NodeData[] {
+  return nodes.toSorted((a, b) => a.weight - b.weight)
+}
+
+interface NodesState {
+  nodes: NodeData[]
+  /** 按 UUID 索引；未变化的节点保持引用不变，卡片可按 uuid 精确订阅 */
+  nodesByUuid: Map<string, NodeData>
+  /** Earth 视图共享的采样快照，最多每分钟刷新一次，避免 globe / maps 各自维护定时器 */
+  earthNodes: NodeData[]
+  wsConnectionState: WsConnectionState
+  wsReconnectAttempts: number
+
+  /** 首次加载：合并 client 与 status，移除已删除的节点 */
+  initNodes: (clients: Record<string, Client>, statuses: Record<string, NodeStatus>) => void
+  /** 实时更新状态 */
+  updateNodeStatuses: (statuses: Record<string, NodeStatus>) => void
+  /** 更新节点基本信息，保留已有状态 */
+  updateNodeClients: (clients: Record<string, Client>) => void
+  updateWsState: (state: WsConnectionState, attempts?: number) => void
+  clearNodes: () => void
+}
+
+let lastEarthSnapshotAt = 0
+
+function withNodes(nodes: NodeData[], prevEarth: NodeData[], forceEarth: boolean) {
+  const now = Date.now()
+  const refreshEarth = forceEarth || now - lastEarthSnapshotAt >= EARTH_SNAPSHOT_INTERVAL_MS
+  if (refreshEarth) lastEarthSnapshotAt = now
+  return {
+    nodes,
+    nodesByUuid: new Map(nodes.map(node => [node.uuid, node])),
+    earthNodes: refreshEarth ? nodes : prevEarth,
+  }
+}
+
+export const useNodesStore = create<NodesState>()((set, get) => ({
+  nodes: [],
+  nodesByUuid: new Map(),
+  earthNodes: [],
+  wsConnectionState: 'disconnected',
+  wsReconnectAttempts: 0,
+
+  initNodes: (clients, statuses) => {
+    const next: NodeData[] = []
+    for (const [uuid, client] of Object.entries(clients)) {
+      if (!client) continue
+      const base = createNodeFromClient(client)
+      const status = statuses[uuid]
+      next.push(status ? updateNodeStatus(base, extractStatusData(status)) : base)
+    }
+    set(withNodes(sortByWeight(next), get().earthNodes, true))
+  },
+
+  updateNodeStatuses: statuses => {
+    const { nodes, earthNodes } = get()
+    let changed = false
+    const next = nodes.map(node => {
+      const status = statuses[node.uuid]
+      if (!status) return node
+      changed = true
+      return updateNodeStatus(node, extractStatusData(status))
+    })
+    if (changed) set(withNodes(next, earthNodes, false))
+  },
+
+  updateNodeClients: clients => {
+    const { nodesByUuid, earthNodes } = get()
+    const next = Object.entries(clients).map(([uuid, client]) => {
+      const base = createNodeFromClient(client)
+      const current = nodesByUuid.get(uuid)
+      return current ? updateNodeStatus(base, statusOf(current)) : base
+    })
+    set(withNodes(sortByWeight(next), earthNodes, true))
+  },
+
+  updateWsState: (wsConnectionState, attempts) => {
+    set(attempts === undefined ? { wsConnectionState } : { wsConnectionState, wsReconnectAttempts: attempts })
+  },
+
+  clearNodes: () => set(withNodes([], [], true)),
+}))
+
+/** 所有分组（按节点顺序去重） */
+export function useNodeGroups(): string[] {
+  const nodes = useNodesStore(state => state.nodes)
+  return useMemo(() => {
+    const groupSet = new Set<string>()
+    for (const node of nodes) parseNodeGroups(node.group).forEach(group => groupSet.add(group))
+    return Array.from(groupSet)
+  }, [nodes])
+}
+
+export function useOnlineCount(): number {
+  return useNodesStore(state => state.nodes.filter(node => node.online).length)
+}
+
+export function useNode(uuid: string): NodeData | undefined {
+  return useNodesStore(state => state.nodesByUuid.get(uuid))
+}

@@ -27,9 +27,7 @@ export const PING_CHART_VIEWS: readonly ChartView[] = [
 ]
 
 function formatHoursLabel(hours: number): string {
-  return hours % 24 === 0
-    ? `${Math.floor(hours / 24)} 天`
-    : `${hours} 小时`
+  return hours % 24 === 0 ? `${Math.floor(hours / 24)} 天` : `${hours} 小时`
 }
 
 export function buildChartViews(presets: readonly ChartView[], maxHours: number): ChartView[] {

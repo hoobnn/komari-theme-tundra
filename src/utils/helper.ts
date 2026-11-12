@@ -45,8 +45,7 @@ const DEFAULT_BYTE_DECIMALS: ByteDecimalsConfig = {
  * @returns 格式化后的字符串，如 "1.5 GB"
  */
 export function formatBytes(bytes: number, decimals = 1): string {
-  if (bytes === 0)
-    return '0 B'
+  if (bytes === 0) return '0 B'
 
   const k = 1024
   const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -71,7 +70,7 @@ export function formatBytesWithConfig(bytes: number, config?: ByteDecimalsConfig
  * @param config 精度配置
  * @returns 分离的数值和单位，如 { value: "1.5", unit: "GB" }
  */
-export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { value: string, unit: string } {
+export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { value: string; unit: string } {
   const mergedConfig = {
     ...DEFAULT_BYTE_DECIMALS,
     ...config,
@@ -81,9 +80,7 @@ export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { 
     // 0 字节时，B 被禁用就显示为 0 KB
     return {
       value: '0',
-      unit: mergedConfig.B === -1
-        ? 'KB'
-        : 'B',
+      unit: mergedConfig.B === -1 ? 'KB' : 'B',
     }
   }
 
@@ -92,9 +89,7 @@ export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { 
   // PB 及以上单位使用 TB 的精度配置
   const decimalsAt = (index: number) => {
     const unitKey = BYTE_UNITS[index]
-    return unitKey === 'TB' || unitKey === 'PB'
-      ? mergedConfig.TB
-      : mergedConfig[unitKey as keyof ByteDecimalsConfig]
+    return unitKey === 'TB' || unitKey === 'PB' ? mergedConfig.TB : mergedConfig[unitKey as keyof ByteDecimalsConfig]
   }
   const format = (index: number, decimals?: number) => ({
     value: (bytes / k ** index).toFixed(decimals),
@@ -102,14 +97,12 @@ export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { 
   })
 
   const decimals = decimalsAt(i)
-  if (decimals !== -1)
-    return format(i, decimals)
+  if (decimals !== -1) return format(i, decimals)
 
   // 当前单位被禁用（-1）时，向上找第一个可用单位；都被禁用就保留一位小数
   for (let j = i + 1; j < BYTE_UNITS.length; j++) {
     const nextDecimals = decimalsAt(j)
-    if (nextDecimals !== -1)
-      return format(j, nextDecimals)
+    if (nextDecimals !== -1) return format(j, nextDecimals)
   }
   return format(i, 1)
 }
@@ -120,7 +113,7 @@ export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { 
  * @param config 精度配置
  * @returns 分离的数值和单位，如 { value: "1.5", unit: "GB/s" }
  */
-export function formatBytesPerSecondSplit(bytes: number, config?: ByteDecimalsConfig): { value: string, unit: string } {
+export function formatBytesPerSecondSplit(bytes: number, config?: ByteDecimalsConfig): { value: string; unit: string } {
   const result = formatBytesSplit(bytes, config)
   return { value: result.value, unit: `${result.unit}/s` }
 }
@@ -146,8 +139,7 @@ export function formatBytesPerSecondWithConfig(bytes: number, config?: ByteDecim
  * @returns 格式化后的字符串
  */
 export function formatUptimeWithFormat(seconds: number, format: UptimeFormat = 'day'): string {
-  if (!seconds || seconds <= 0)
-    return '0 秒'
+  if (!seconds || seconds <= 0) return '0 秒'
 
   // 根据格式确定最大单位索引（从天开始）
   const formatMaxUnitIndexMap: Record<UptimeFormat, number> = {
@@ -163,8 +155,7 @@ export function formatUptimeWithFormat(seconds: number, format: UptimeFormat = '
 
   for (let i = 0; i < TIME_UNITS.length; i++) {
     const unit = TIME_UNITS[i]
-    if (!unit)
-      continue
+    if (!unit) continue
     const { value, label } = unit
     const amount = Math.floor(remaining / value)
     if (amount > 0) {
@@ -199,10 +190,8 @@ const STATUS_THRESHOLDS = {
  * @returns 状态类型
  */
 export function getStatus(percentage: number): 'success' | 'warning' | 'error' {
-  if (percentage < STATUS_THRESHOLDS.success)
-    return 'success'
-  if (percentage < STATUS_THRESHOLDS.warning)
-    return 'warning'
+  if (percentage < STATUS_THRESHOLDS.success) return 'success'
+  if (percentage < STATUS_THRESHOLDS.warning) return 'warning'
   return 'error'
 }
 
@@ -212,13 +201,11 @@ export function getStatus(percentage: number): 'success' | 'warning' | 'error' {
  * @returns 格式化后的字符串，如 "2024-01-15 14:30:00"
  */
 export function formatDateTime(timestamp: string | Date | undefined, format = 'YYYY-MM-DD HH:mm:ss'): string {
-  if (!timestamp)
-    return '-'
+  if (!timestamp) return '-'
 
   const date = dayjs(timestamp)
 
-  if (!date.isValid())
-    return '-'
+  if (!date.isValid()) return '-'
 
   return date.format(format)
 }

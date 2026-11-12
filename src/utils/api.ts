@@ -17,12 +17,12 @@ interface ApiResponse<T = unknown> {
 
 /** 用户信息 */
 export interface MeInfo {
-  'logged_in': boolean
-  'username': string
+  logged_in: boolean
+  username: string
   '2fa_enabled'?: boolean
-  'sso_id'?: string
-  'sso_type'?: string
-  'uuid'?: string
+  sso_id?: string
+  sso_type?: string
+  uuid?: string
 }
 
 /** 公开站点属性 */
@@ -171,14 +171,10 @@ export class KomariApi {
       }
 
       return result.data
-    }
-    catch (error) {
+    } catch (error) {
       clearTimeout(timeoutId)
-      if (error instanceof ApiError)
-        throw error
-      throw new ApiError(`Network error: ${error instanceof Error
-        ? error.message
-        : String(error)}`, 'error')
+      if (error instanceof ApiError) throw error
+      throw new ApiError(`Network error: ${error instanceof Error ? error.message : String(error)}`, 'error')
     }
   }
 
@@ -205,14 +201,10 @@ export class KomariApi {
       }
 
       return await response.json()
-    }
-    catch (error) {
+    } catch (error) {
       clearTimeout(timeoutId)
-      if (error instanceof ApiError)
-        throw error
-      throw new ApiError(`Network error: ${error instanceof Error
-        ? error.message
-        : String(error)}`, 'error')
+      if (error instanceof ApiError) throw error
+      throw new ApiError(`Network error: ${error instanceof Error ? error.message : String(error)}`, 'error')
     }
   }
 

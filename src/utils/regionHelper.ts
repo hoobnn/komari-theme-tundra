@@ -1,44 +1,22 @@
 // 地区emoji到名称的映射
-export const emojiToRegionMap: Record<string, { en: string, zh: string, code: string, aliases: string[] }> = {
+export const emojiToRegionMap: Record<string, { en: string; zh: string; code: string; aliases: string[] }> = {
   '🇭🇰': {
     en: 'Hong Kong',
     zh: '香港',
     code: 'HK',
-    aliases: [
-      'hk',
-      'hongkong',
-      'hong kong',
-      '香港',
-      'HK',
-    ],
+    aliases: ['hk', 'hongkong', 'hong kong', '香港', 'HK'],
   },
   '🇨🇳': {
     en: 'China',
     zh: '中国',
     code: 'CN',
-    aliases: [
-      'cn',
-      'china',
-      '中国',
-      '中华人民共和国',
-      'prc',
-      'CN',
-    ],
+    aliases: ['cn', 'china', '中国', '中华人民共和国', 'prc', 'CN'],
   },
   '🇺🇸': {
     en: 'United States',
     zh: '美国',
     code: 'US',
-    aliases: [
-      'us',
-      'usa',
-      'united states',
-      'america',
-      '美国',
-      '美利坚',
-      'US',
-      'USA',
-    ],
+    aliases: ['us', 'usa', 'united states', 'america', '美国', '美利坚', 'US', 'USA'],
   },
   '🇯🇵': {
     en: 'Japan',
@@ -50,14 +28,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'South Korea',
     zh: '韩国',
     code: 'KR',
-    aliases: [
-      'kr',
-      'korea',
-      'south korea',
-      '韩国',
-      '南韩',
-      'KR',
-    ],
+    aliases: ['kr', 'korea', 'south korea', '韩国', '南韩', 'KR'],
   },
   '🇸🇬': {
     en: 'Singapore',
@@ -75,29 +46,13 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'United Kingdom',
     zh: '英国',
     code: 'GB',
-    aliases: [
-      'gb',
-      'uk',
-      'united kingdom',
-      'britain',
-      '英国',
-      '英國',
-      'GB',
-      'UK',
-    ],
+    aliases: ['gb', 'uk', 'united kingdom', 'britain', '英国', '英國', 'GB', 'UK'],
   },
   '🇩🇪': {
     en: 'Germany',
     zh: '德国',
     code: 'DE',
-    aliases: [
-      'de',
-      'germany',
-      'deutschland',
-      '德国',
-      '德國',
-      'DE',
-    ],
+    aliases: ['de', 'germany', 'deutschland', '德国', '德國', 'DE'],
   },
   '🇫🇷': {
     en: 'France',
@@ -139,14 +94,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Netherlands',
     zh: '荷兰',
     code: 'NL',
-    aliases: [
-      'nl',
-      'netherlands',
-      'holland',
-      '荷兰',
-      '荷蘭',
-      'NL',
-    ],
+    aliases: ['nl', 'netherlands', 'holland', '荷兰', '荷蘭', 'NL'],
   },
   '🇮🇹': {
     en: 'Italy',
@@ -224,13 +172,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Czech Republic',
     zh: '捷克',
     code: 'CZ',
-    aliases: [
-      'cz',
-      'czech',
-      'czech republic',
-      '捷克',
-      'CZ',
-    ],
+    aliases: ['cz', 'czech', 'czech republic', '捷克', 'CZ'],
   },
   '🇭🇺': {
     en: 'Hungary',
@@ -260,13 +202,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Slovenia',
     zh: '斯洛文尼亚',
     code: 'SI',
-    aliases: [
-      'si',
-      'slovenia',
-      '斯洛文尼亚',
-      '斯洛文尼亞',
-      'SI',
-    ],
+    aliases: ['si', 'slovenia', '斯洛文尼亚', '斯洛文尼亞', 'SI'],
   },
   '🇸🇰': {
     en: 'Slovakia',
@@ -326,13 +262,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Venezuela',
     zh: '委内瑞拉',
     code: 'VE',
-    aliases: [
-      've',
-      'venezuela',
-      '委内瑞拉',
-      '委內瑞拉',
-      'VE',
-    ],
+    aliases: ['ve', 'venezuela', '委内瑞拉', '委內瑞拉', 'VE'],
   },
   '🇺🇾': {
     en: 'Uruguay',
@@ -380,13 +310,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'French Guiana',
     zh: '法属圭亚那',
     code: 'GF',
-    aliases: [
-      'gf',
-      'french guiana',
-      '法属圭亚那',
-      '法屬圭亞那',
-      'GF',
-    ],
+    aliases: ['gf', 'french guiana', '法属圭亚那', '法屬圭亞那', 'GF'],
   },
   '🇵🇦': {
     en: 'Panama',
@@ -398,13 +322,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Costa Rica',
     zh: '哥斯达黎加',
     code: 'CR',
-    aliases: [
-      'cr',
-      'costa rica',
-      '哥斯达黎加',
-      '哥斯達黎加',
-      'CR',
-    ],
+    aliases: ['cr', 'costa rica', '哥斯达黎加', '哥斯達黎加', 'CR'],
   },
   '🇳🇮': {
     en: 'Nicaragua',
@@ -422,13 +340,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Guatemala',
     zh: '危地马拉',
     code: 'GT',
-    aliases: [
-      'gt',
-      'guatemala',
-      '危地马拉',
-      '危地馬拉',
-      'GT',
-    ],
+    aliases: ['gt', 'guatemala', '危地马拉', '危地馬拉', 'GT'],
   },
   '🇧🇿': {
     en: 'Belize',
@@ -440,13 +352,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'El Salvador',
     zh: '萨尔瓦多',
     code: 'SV',
-    aliases: [
-      'sv',
-      'el salvador',
-      '萨尔瓦多',
-      '薩爾瓦多',
-      'SV',
-    ],
+    aliases: ['sv', 'el salvador', '萨尔瓦多', '薩爾瓦多', 'SV'],
   },
   '🇯🇲': {
     en: 'Jamaica',
@@ -494,13 +400,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Philippines',
     zh: '菲律宾',
     code: 'PH',
-    aliases: [
-      'ph',
-      'philippines',
-      '菲律宾',
-      '菲律賓',
-      'PH',
-    ],
+    aliases: ['ph', 'philippines', '菲律宾', '菲律賓', 'PH'],
   },
   '🇹🇭': {
     en: 'Thailand',
@@ -542,14 +442,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Myanmar',
     zh: '缅甸',
     code: 'MM',
-    aliases: [
-      'mm',
-      'myanmar',
-      'burma',
-      '缅甸',
-      '緬甸',
-      'MM',
-    ],
+    aliases: ['mm', 'myanmar', 'burma', '缅甸', '緬甸', 'MM'],
   },
   '🇧🇳': {
     en: 'Brunei',
@@ -585,13 +478,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Ethiopia',
     zh: '埃塞俄比亚',
     code: 'ET',
-    aliases: [
-      'et',
-      'ethiopia',
-      '埃塞俄比亚',
-      '埃塞俄比亞',
-      'ET',
-    ],
+    aliases: ['et', 'ethiopia', '埃塞俄比亚', '埃塞俄比亞', 'ET'],
   },
   '🇬🇭': {
     en: 'Ghana',
@@ -651,13 +538,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Algeria',
     zh: '阿尔及利亚',
     code: 'DZ',
-    aliases: [
-      'dz',
-      'algeria',
-      '阿尔及利亚',
-      '阿爾及利亞',
-      'DZ',
-    ],
+    aliases: ['dz', 'algeria', '阿尔及利亚', '阿爾及利亞', 'DZ'],
   },
   '🇹🇳': {
     en: 'Tunisia',
@@ -681,13 +562,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'South Sudan',
     zh: '南苏丹',
     code: 'SS',
-    aliases: [
-      'ss',
-      'south sudan',
-      '南苏丹',
-      '南蘇丹',
-      'SS',
-    ],
+    aliases: ['ss', 'south sudan', '南苏丹', '南蘇丹', 'SS'],
   },
   '🇨🇩': {
     en: 'Democratic Republic of Congo',
@@ -735,13 +610,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Burkina Faso',
     zh: '布基纳法索',
     code: 'BF',
-    aliases: [
-      'bf',
-      'burkina',
-      '布基纳法索',
-      '布吉納法索',
-      'BF',
-    ],
+    aliases: ['bf', 'burkina', '布基纳法索', '布吉納法索', 'BF'],
   },
   '🇸🇳': {
     en: 'Senegal',
@@ -759,13 +628,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Guinea-Bissau',
     zh: '几内亚比绍',
     code: 'GW',
-    aliases: [
-      'gw',
-      'guinea-bissau',
-      '几内亚比绍',
-      '幾內亞比索',
-      'GW',
-    ],
+    aliases: ['gw', 'guinea-bissau', '几内亚比绍', '幾內亞比索', 'GW'],
   },
   '🇬🇳': {
     en: 'Guinea',
@@ -789,13 +652,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Ivory Coast',
     zh: '科特迪瓦',
     code: 'CI',
-    aliases: [
-      'ci',
-      'ivory coast',
-      '科特迪瓦',
-      '象牙海岸',
-      'CI',
-    ],
+    aliases: ['ci', 'ivory coast', '科特迪瓦', '象牙海岸', 'CI'],
   },
   '🇹🇬': {
     en: 'Togo',
@@ -825,12 +682,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'United Arab Emirates',
     zh: '阿联酋',
     code: 'AE',
-    aliases: [
-      'ae',
-      'AE',
-      'united arab emirates',
-      '阿联酋',
-    ],
+    aliases: ['ae', 'AE', 'united arab emirates', '阿联酋'],
   },
   '🇦🇫': {
     en: 'Afghanistan',
@@ -842,12 +694,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Antigua and Barbuda',
     zh: '安提瓜和巴布达',
     code: 'AG',
-    aliases: [
-      'ag',
-      'AG',
-      'antigua and barbuda',
-      '安提瓜和巴布达',
-    ],
+    aliases: ['ag', 'AG', 'antigua and barbuda', '安提瓜和巴布达'],
   },
   '🇦🇮': {
     en: 'Anguilla',
@@ -907,12 +754,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Bosnia and Herzegovina',
     zh: '波黑',
     code: 'BA',
-    aliases: [
-      'ba',
-      'BA',
-      'bosnia and herzegovina',
-      '波黑',
-    ],
+    aliases: ['ba', 'BA', 'bosnia and herzegovina', '波黑'],
   },
   '🇧🇩': {
     en: 'Bangladesh',
@@ -936,12 +778,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Saint Barthélemy',
     zh: '圣巴泰勒米',
     code: 'BL',
-    aliases: [
-      'bl',
-      'BL',
-      'saint barthélemy',
-      '圣巴泰勒米',
-    ],
+    aliases: ['bl', 'BL', 'saint barthélemy', '圣巴泰勒米'],
   },
   '🇧🇲': {
     en: 'Bermuda',
@@ -953,12 +790,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Caribbean Netherlands',
     zh: '荷属加勒比',
     code: 'BQ',
-    aliases: [
-      'bq',
-      'BQ',
-      'caribbean netherlands',
-      '荷属加勒比',
-    ],
+    aliases: ['bq', 'BQ', 'caribbean netherlands', '荷属加勒比'],
   },
   '🇧🇹': {
     en: 'Bhutan',
@@ -994,12 +826,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Clipperton Island',
     zh: '克利珀顿岛',
     code: 'CP',
-    aliases: [
-      'cp',
-      'CP',
-      'clipperton island',
-      '克利珀顿岛',
-    ],
+    aliases: ['cp', 'CP', 'clipperton island', '克利珀顿岛'],
   },
   '🇨🇻': {
     en: 'Cape Verde',
@@ -1053,12 +880,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Ceuta and Melilla',
     zh: '休达和梅利利亚',
     code: 'EA',
-    aliases: [
-      'ea',
-      'EA',
-      'ceuta and melilla',
-      '休达和梅利利亚',
-    ],
+    aliases: ['ea', 'EA', 'ceuta and melilla', '休达和梅利利亚'],
   },
   '🇪🇭': {
     en: 'Western Sahara',
@@ -1142,12 +964,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Equatorial Guinea',
     zh: '赤道几内亚',
     code: 'GQ',
-    aliases: [
-      'gq',
-      'GQ',
-      'equatorial guinea',
-      '赤道几内亚',
-    ],
+    aliases: ['gq', 'GQ', 'equatorial guinea', '赤道几内亚'],
   },
   '🇬🇸': {
     en: 'South Georgia',
@@ -1195,12 +1012,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'British Indian Ocean Territory',
     zh: '英属印度洋领地',
     code: 'IO',
-    aliases: [
-      'io',
-      'IO',
-      'british indian ocean territory',
-      '英属印度洋领地',
-    ],
+    aliases: ['io', 'IO', 'british indian ocean territory', '英属印度洋领地'],
   },
   '🇮🇶': {
     en: 'Iraq',
@@ -1254,12 +1066,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Saint Kitts and Nevis',
     zh: '圣基茨和尼维斯',
     code: 'KN',
-    aliases: [
-      'kn',
-      'KN',
-      'saint kitts and nevis',
-      '圣基茨和尼维斯',
-    ],
+    aliases: ['kn', 'KN', 'saint kitts and nevis', '圣基茨和尼维斯'],
   },
   '🇰🇵': {
     en: 'North Korea',
@@ -1355,12 +1162,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Marshall Islands',
     zh: '马绍尔群岛',
     code: 'MH',
-    aliases: [
-      'mh',
-      'MH',
-      'marshall islands',
-      '马绍尔群岛',
-    ],
+    aliases: ['mh', 'MH', 'marshall islands', '马绍尔群岛'],
   },
   '🇲🇰': {
     en: 'North Macedonia',
@@ -1384,12 +1186,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Northern Mariana Islands',
     zh: '北马里亚纳群岛',
     code: 'MP',
-    aliases: [
-      'mp',
-      'MP',
-      'northern mariana islands',
-      '北马里亚纳群岛',
-    ],
+    aliases: ['mp', 'MP', 'northern mariana islands', '北马里亚纳群岛'],
   },
   '🇲🇶': {
     en: 'Martinique',
@@ -1485,23 +1282,13 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'French Polynesia',
     zh: '法属波利尼西亚',
     code: 'PF',
-    aliases: [
-      'pf',
-      'PF',
-      'french polynesia',
-      '法属波利尼西亚',
-    ],
+    aliases: ['pf', 'PF', 'french polynesia', '法属波利尼西亚'],
   },
   '🇵🇬': {
     en: 'Papua New Guinea',
     zh: '巴布亚新几内亚',
     code: 'PG',
-    aliases: [
-      'pg',
-      'PG',
-      'papua new guinea',
-      '巴布亚新几内亚',
-    ],
+    aliases: ['pg', 'PG', 'papua new guinea', '巴布亚新几内亚'],
   },
   '🇵🇰': {
     en: 'Pakistan',
@@ -1513,23 +1300,13 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Saint Pierre and Miquelon',
     zh: '圣皮埃尔和密克隆',
     code: 'PM',
-    aliases: [
-      'pm',
-      'PM',
-      'saint pierre and miquelon',
-      '圣皮埃尔和密克隆',
-    ],
+    aliases: ['pm', 'PM', 'saint pierre and miquelon', '圣皮埃尔和密克隆'],
   },
   '🇵🇳': {
     en: 'Pitcairn Islands',
     zh: '皮特凯恩群岛',
     code: 'PN',
-    aliases: [
-      'pn',
-      'PN',
-      'pitcairn islands',
-      '皮特凯恩群岛',
-    ],
+    aliases: ['pn', 'PN', 'pitcairn islands', '皮特凯恩群岛'],
   },
   '🇵🇷': {
     en: 'Puerto Rico',
@@ -1595,12 +1372,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Svalbard and Jan Mayen',
     zh: '斯瓦尔巴和扬马延',
     code: 'SJ',
-    aliases: [
-      'sj',
-      'SJ',
-      'svalbard and jan mayen',
-      '斯瓦尔巴和扬马延',
-    ],
+    aliases: ['sj', 'SJ', 'svalbard and jan mayen', '斯瓦尔巴和扬马延'],
   },
   '🇸🇲': {
     en: 'San Marino',
@@ -1618,12 +1390,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'São Tomé and Príncipe',
     zh: '圣多美和普林西比',
     code: 'ST',
-    aliases: [
-      'st',
-      'ST',
-      'são tomé and príncipe',
-      '圣多美和普林西比',
-    ],
+    aliases: ['st', 'ST', 'são tomé and príncipe', '圣多美和普林西比'],
   },
   '🇸🇽': {
     en: 'Sint Maarten',
@@ -1647,34 +1414,19 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Tristan da Cunha',
     zh: '特里斯坦 - 达库尼亚',
     code: 'TA',
-    aliases: [
-      'ta',
-      'TA',
-      'tristan da cunha',
-      '特里斯坦 - 达库尼亚',
-    ],
+    aliases: ['ta', 'TA', 'tristan da cunha', '特里斯坦 - 达库尼亚'],
   },
   '🇹🇨': {
     en: 'Turks and Caicos Islands',
     zh: '特克斯和凯科斯群岛',
     code: 'TC',
-    aliases: [
-      'tc',
-      'TC',
-      'turks and caicos islands',
-      '特克斯和凯科斯群岛',
-    ],
+    aliases: ['tc', 'TC', 'turks and caicos islands', '特克斯和凯科斯群岛'],
   },
   '🇹🇫': {
     en: 'French Southern Territories',
     zh: '法属南部领地',
     code: 'TF',
-    aliases: [
-      'tf',
-      'TF',
-      'french southern territories',
-      '法属南部领地',
-    ],
+    aliases: ['tf', 'TF', 'french southern territories', '法属南部领地'],
   },
   '🇹🇯': {
     en: 'Tajikistan',
@@ -1722,12 +1474,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'U.S. Minor Outlying Islands',
     zh: '美国本土外小岛屿',
     code: 'UM',
-    aliases: [
-      'um',
-      'UM',
-      'u.s. minor outlying islands',
-      '美国本土外小岛屿',
-    ],
+    aliases: ['um', 'UM', 'u.s. minor outlying islands', '美国本土外小岛屿'],
   },
   '🇺🇳': {
     en: 'United Nations',
@@ -1751,34 +1498,19 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Saint Vincent and the Grenadines',
     zh: '圣文森特和格林纳丁斯',
     code: 'VC',
-    aliases: [
-      'vc',
-      'VC',
-      'saint vincent and the grenadines',
-      '圣文森特和格林纳丁斯',
-    ],
+    aliases: ['vc', 'VC', 'saint vincent and the grenadines', '圣文森特和格林纳丁斯'],
   },
   '🇻🇬': {
     en: 'British Virgin Islands',
     zh: '英属维尔京群岛',
     code: 'VG',
-    aliases: [
-      'vg',
-      'VG',
-      'british virgin islands',
-      '英属维尔京群岛',
-    ],
+    aliases: ['vg', 'VG', 'british virgin islands', '英属维尔京群岛'],
   },
   '🇻🇮': {
     en: 'U.S. Virgin Islands',
     zh: '美属维尔京群岛',
     code: 'VI',
-    aliases: [
-      'vi',
-      'VI',
-      'u.s. virgin islands',
-      '美属维尔京群岛',
-    ],
+    aliases: ['vi', 'VI', 'u.s. virgin islands', '美属维尔京群岛'],
   },
   '🇻🇺': {
     en: 'Vanuatu',
@@ -1790,12 +1522,7 @@ export const emojiToRegionMap: Record<string, { en: string, zh: string, code: st
     en: 'Wallis and Futuna',
     zh: '瓦利斯和富图纳',
     code: 'WF',
-    aliases: [
-      'wf',
-      'WF',
-      'wallis and futuna',
-      '瓦利斯和富图纳',
-    ],
+    aliases: ['wf', 'WF', 'wallis and futuna', '瓦利斯和富图纳'],
   },
   '🇼🇸': {
     en: 'Samoa',
@@ -1855,9 +1582,7 @@ export function isRegionMatch(regionEmoji: string, searchTerm: string): boolean 
   }
 
   // 检查别名
-  return regionInfo.aliases.some(alias =>
-    alias.toLowerCase().includes(lowerSearchTerm),
-  )
+  return regionInfo.aliases.some(alias => alias.toLowerCase().includes(lowerSearchTerm))
 }
 
 /**
@@ -1872,9 +1597,7 @@ export function getRegionDisplayName(regionEmoji: string, language: 'en' | 'zh' 
     return regionEmoji
   }
 
-  return language === 'zh'
-    ? regionInfo.zh
-    : regionInfo.en
+  return language === 'zh' ? regionInfo.zh : regionInfo.en
 }
 
 /**

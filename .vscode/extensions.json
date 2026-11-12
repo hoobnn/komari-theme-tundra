@@ -1,8 +1,8 @@
 {
   "recommendations": [
-    "Vue.volar",
-    "dbaeumer.vscode-eslint",
-    "EditorConfig.EditorConfig",
-    "oxc.oxc-vscode"
+    "oxc.oxc-vscode",
+    "TypeScriptTeam.native-preview",
+    "bradlc.vscode-tailwindcss",
+    "EditorConfig.EditorConfig"
   ]
 }

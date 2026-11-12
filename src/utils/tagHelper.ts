@@ -2,39 +2,48 @@ import dayjs from 'dayjs'
 import { CURRENCY_SYMBOLS, normalizeCurrency } from '@/utils/financeHelper'
 
 /** 计费周期类型 */
-type BillingCycleType = 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | 'biennial' | 'triennial' | 'quinquennial' | 'once' | 'custom'
+type BillingCycleType =
+  | 'monthly'
+  | 'quarterly'
+  | 'semi_annual'
+  | 'annual'
+  | 'biennial'
+  | 'triennial'
+  | 'quinquennial'
+  | 'once'
+  | 'custom'
 
 /** 过期状态类型 */
 export type ExpireStatus = 'expired' | 'critical' | 'warning' | 'normal' | 'long_term'
 
 /** 支持的标签颜色 */
-export type TagColor
-  = | 'ruby'
-    | 'gray'
-    | 'gold'
-    | 'bronze'
-    | 'brown'
-    | 'yellow'
-    | 'amber'
-    | 'orange'
-    | 'tomato'
-    | 'red'
-    | 'crimson'
-    | 'pink'
-    | 'plum'
-    | 'purple'
-    | 'violet'
-    | 'iris'
-    | 'indigo'
-    | 'blue'
-    | 'cyan'
-    | 'teal'
-    | 'jade'
-    | 'green'
-    | 'grass'
-    | 'lime'
-    | 'mint'
-    | 'sky'
+export type TagColor =
+  | 'ruby'
+  | 'gray'
+  | 'gold'
+  | 'bronze'
+  | 'brown'
+  | 'yellow'
+  | 'amber'
+  | 'orange'
+  | 'tomato'
+  | 'red'
+  | 'crimson'
+  | 'pink'
+  | 'plum'
+  | 'purple'
+  | 'violet'
+  | 'iris'
+  | 'indigo'
+  | 'blue'
+  | 'cyan'
+  | 'teal'
+  | 'jade'
+  | 'green'
+  | 'grass'
+  | 'lime'
+  | 'mint'
+  | 'sky'
 
 /** 所有支持的标签颜色列表 */
 const TAG_COLORS = [
@@ -97,7 +106,7 @@ const TAG_COLOR_HEX_MAP: Record<TagColor, string> = {
 }
 
 /** 计费周期范围配置（天） */
-const BILLING_CYCLE_RANGES: Array<{ type: BillingCycleType, min: number, max: number }> = [
+const BILLING_CYCLE_RANGES: Array<{ type: BillingCycleType; min: number; max: number }> = [
   { type: 'monthly', min: 27, max: 32 },
   { type: 'quarterly', min: 87, max: 95 },
   { type: 'semi_annual', min: 175, max: 185 },
@@ -123,8 +132,7 @@ const TAG_COLOR_SUFFIX_REMOVE_REGEX = /<\w+>$/
  * @returns 计费周期类型
  */
 function parseBillingCycleType(billingCycle: number): BillingCycleType {
-  if (billingCycle === -1)
-    return 'once'
+  if (billingCycle === -1) return 'once'
 
   for (const range of BILLING_CYCLE_RANGES) {
     if (billingCycle >= range.min && billingCycle <= range.max) {
@@ -165,14 +173,12 @@ export function getBillingCycleText(billingCycle: number, lang: 'zh-CN' | 'en-US
  * @returns 距离过期的天数，负数表示已过期
  */
 export function getDaysUntilExpired(expiredAt: string | number | undefined): number {
-  if (!expiredAt)
-    return 0
+  if (!expiredAt) return 0
 
   const expiredDate = dayjs(expiredAt)
   const now = dayjs()
 
-  if (!expiredDate.isValid())
-    return 0
+  if (!expiredDate.isValid()) return 0
 
   return Math.round(expiredDate.diff(now, 'day', true))
 }
@@ -185,14 +191,10 @@ export function getDaysUntilExpired(expiredAt: string | number | undefined): num
 export function getExpireStatus(expiredAt: string | number | undefined): ExpireStatus {
   const days = getDaysUntilExpired(expiredAt)
 
-  if (days <= 0)
-    return 'expired'
-  if (days < EXPIRE_THRESHOLDS.critical)
-    return 'critical'
-  if (days < EXPIRE_THRESHOLDS.warning)
-    return 'warning'
-  if (days > EXPIRE_THRESHOLDS.long_term)
-    return 'long_term'
+  if (days <= 0) return 'expired'
+  if (days < EXPIRE_THRESHOLDS.critical) return 'critical'
+  if (days < EXPIRE_THRESHOLDS.warning) return 'warning'
+  if (days > EXPIRE_THRESHOLDS.long_term) return 'long_term'
   return 'normal'
 }
 
@@ -204,12 +206,9 @@ export function getExpireStatus(expiredAt: string | number | undefined): ExpireS
 export function getExpireTextClass(expiredAt: string | number | undefined): string {
   const status = getExpireStatus(expiredAt)
 
-  if (status === 'expired' || status === 'critical')
-    return 'text-destructive'
-  if (status === 'warning')
-    return 'text-yellow-600 dark:text-yellow-400'
-  if (status === 'long_term')
-    return 'text-muted-foreground'
+  if (status === 'expired' || status === 'critical') return 'text-destructive'
+  if (status === 'warning') return 'text-yellow-600 dark:text-yellow-400'
+  if (status === 'long_term') return 'text-muted-foreground'
   // 正常状态不额外上色
   return ''
 }
@@ -225,15 +224,11 @@ export function getExpireText(expiredAt: string | number | undefined, lang: 'zh-
   const status = getExpireStatus(expiredAt)
 
   if (status === 'expired') {
-    return lang === 'zh-CN'
-      ? '已过期'
-      : 'Expired'
+    return lang === 'zh-CN' ? '已过期' : 'Expired'
   }
 
   if (status === 'long_term') {
-    return lang === 'zh-CN'
-      ? '长期'
-      : 'Long-term'
+    return lang === 'zh-CN' ? '长期' : 'Long-term'
   }
 
   if (lang === 'zh-CN') {
@@ -247,7 +242,7 @@ export function getExpireText(expiredAt: string | number | undefined, lang: 'zh-
  * @param tag 标签字符串，支持格式 "文本<颜色>"
  * @returns 解析后的标签对象
  */
-function parseTagWithColor(tag: string): { text: string, color: TagColor | null } {
+function parseTagWithColor(tag: string): { text: string; color: TagColor | null } {
   const colorMatch = tag.match(TAG_COLOR_SUFFIX_REGEX)
   if (colorMatch && colorMatch[1]) {
     const colorCandidate = colorMatch[1].toLowerCase()
@@ -273,9 +268,8 @@ function getTagColorHex(color: TagColor): string {
  * @param tags 标签字符串，用分号分隔
  * @returns 标签数组
  */
-export function parseTags(tags: string | undefined): Array<{ text: string, color: TagColor, hex: string }> {
-  if (!tags || tags.trim() === '')
-    return []
+export function parseTags(tags: string | undefined): Array<{ text: string; color: TagColor; hex: string }> {
+  if (!tags || tags.trim() === '') return []
 
   const tagList = tags.split(';').filter(tag => tag.trim() !== '')
 
@@ -300,14 +294,10 @@ export function parseTags(tags: string | undefined): Array<{ text: string, color
  */
 function formatPrice(price: number, currency: string = 'CNY', lang: 'zh-CN' | 'en-US' = 'zh-CN'): string {
   if (price === 0) {
-    return lang === 'zh-CN'
-      ? '免费'
-      : 'Free'
+    return lang === 'zh-CN' ? '免费' : 'Free'
   }
   if (price === -1) {
-    return lang === 'zh-CN'
-      ? '免费'
-      : 'Free'
+    return lang === 'zh-CN' ? '免费' : 'Free'
   }
   const code = normalizeCurrency(currency)
   const symbol = CURRENCY_SYMBOLS[code]
@@ -330,7 +320,5 @@ export function formatPriceWithCycle(
 ): string {
   const priceText = formatPrice(price, currency, lang)
   const cycleText = getBillingCycleText(billingCycle, lang)
-  return price > 0
-    ? `${priceText}/${cycleText}`
-    : priceText
+  return price > 0 ? `${priceText}/${cycleText}` : priceText
 }

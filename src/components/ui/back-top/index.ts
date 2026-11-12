@@ -1,1 +1,2 @@
-export { default as BackTop } from './BackTop.vue'
+export { BackTop } from './back-top'
+export type { BackTopProps } from './back-top'

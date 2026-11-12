@@ -3,7 +3,7 @@
  * 负责应用启动时的初始化流程和 WebSocket 连接管理
  */
 
-import type { Client, KomariRpc, NodeStatus } from '@/utils/rpc'
+import type { KomariRpc } from '@/utils/rpc'
 import { useAppStore } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { getSharedApi } from '@/utils/api'
@@ -36,8 +36,6 @@ function isPageVisible(): boolean {
 class InitManager {
   private config: Required<InitConfig>
   private rpc: KomariRpc
-  private appStore: ReturnType<typeof useAppStore>
-  private nodesStore: ReturnType<typeof useNodesStore>
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private isPolling = false
@@ -49,14 +47,20 @@ class InitManager {
   private initPromise: Promise<void> | null = null
   private initRetryTimer: ReturnType<typeof setTimeout> | null = null
   private lifecycleBound = false
+  private get appStore() {
+    return useAppStore.getState()
+  }
+
+  private get nodesStore() {
+    return useNodesStore.getState()
+  }
+
   constructor(config: InitConfig = {}) {
     this.config = {
       ...DEFAULT_CONFIG,
       ...config,
     }
     this.rpc = getSharedRpc()
-    this.appStore = useAppStore()
-    this.nodesStore = useNodesStore()
   }
 
   /**
@@ -82,14 +86,12 @@ class InitManager {
       return
     }
     // 重试与回到前台可能同时触发，共用同一次初始化
-    if (this.initPromise)
-      return this.initPromise
+    if (this.initPromise) return this.initPromise
 
     this.initPromise = this.runInit()
     try {
       await this.initPromise
-    }
-    finally {
+    } finally {
       this.initPromise = null
     }
   }
@@ -109,22 +111,20 @@ class InitManager {
       await this.fetchNodesData()
 
       // 5. 解除加载状态
-      this.appStore.loading = false
+      useAppStore.setState({ loading: false })
 
       // 6. 建立 WebSocket 连接并开始轮询
       this.startWebSocketAndPolling()
 
       this.isInitialized = true
-    }
-    catch (error) {
+    } catch (error) {
       console.error('[InitManager] Initialization failed:', error)
       // 即使失败也解除加载状态，显示错误页面；后台继续重试，恢复后自动加载
-      this.appStore.loading = false
-      this.appStore.connectionError = true
+      useAppStore.setState({ loading: false })
+      useAppStore.setState({ connectionError: true })
       this.scheduleInitRetry()
       throw error
-    }
-    finally {
+    } finally {
       this.bindLifecycleEvents()
     }
   }
@@ -133,21 +133,18 @@ class InitManager {
    * 首次加载失败（手机弱网、切后台时打开等）后定时重试，成功即清掉错误提示
    */
   private scheduleInitRetry(): void {
-    if (this.initRetryTimer || this.isInitialized)
-      return
+    if (this.initRetryTimer || this.isInitialized) return
     this.initRetryTimer = setTimeout(async () => {
       this.initRetryTimer = null
-      if (this.isInitialized)
-        return
+      if (this.isInitialized) return
       if (!isPageVisible()) {
         // 不在前台时不重试，回到前台由 resume() 触发
         return
       }
       try {
         await this.init()
-        this.appStore.connectionError = false
-      }
-      catch {
+        useAppStore.setState({ connectionError: false })
+      } catch {
         // init 内部已安排下一次重试
       }
     }, this.config.initRetryInterval)
@@ -158,8 +155,7 @@ class InitManager {
    * 回到前台后先恢复连接再立即刷新，而不是让旧连接上的请求超时报错。
    */
   private bindLifecycleEvents(): void {
-    if (this.lifecycleBound || typeof window === 'undefined')
-      return
+    if (this.lifecycleBound || typeof window === 'undefined') return
     this.lifecycleBound = true
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
     window.addEventListener('online', this.handleOnline)
@@ -167,8 +163,7 @@ class InitManager {
   }
 
   private unbindLifecycleEvents(): void {
-    if (!this.lifecycleBound)
-      return
+    if (!this.lifecycleBound) return
     this.lifecycleBound = false
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     window.removeEventListener('online', this.handleOnline)
@@ -176,10 +171,8 @@ class InitManager {
   }
 
   private handleVisibilityChange = (): void => {
-    if (isPageVisible())
-      this.resume()
-    else
-      this.stopPolling()
+    if (isPageVisible()) this.resume()
+    else this.stopPolling()
   }
 
   private handleOnline = (): void => {
@@ -188,22 +181,20 @@ class InitManager {
 
   private handlePageShow = (event: PageTransitionEvent): void => {
     // 从 bfcache 恢复的页面，连接早已失效
-    if (event.persisted)
-      this.resume()
+    if (event.persisted) this.resume()
   }
 
   /**
    * 回到前台 / 网络恢复：未初始化的继续初始化，已初始化的重连并立即刷新一次
    */
   private resume(): void {
-    if (!isPageVisible())
-      return
+    if (!isPageVisible()) return
 
     if (!this.isInitialized) {
       this.clearInitRetryTimer()
       this.init()
         .then(() => {
-          this.appStore.connectionError = false
+          useAppStore.setState({ connectionError: false })
         })
         .catch(() => {})
       return
@@ -216,11 +207,11 @@ class InitManager {
       // 回到前台是新的开始，不计入之前的重连次数，避免误回落到 POST
       this.clearReconnectTimer()
       this.nodesStore.updateWsState('reconnecting', 0)
-      this.connectWebSocket()
+      void this.connectWebSocket()
     }
 
     this.startPolling()
-    this.poll()
+    void this.poll()
   }
 
   private clearInitRetryTimer(): void {
@@ -239,18 +230,17 @@ class InitManager {
       if (result !== 'pong') {
         throw new RpcError(-32000, 'Unexpected health check response')
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof RpcError && error.code === 401) {
         console.warn('[InitManager] Private site detected, redirecting to /admin')
         this.appStore.updateLoginState(false)
-        this.appStore.loading = false
+        useAppStore.setState({ loading: false })
         location.href = '/admin'
         return
       }
       console.error('[InitManager] Health check failed:', error)
-      this.appStore.connectionError = true
-      throw new Error('Backend service unavailable')
+      useAppStore.setState({ connectionError: true })
+      throw new Error('Backend service unavailable', { cause: error })
     }
   }
 
@@ -261,9 +251,8 @@ class InitManager {
     try {
       const api = getSharedApi()
       const publicSettings = await api.getPublicSettings()
-      this.appStore.publicSettings = publicSettings
-    }
-    catch (error) {
+      this.appStore.setPublicSettings(publicSettings)
+    } catch (error) {
       console.error('[InitManager] Failed to fetch public settings:', error)
       // 非关键错误，继续初始化
     }
@@ -277,8 +266,7 @@ class InitManager {
       const api = getSharedApi()
       const userInfo = await api.getMe()
       this.appStore.updateLoginState(userInfo.logged_in)
-    }
-    catch (error) {
+    } catch (error) {
       this.appStore.updateLoginState(false)
       console.error('[InitManager] Failed to fetch user info:', error)
       // 非关键错误，继续初始化
@@ -291,15 +279,11 @@ class InitManager {
   private async fetchNodesData(): Promise<void> {
     try {
       // 并行获取节点信息和最新状态
-      const [clientsResult, statusesResult] = await Promise.all([
-        this.rpc.getNodes() as Promise<Record<string, Client>>,
-        this.rpc.getNodesLatestStatus() as Promise<Record<string, NodeStatus>>,
-      ])
+      const [clientsResult, statusesResult] = await Promise.all([this.rpc.getNodes(), this.rpc.getNodesLatestStatus()])
 
       // 初始化节点数据
       this.nodesStore.initNodes(clientsResult, statusesResult)
-    }
-    catch (error) {
+    } catch (error) {
       console.error('[InitManager] Failed to fetch nodes data:', error)
       throw error
     }
@@ -310,15 +294,14 @@ class InitManager {
    */
   private startWebSocketAndPolling(): void {
     // 根据主题配置决定初始连接模式
-    const configuredMode = this.appStore.rpcTransportMode
+    const configuredMode = this.appStore.settings.rpcTransportMode
     this.useWebSocket = configuredMode === 'websocket'
     this.clearReconnectTimer()
 
     if (this.useWebSocket) {
       // 尝试建立 WebSocket 连接
-      this.connectWebSocket()
-    }
-    else {
+      void this.connectWebSocket()
+    } else {
       // HTTP 模式：直接设置 RPC 客户端为 HTTP 模式
       const client = this.rpc.getClient()
       client.setTransport(false)
@@ -351,12 +334,11 @@ class InitManager {
       this.clearReconnectTimer()
 
       // 连接成功，重置错误状态
-      this.appStore.connectionError = false
+      useAppStore.setState({ connectionError: false })
 
       // 监听连接状态变化
       this.monitorWebSocketConnection()
-    }
-    catch (error) {
+    } catch (error) {
       console.error('[InitManager] WebSocket connection failed:', error)
       this.nodesStore.updateWsState('disconnected')
       this.scheduleReconnect()
@@ -433,8 +415,7 @@ class InitManager {
         const client = this.rpc.getClient()
         client.close()
         await this.connectWebSocket()
-      }
-      catch (error) {
+      } catch (error) {
         console.error('[InitManager] Reconnect failed:', error)
         this.scheduleReconnect()
       }
@@ -473,11 +454,10 @@ class InitManager {
       clearInterval(this.pollTimer)
       this.pollTimer = null
     }
-    if (!isPageVisible())
-      return
+    if (!isPageVisible()) return
 
     this.pollTimer = setInterval(() => {
-      this.poll()
+      void this.poll()
     }, this.getPollInterval())
   }
 
@@ -497,9 +477,9 @@ class InitManager {
         // 1. Ping 测试服务器状态
         this.rpc.ping(),
         // 2. 获取节点信息
-        this.rpc.getNodes() as Promise<Record<string, Client>>,
+        this.rpc.getNodes(),
         // 3. 获取节点最新状态
-        this.rpc.getNodesLatestStatus() as Promise<Record<string, NodeStatus>>,
+        this.rpc.getNodesLatestStatus(),
       ])
 
       // 更新节点信息（会智能合并，不会重建数组）
@@ -510,30 +490,24 @@ class InitManager {
 
       // 连接恢复正常，重置错误状态
       this.pollFailures = 0
-      this.appStore.connectionError = false
-    }
-    catch (error) {
+      useAppStore.setState({ connectionError: false })
+    } catch (error) {
       if (error instanceof RpcError) {
         console.error('[InitManager] Poll RPC error:', error.message)
-      }
-      else {
+      } else {
         console.error('[InitManager] Poll error:', error)
       }
 
       // 后台或离线时的失败不算数，回到前台会重新拉取
-      if (!isPageVisible() || (typeof navigator !== 'undefined' && navigator.onLine === false))
-        return
+      if (!isPageVisible() || (typeof navigator !== 'undefined' && !navigator.onLine)) return
 
       // 偶发失败（移动网络抖动、切换基站）不打扰用户，连续失败才提示
       this.pollFailures += 1
-      if (this.pollFailures >= this.config.pollFailureThreshold)
-        this.appStore.connectionError = true
+      if (this.pollFailures >= this.config.pollFailureThreshold) useAppStore.setState({ connectionError: true })
 
       // WebSocket 已断开但还没触发重连时补一次
-      if (this.useWebSocket === true && !this.rpc.getClient().isWebSocketOpen())
-        this.scheduleReconnect()
-    }
-    finally {
+      if (this.useWebSocket === true && !this.rpc.getClient().isWebSocketOpen()) this.scheduleReconnect()
+    } finally {
       this.isPolling = false
     }
   }
