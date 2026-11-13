@@ -1,28 +1,18 @@
-import type { KeyboardEvent } from 'react'
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/react'
-import { Fragment, memo } from 'react'
+import { memo } from 'react'
+import NodeResourceMetrics from '@/components/nodes/NodeResourceMetrics'
+import NodeNetworkMetrics from '@/components/nodes/NodeNetworkMetrics'
+import NodePingSummary from '@/components/nodes/NodePingSummary'
 import { Badge } from '@/components/ui/badge'
 import { CardX } from '@/components/ui/card-x'
 import { DataTooltip } from '@/components/ui/data-tooltip'
-import { ProgressThin } from '@/components/ui/progress-thin'
 import { useBackgroundSurface } from '@/hooks/useBackgroundSurface'
 import { useNodeFormatters } from '@/hooks/useNodeFormatters'
-import { useNodePingDisplay } from '@/hooks/useNodePingDisplay'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
-import { formatDateTime, getStatus } from '@/utils/helper'
-import {
-  getCustomTags,
-  getDiskPercentage,
-  getMemPercentage,
-  getPriceTags,
-  getRemainingTimeTagClass,
-  getTrafficUsed,
-  getTrafficUsedPercentage,
-  hasRegion,
-  showTrafficProgress,
-} from '@/utils/nodeHelpers'
+import { formatDateTime } from '@/utils/helper'
+import { getCustomTags, getPriceTags, getRemainingTimeTagClass, hasRegion } from '@/utils/nodeHelpers'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
 
@@ -36,86 +26,14 @@ interface NodeCardProps {
 function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
   const lang = useAppStore(state => state.lang)
   const { pickSurfaceClass } = useBackgroundSurface()
-  const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
-  const { pingTable } = useNodePingDisplay(node.uuid)
+  const { formatUptime } = useNodeFormatters()
 
   const offlineTime = formatDateTime(node.time)
   const expiredDate = formatDateTime(node.expired_at, 'YYYY-MM-DD')
 
-  const memPercentage = getMemPercentage(node)
-  const diskPercentage = getDiskPercentage(node)
-  const trafficUsedPercentage = getTrafficUsedPercentage(node)
-  const trafficUsed = getTrafficUsed(node)
-
-  // 延迟 / 丢包趋势：固定高度，单栈一行占满、双栈上下两行，保证各卡片对齐
-  const pingRows = pingTable?.rows ?? []
-  const trendPanels = [
-    {
-      metric: 'latency',
-      label: '延迟',
-      rows: pingRows.map(row => ({ key: `${row.stack}`, bars: row.latencyBars })),
-    },
-    {
-      metric: 'loss',
-      label: '丢包',
-      rows: pingRows.map(row => ({ key: `${row.stack}`, bars: row.lossBars })),
-    },
-  ]
-
-  const metrics = [
-    {
-      key: 'cpu',
-      label: 'CPU',
-      value: node.cpu ?? 0,
-      status: getStatus(node.cpu ?? 0),
-      detail: `${(node.load ?? 0).toFixed(2)}  ${(node.load5 ?? 0).toFixed(2)}  ${(node.load15 ?? 0).toFixed(2)}`,
-      total: '',
-      tip: `1 分钟负载 ${(node.load ?? 0).toFixed(2)}\n5 分钟负载 ${(node.load5 ?? 0).toFixed(2)}\n15 分钟负载 ${(node.load15 ?? 0).toFixed(2)}`,
-    },
-    {
-      key: 'mem',
-      label: '内存',
-      value: memPercentage,
-      status: getStatus(memPercentage),
-      detail: formatBytes(node.ram ?? 0),
-      total: `共 ${formatBytes(node.mem_total ?? 0)}`,
-      tip: node.swap ? `Swap ${formatBytes(node.swap)}` : '',
-    },
-    {
-      key: 'disk',
-      label: '硬盘',
-      value: diskPercentage,
-      status: getStatus(diskPercentage),
-      detail: formatBytes(node.disk ?? 0),
-      total: `共 ${formatBytes(node.disk_total ?? 0)}`,
-      tip: '',
-    },
-    {
-      key: 'traffic',
-      label: '流量',
-      value: trafficUsedPercentage,
-      status: 'info' as const,
-      detail: formatBytes(trafficUsed),
-      total: showTrafficProgress(node) ? `限 ${formatBytes(node.traffic_limit)}` : '不限',
-      tip: `上行 ${formatBytes(node.net_total_up ?? 0)}\n下行 ${formatBytes(node.net_total_down ?? 0)}`,
-    },
-  ]
-
   const priceTags = getPriceTags(node, lang)
   const remainingTimeTagClass = getRemainingTimeTagClass(node)
   const customTags = getCustomTags(node)
-
-  function openPingDialog() {
-    onPingClick?.(node)
-  }
-
-  function handlePingKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.stopPropagation()
-      event.preventDefault()
-      openPingDialog()
-    }
-  }
 
   return (
     <CardX
@@ -137,7 +55,13 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
                 : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15',
             )}
           />
-          <div className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight">{node.name}</div>
+          <button
+            type="button"
+            className="min-w-0 flex-1 truncate rounded-sm text-left text-[15px] font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title={node.name}
+          >
+            {node.name}
+          </button>
         </div>
       }
       headerExtra={
@@ -162,152 +86,31 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
         )}
 
         <div
-          className={cn('flex flex-1 flex-col gap-3', !node.online && 'pointer-events-none opacity-35 blur-[1.5px]')}
+          className={cn('flex flex-1 flex-col gap-2.5', !node.online && 'pointer-events-none opacity-35 blur-[1.5px]')}
         >
-          {/* 资源 */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-            {metrics.map(metric => (
-              <DataTooltip
-                key={metric.key}
-                placement="top"
-                className="block"
-                content={metric.tip}
-                contentClass={cn(!metric.tip && '!hidden', 'whitespace-pre-wrap w-max')}
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-muted-foreground">{metric.label}</span>
-                    <span className="num text-[13px] font-medium">
-                      {metric.value.toFixed(1)}
-                      <span className="text-[11px] text-muted-foreground">%</span>
-                    </span>
-                  </div>
-                  <ProgressThin percentage={metric.value} status={metric.status} height={3} />
-                  <div className="num flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
-                    <span className="truncate text-foreground/75">{metric.detail}</span>
-                    {metric.total && <span className="shrink-0">{metric.total}</span>}
-                  </div>
-                </div>
-              </DataTooltip>
-            ))}
-          </div>
-
-          {/* 运行信息 */}
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-t pt-2.5 text-[11px]">
-            <dt className="text-muted-foreground">速率</dt>
-            <dd className="num flex justify-end gap-2.5">
-              <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-300">
-                <Icon icon="tabler:arrow-up" width="11" height="11" />
-                {formatBytesPerSecond(node.net_out ?? 0)}
+          {/* 在线时长与费用 */}
+          <div className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-1">
+              <Icon icon="lucide:clock-3" width="12" height="12" />
+              <span>
+                在线{' '}
+                <span className="num text-foreground/80">{node.uptime > 0 ? formatUptime(node.uptime) : '--'}</span>
               </span>
-              <span className="inline-flex items-center gap-0.5 text-sky-700 dark:text-sky-300">
-                <Icon icon="tabler:arrow-down" width="11" height="11" />
-                {formatBytesPerSecond(node.net_in ?? 0)}
-              </span>
-            </dd>
-            <dt className="text-muted-foreground">在线</dt>
-            <dd className="num text-right">{node.uptime > 0 ? formatUptime(node.uptime) : '--'}</dd>
-            <dt className="text-muted-foreground">费用</dt>
-            <dd className="flex justify-end">
-              <DataTooltip placement="left" content={expiredDate} contentClass="whitespace-nowrap">
-                <span className="num flex gap-2">
-                  {priceTags.map(tag => (
-                    <span key={tag.text} className={tag.highlight ? remainingTimeTagClass : ''}>
-                      {tag.text}
-                    </span>
-                  ))}
-                </span>
-              </DataTooltip>
-            </dd>
-          </dl>
-
-          {/* 网络：趋势 + 表格，单栈 / 双栈同一结构 */}
-          <div
-            role="button"
-            tabIndex={0}
-            className="-mx-1.5 flex flex-col gap-2 rounded-md px-1.5 py-1 text-[11px] transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label={`${node.name} 延迟详情`}
-            onClick={event => {
-              event.stopPropagation()
-              openPingDialog()
-            }}
-            onKeyDown={handlePingKeyDown}
-          >
-            <div className="grid grid-cols-2 gap-x-4">
-              {trendPanels.map(panel => (
-                <div key={panel.metric} className="flex flex-col gap-1">
-                  <span className="text-[10px] leading-none text-muted-foreground">{panel.label}</span>
-                  <div className="flex h-4 flex-col gap-[2px]">
-                    {panel.rows.length ? (
-                      panel.rows.map(row => (
-                        <div
-                          key={row.key}
-                          className="grid min-h-0 flex-1 gap-[2px]"
-                          style={{ gridTemplateColumns: `repeat(${row.bars.length || 1}, minmax(0, 1fr))` }}
-                        >
-                          {row.bars.map(bar => (
-                            <DataTooltip
-                              key={bar.key}
-                              placement="top"
-                              content={bar.tooltip}
-                              className="h-full w-full"
-                              contentClass="whitespace-pre-wrap w-max"
-                            >
-                              <span className={cn('block h-full w-full rounded-[2px]', bar.className)} />
-                            </DataTooltip>
-                          ))}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="flex-1 rounded-[2px] bg-muted" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {pingTable ? (
-              <div
-                className="num grid items-baseline gap-x-2 gap-y-0.5"
-                style={{
-                  gridTemplateColumns: `1.1rem repeat(${pingTable.headers.length}, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 1fr)`,
-                }}
-              >
-                <span />
-                {pingTable.headers.map(header => (
-                  <span key={header} className="truncate text-right font-sans text-[11px] text-muted-foreground">
-                    {header}
+            </span>
+            <DataTooltip placement="top" content={expiredDate} contentClass="whitespace-nowrap">
+              <span className="num inline-flex flex-wrap gap-x-2 gap-y-1 rounded-md bg-muted/60 px-1.5 py-1">
+                {priceTags.map(tag => (
+                  <span key={tag.text} className={tag.highlight ? remainingTimeTagClass : ''}>
+                    {tag.text}
                   </span>
                 ))}
-                <span className="text-right font-sans text-[11px] text-muted-foreground">延迟</span>
-                <span className="text-right font-sans text-[11px] text-muted-foreground">丢包</span>
-                {pingTable.rows.map(row => (
-                  <Fragment key={`${row.stack}`}>
-                    <span className="text-[10px] text-muted-foreground/80">{row.stack ?? ''}</span>
-                    {row.cells.map(cell => (
-                      <DataTooltip
-                        key={cell.key}
-                        placement="top"
-                        content={cell.tooltip}
-                        contentClass="whitespace-pre-wrap w-max"
-                      >
-                        <span className={cn('block text-right text-xs', cell.toneClass)}>{cell.latency}</span>
-                      </DataTooltip>
-                    ))}
-                    <span className={cn('text-right text-xs font-medium', row.latencyTone)}>
-                      {row.latency}
-                      {row.latency !== '--' && (
-                        <span className="text-[10px] font-normal text-muted-foreground">ms</span>
-                      )}
-                    </span>
-                    <span className={cn('text-right text-xs', row.lossTone)}>{row.loss}</span>
-                  </Fragment>
-                ))}
-              </div>
-            ) : (
-              <div className="text-[11px] text-muted-foreground/70">未配置延迟监测</div>
-            )}
+              </span>
+            </DataTooltip>
           </div>
+
+          <NodeResourceMetrics node={node} />
+          <NodeNetworkMetrics node={node} />
+          <NodePingSummary node={node} onClick={onPingClick} />
 
           {/* 标签：没有也占位，卡片底部对齐 */}
           <div className="mt-auto flex min-h-[22px] flex-wrap items-center gap-1">

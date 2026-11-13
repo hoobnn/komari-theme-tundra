@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
 
@@ -16,22 +16,24 @@ interface VisitorClientData {
 }
 
 interface VisitorInfoRow {
+  label: string
   value: string
   icon: string
   expandOnly?: boolean
+  fullWidth?: boolean
 }
 
 const ANDROID_REGEX = /android/i
 const IPHONE_OR_IPOD_REGEX = /iphone|ipod/i
 const IPAD_REGEX = /ipad/i
 const TABLET_REGEX = /tablet/i
-const EDGE_VERSION_REGEX = /Edg\/(\d+)/i
+const EDGE_VERSION_REGEX = /(?:Edg|EdgA|EdgiOS)\/(\d+)/i
 const OPERA_VERSION_REGEX = /OPR\/(\d+)/i
-const CHROME_VERSION_REGEX = /Chrome\/(\d+)/i
+const CHROME_VERSION_REGEX = /(?:Chrome|CriOS)\/(\d+)/i
 const EDGE_OR_OPERA_REGEX = /Edg|OPR/i
-const FIREFOX_VERSION_REGEX = /Firefox\/(\d+)/i
+const FIREFOX_VERSION_REGEX = /(?:Firefox|FxiOS)\/(\d+)/i
 const SAFARI_REGEX = /Safari/i
-const CHROME_REGEX = /Chrome/i
+const CHROME_REGEX = /Chrome|CriOS/i
 const IPV4_SEGMENT_REGEX = /^\d+$/
 const IPV6_SEGMENT_REGEX = /^[\dA-F]{1,4}$/i
 const IPV6_DOUBLE_COLON = '::'
@@ -311,41 +313,51 @@ export default function VisitorInfoCard() {
   const [visitTime] = useState(() => formatVisitTime(new Date()))
   const [flagVisible, setFlagVisible] = useState(true)
   const [expand, setExpand] = useState(false)
+  const detailsId = useId()
 
   const subtitle = loading ? '检测中' : location || '网络访客'
   const flagSrc = countryCode ? `/assets/flags/${countryCode}.svg` : ''
-  const displayIp = expand ? ip : maskIpForCollapsedState(ip)
+  const displayIp = maskIpForCollapsedState(ip)
 
   const visitorRows: VisitorInfoRow[] = [
     {
+      label: '位置',
+      fullWidth: true,
       value: subtitle,
       icon: 'tabler:world-pin',
     },
     {
+      label: '设备',
       value: client.device,
       icon: 'tabler:device-desktop',
       expandOnly: true,
     },
     {
+      label: 'IP 地址',
+      fullWidth: true,
       value: displayIp,
       icon: 'tabler:brand-socket-io',
     },
     {
+      label: '浏览器',
       value: client.browser,
       icon: 'tabler:browser',
     },
     {
+      label: '运营商',
       value: isp,
       icon: 'tabler:building-skyscraper',
       expandOnly: true,
     },
     {
+      label: '访问时间',
       value: visitTime,
       icon: 'tabler:clock-hour-4',
       expandOnly: true,
     },
   ]
-  const visibleRows = visitorRows.filter(item => expand || !item.expandOnly)
+  const summaryRows = visitorRows.filter(item => !item.expandOnly)
+  const detailRows = [...visitorRows.filter(item => item.fullWidth), ...visitorRows.filter(item => !item.fullWidth)]
 
   useEffect(() => {
     let cancelled = false
@@ -372,63 +384,74 @@ export default function VisitorInfoCard() {
   }, [])
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-2.5 z-30 flex justify-center">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.625rem,env(safe-area-inset-bottom))] z-30 flex justify-center">
       <div
-        className={cn(
-          'pointer-events-auto cursor-default p-1.5 px-3 shadow-[-1px_-1px_0_background,0_0_16px_rgba(0,0,0,0.05)] transition-[border-radius,transform,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] bg-background/30 backdrop-blur-sm',
-          expand
-            ? 'rounded-lg -translate-y-1 bg-background/38 shadow-[-1px_-1px_0_background,0_10px_28px_rgba(0,0,0,0.08)]'
-            : 'rounded-xl',
-        )}
-        onClick={() => setExpand(v => !v)}
+        className="visitor-card pointer-events-auto inline-grid max-w-[calc(100%-2rem)] grid-cols-[minmax(0,1fr)] overflow-hidden rounded-xl border bg-card shadow-sm"
+        data-expanded={expand}
       >
-        <div
-          className={cn(
-            'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-            expand
-              ? 'grid grid-cols-2 items-start justify-start gap-x-3 gap-y-2'
-              : 'flex flex-nowrap items-center justify-center gap-x-3 gap-y-1',
-          )}
+        <button
+          type="button"
+          aria-label="访客网络信息"
+          aria-expanded={expand}
+          aria-controls={detailsId}
+          className="flex min-w-0 items-center justify-center gap-3 rounded-[inherit] px-3 py-1.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-foreground/50"
+          onClick={() => setExpand(value => !value)}
+          onKeyDown={event => {
+            if (event.key === 'Escape') setExpand(false)
+          }}
         >
-          {visibleRows.map((item, index) => (
-            <div
-              key={item.icon}
-              // 仅展开时才出现的行播放入场动画（初次渲染的行不动）
-              className={cn(
-                'flex min-w-0 items-center gap-1 rounded-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                item.expandOnly && 'visitor-pill-in',
-              )}
-              style={{ '--visitor-pill-delay': `${index * 28}ms` } as React.CSSProperties}
-            >
+          {summaryRows.map((item, index) => (
+            <span key={item.icon} className="flex min-w-0 items-center gap-1">
               {item.icon === 'tabler:world-pin' && flagSrc && flagVisible ? (
                 <img
                   src={flagSrc}
                   alt={countryCode}
-                  className="h-4 w-4 object-cover"
+                  className="h-4 w-4 shrink-0 object-cover"
                   onError={() => setFlagVisible(false)}
                 />
               ) : (
-                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                <span className="flex size-4 shrink-0 items-center justify-center rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
                   <Icon icon={item.icon} width={14} height={14} />
-                </div>
+                </span>
               )}
-              <div
-                className={cn(
-                  'min-w-0 transition-[opacity,transform] duration-220 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                  expand || !index ? 'block opacity-100 translate-y-0' : 'hidden md:block md:opacity-100',
-                  !expand && index ? 'md:translate-y-0' : '',
-                )}
-              >
+              <span className={cn('min-w-0', index > 0 && 'hidden md:block')}>
                 {loading ? (
-                  <div className="h-2 w-15 animate-pulse rounded-full bg-muted/70" />
+                  <span className="block h-2 w-15 animate-pulse rounded-full bg-muted/70" />
                 ) : (
-                  <p className="max-w-30 truncate text-xs font-medium text-muted-foreground sm:max-w-50">
+                  <span className="block max-w-30 truncate text-xs font-medium text-muted-foreground sm:max-w-50">
                     {item.value}
-                  </p>
+                  </span>
                 )}
-              </div>
-            </div>
+              </span>
+            </span>
           ))}
+          <Icon
+            icon="tabler:chevron-up"
+            className={cn(
+              'size-3 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
+              expand && 'rotate-180',
+            )}
+          />
+        </button>
+        <div
+          id={detailsId}
+          className="visitor-card-details"
+          data-expanded={expand}
+          aria-hidden={!expand}
+          inert={!expand}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t px-3 py-3 text-[11px]">
+              {detailRows.map(item => (
+                <div key={item.icon} className={cn('min-w-0', item.fullWidth && 'col-span-2')}>
+                  <dt className="mb-0.5 text-[10px] text-muted-foreground">{item.label}</dt>
+                  <dd className={cn('break-words text-foreground/85', item.label === 'IP 地址' && 'num break-all')}>
+                    {item.label === 'IP 地址' ? ip : item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </div>
       </div>
     </div>

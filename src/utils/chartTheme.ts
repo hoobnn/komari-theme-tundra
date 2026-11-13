@@ -120,6 +120,7 @@ export function buildBaseTooltip(colors: ChartThemeColors, blur: boolean) {
     borderColor: 'transparent',
     borderWidth: 0,
     borderRadius: 8,
+    className: 'tundra-chart-tooltip',
     textStyle: {
       color: colors.text,
       fontSize: 12,

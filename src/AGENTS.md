@@ -11,6 +11,15 @@ This document applies to `/src` only. Keep changes aligned with the current Reac
   - `/instance/:id` → `@/views/InstanceDetail`
 - No route guards. Do not add one unless there is a real need.
 
+## UI responsibility boundaries
+
+- `views/HomeView.tsx` composes page regions; filtering and view policy are in `hooks/useHomeNodes.ts`, scroll restoration in `hooks/useHomeScrollRestoration.ts`.
+- `components/home/` owns the node toolbar, results, notices and ping dialog. `components/nodes/` owns resource, network and ping regions inside `NodeCard`.
+- `components/overview/` owns summary presentation and finance popover; `hooks/useNodeOverview.ts` computes summary values.
+- Load fetching belongs to `hooks/useLoadRecords.ts`, pure ECharts configuration to `utils/charts/loadChartOptions.ts`; ping chart fetching belongs to `hooks/usePingChartData.ts`.
+- Use `ScrollableTabsList` for group/time-range overflow. Do not duplicate selection-scroll logic or wrap search/view buttons in a tablist.
+- See `../docs/architecture.md` for the full adjustment map and preserved contracts.
+
 ## Authoring conventions
 
 - Function components, one default-exported component per file in `src/components/` and `src/views/`; `src/components/ui/` uses named exports through each folder's `index.ts`.

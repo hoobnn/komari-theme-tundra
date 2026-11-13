@@ -29,14 +29,17 @@ function BackTop({ visibilityHeight = 1, onScrolledChange }: BackTopProps) {
   }, [visibilityHeight])
 
   function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({
+      top: 0,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    })
   }
 
   return (
     <button
       type="button"
       className={cn(
-        'fixed bottom-8 right-8 z-[9999] size-10 rounded-full bg-background border shadow-sm flex items-center justify-center text-foreground hover:bg-accent transition-all duration-200',
+        'fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] right-4 z-30 sm:bottom-8 sm:right-8 size-10 rounded-full bg-background border shadow-sm flex items-center justify-center text-foreground hover:bg-accent transition-all duration-200',
         show ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-2',
       )}
       aria-label="返回顶部"

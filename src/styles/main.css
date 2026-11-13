@@ -45,6 +45,7 @@
   --chart-4: oklch(0.6 0.2 293);
   --chart-5: oklch(0.64 0.21 25);
   --radius: 0.75rem;
+  --surface-corner-shape: squircle;
   --font-sans: 'Geist Variable', system-ui, -apple-system, 'PingFang SC', 'Segoe UI', Roboto, sans-serif;
   --font-num: 'Geist Variable', var(--font-sans);
 }
@@ -181,13 +182,12 @@
 @keyframes metric-switch-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
-    filter: blur(3px);
+    transform: translateY(3px);
   }
 }
 
 .metric-switch-in {
-  animation: metric-switch-in 180ms cubic-bezier(0.22, 1, 0.36, 1) var(--metric-switch-delay, 0ms) both;
+  animation: metric-switch-in 160ms cubic-bezier(0.22, 1, 0.36, 1) var(--metric-switch-delay, 0ms) both;
 }
 
 /* ---- NodeEarthGlobe ---- */
@@ -198,6 +198,119 @@
 @media (prefers-reduced-motion: reduce) {
   .visitor-pill-in,
   .metric-switch-in {
+    animation: none;
+  }
+}
+
+/* 矩形表面统一采用零曲率起始的连续圆角；完整圆形保留 round。
+ * 原生 corner-shape 让边框、阴影和裁剪共用同一条曲线。
+ * 不支持的浏览器继续使用现有 border-radius。
+ */
+@supports (corner-shape: squircle) {
+  :where([class~='rounded'], [class*='rounded-']):not([class~='rounded-full']),
+  :where([data-sonner-toast], [data-slot='progress-thin'], [data-slot='progress-thin-fill'], .tundra-chart-tooltip) {
+    corner-shape: var(--surface-corner-shape);
+  }
+}
+
+/* 同一节点跨分组保留 DOM，仅新出现的节点播放短距离入场。 */
+@keyframes node-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.node-enter {
+  animation: node-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .node-enter {
+    animation: none;
+  }
+}
+
+/* 访客摘要保持在同一行，详情单独插值高度；0fr/1fr 兼容 Safari。 */
+.visitor-card-details {
+  contain: inline-size;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 160ms ease-out;
+}
+.visitor-card-details[data-expanded='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* Radix Presence 按动画结束卸载，打开和关闭都保留完整过渡。 */
+@keyframes dialog-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes dialog-panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+  }
+}
+@keyframes surface-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes surface-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.dialog-panel[data-state='open'] {
+  animation: dialog-panel-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dialog-panel[data-state='closed'] {
+  animation: dialog-panel-out 160ms ease-in;
+}
+.dialog-overlay[data-state='open'] {
+  animation: surface-fade-in 180ms ease-out;
+}
+.dialog-overlay[data-state='closed'] {
+  animation: surface-fade-out 160ms ease-in;
+}
+.page-enter {
+  animation: surface-fade-in 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .visitor-card-details {
+    transition: none;
+  }
+  .dialog-panel[data-state='open'] {
+    animation: surface-fade-in 100ms ease-out;
+  }
+  .dialog-panel[data-state='closed'] {
+    animation: surface-fade-out 100ms ease-in;
+  }
+  .page-enter {
     animation: none;
   }
 }

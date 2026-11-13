@@ -1,13 +1,12 @@
-import type { PingLossRecord } from '@/utils/pingHistory'
-import type { PingRecord, PingTaskInfo } from '@/utils/rpc'
 import { Icon } from '@iconify/react'
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { EChart } from '@/components/EChart'
 import { Button } from '@/components/ui/button'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { Spinner } from '@/components/ui/spinner'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, ScrollableTabsList, TabsTrigger } from '@/components/ui/tabs'
+import { usePingChartData } from '@/hooks/usePingChartData'
 import { useBackgroundSurface } from '@/hooks/useBackgroundSurface'
 import { cn } from '@/lib/utils'
 import { useAppStore, useIsDark } from '@/stores/app'
@@ -21,7 +20,7 @@ import {
   SERIES_PALETTE_V6_LIGHT,
 } from '@/utils/chartTheme'
 import { buildChartViews, PING_CHART_VIEWS } from '@/utils/chartViews'
-import { fetchPingHistory, HISTORY_MAX_POINTS } from '@/utils/pingHistory'
+import { HISTORY_MAX_POINTS } from '@/utils/pingHistory'
 import { groupPingTasksByStack, parsePingTaskName, pingStackLabel } from '@/utils/pingStack'
 import { cutPeakValues, interpolateNullsLinear } from '@/utils/recordHelper'
 import { CARD_SURFACE_CLASS, segmentClass, TAB_TRIGGER_CLASS, TOGGLE_BASE_CLASS, toggleClass } from '@/utils/uiClasses'
@@ -37,19 +36,6 @@ const chartMargin = {
   bottom: 52,
   left: 56,
 }
-
-interface FetchResult {
-  uuid: string
-  key: string
-  records: PingRecord[]
-  lossRecords: PingLossRecord[]
-  tasks: PingTaskInfo[]
-  error: string | null
-}
-
-const EMPTY_RECORDS: PingRecord[] = []
-const EMPTY_LOSS: PingLossRecord[] = []
-const EMPTY_TASKS: PingTaskInfo[] = []
 
 // 长范围 fill_empty 可能产生大量空桶，限制标记数量避免 markLine 过密拖垮渲染
 const MAX_LOSS_MARKERS_PER_TASK = 200
@@ -88,19 +74,10 @@ function PingChart({ uuid, className }: PingChartProps) {
   const selectedView = pickedView || availableViews[0]?.label || ''
   const selectedHours = availableViews.find(v => v.label === selectedView)?.hours || 1
 
-  // 数据状态：结果带上请求键，loading / 过期数据均由键比较派生
-  const [result, setResult] = useState<FetchResult | null>(null)
-  const fetchKey = `${uuid}|${selectedHours}`
-  const loading = Boolean(uuid) && result?.key !== fetchKey
-  // 切换节点后旧节点的数据视为空；仅切换范围时保留旧数据到新数据到达
-  const current = result?.uuid === uuid ? result : null
-  const remoteData = current?.records ?? EMPTY_RECORDS
-  const lossRecordsData = current?.lossRecords ?? EMPTY_LOSS
-  const tasks = current?.tasks ?? EMPTY_TASKS
-  const error = result?.key === fetchKey ? result.error : null
-
-  // 任务选择
-  const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([])
+  const { remoteData, lossRecordsData, tasks, loading, error, selectedTaskIds, setSelectedTaskIds } = usePingChartData(
+    uuid,
+    selectedHours,
+  )
   const [cutPeak, setCutPeak] = useState(false)
   const [showDelay, setShowDelay] = useState(true)
   const [showLoss, setShowLoss] = useState(true)
@@ -108,47 +85,6 @@ function PingChart({ uuid, className }: PingChartProps) {
   const taskIntervals = tasks.map(t => t.interval).filter((v): v is number => typeof v === 'number' && v > 0)
   const fallbackIntervalSec = taskIntervals.length ? Math.min(...taskIntervals) : 60
   const mergeToleranceMs = Math.min(6000, Math.max(800, Math.floor(fallbackIntervalSec * 1000 * 0.25)))
-
-  // ==================== 数据获取 ====================
-
-  // 切换视图或节点时重新拉取；cancelled 取代原先的 requestId 防乱序
-  useEffect(() => {
-    if (!uuid) return
-
-    let cancelled = false
-    const key = `${uuid}|${selectedHours}`
-
-    fetchPingHistory(uuid, selectedHours)
-      .then(fetched => {
-        if (cancelled) return
-        setResult({
-          uuid,
-          key,
-          records: fetched.records,
-          lossRecords: fetched.lossRecords,
-          tasks: fetched.tasks,
-          error: null,
-        })
-        // 每次拉取完成后默认全选
-        setSelectedTaskIds(fetched.tasks.map(t => t.id))
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return
-        setResult({
-          uuid,
-          key,
-          records: EMPTY_RECORDS,
-          lossRecords: EMPTY_LOSS,
-          tasks: EMPTY_TASKS,
-          error: err instanceof Error ? err.message : '获取数据失败',
-        })
-        setSelectedTaskIds([])
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [uuid, selectedHours])
 
   // ==================== 数据处理 ====================
 
@@ -524,20 +460,21 @@ function PingChart({ uuid, className }: PingChartProps) {
     <div className={cn('flex flex-col gap-4', className)}>
       {/* 时间选择器；窄屏时筛选按钮换到第二行，避免把范围标签挤掉 */}
       <Tabs value={selectedView} onValueChange={setPickedView} className="w-full flex-row flex-wrap items-center gap-2">
-        <div className="min-w-0 overflow-x-auto overflow-y-hidden pointer-events-auto max-md:basis-full md:flex-1">
-          <TabsList
-            className={pickSurfaceClass(
-              'w-max h-8 bg-background/60 rounded-md',
-              'w-max h-8 bg-background/50 backdrop-blur-xl rounded-md',
-            )}
-          >
-            {availableViews.map(view => (
-              <TabsTrigger key={view.label} value={view.label} className={TAB_TRIGGER_CLASS}>
-                {view.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        <ScrollableTabsList
+          selectedValue={selectedView}
+          aria-label="延迟时间范围"
+          scrollClassName="max-md:basis-full md:flex-1"
+          className={pickSurfaceClass(
+            'w-max h-8 bg-background/60 rounded-md',
+            'w-max h-8 bg-background/50 backdrop-blur-xl rounded-md',
+          )}
+        >
+          {availableViews.map(view => (
+            <TabsTrigger key={view.label} value={view.label} className={TAB_TRIGGER_CLASS}>
+              {view.label}
+            </TabsTrigger>
+          ))}
+        </ScrollableTabsList>
         {tasks.length > 0 && (
           <div className="flex items-center gap-2">
             {hasDualStack && (

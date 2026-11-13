@@ -1,17 +1,22 @@
 import type { Arc, COBEOptions, Globe, Marker } from 'cobe'
+import type { GlobeMotionState } from '@/utils/globeMotion'
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/react'
 import createGlobe from 'cobe'
 import { useEffect, useRef, useState } from 'react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { advanceGlobeMotion, hasGlobeMotion, beginGlobeDrag, moveGlobeDrag } from '@/utils/globeMotion'
 import { cn } from '@/lib/utils'
 import { useAppStore, useIsDark } from '@/stores/app'
 import { useNodesStore } from '@/stores/nodes'
 import { getCoordByCode, getCountryCodeFromRegion } from '@/utils/geoHelper'
+import { buildGlobeArcs } from '@/utils/globeGeometry'
 import { formatBytesPerSecondSplit } from '@/utils/helper'
 
 interface NodeEarthGlobeProps {
   nodes?: NodeData[]
   className?: string
+  suspendMotion?: boolean
 }
 
 interface RegionCluster {
@@ -38,15 +43,11 @@ interface GlobeColors {
 }
 
 const INITIAL_THETA = 0.22
-const MIN_THETA = -0.65
-const MAX_THETA = 0.65
 const CHINA_COORD = getCoordByCode('CN') ?? [35.8617, 104.1954]
 const DEFAULT_PHI = normalizePhi(-Math.PI / 2 - (CHINA_COORD[1] * Math.PI) / 180)
 const GLOBE_RADIUS = 0.8
 const GLOBE_SCALE = 1
 const MARKER_ELEVATION = 0
-// phi 收敛/静止时整帧跳过 globe.update，WebGL + overlay 位置更新双双归零
-const ORIENTATION_IDLE_EPSILON = 1e-5
 
 /** 渲染循环用到的最新渲染数据（每次渲染后同步） */
 interface GlobeLatest {
@@ -55,22 +56,22 @@ interface GlobeLatest {
   arcs: Arc[]
   colors: GlobeColors
   autoRotate: boolean
+  reducedMotion: boolean
   shouldRender: boolean
   width: number
   height: number
 }
 
 /** 命令式部分（cobe 实例、旋转状态、rAF）集中在一个稳定对象里，渲染期间不读写 */
-interface GlobeCtx {
+interface GlobeCtx extends GlobeMotionState {
   globe: Globe | null
   rafId: number | null
-  phi: number
-  targetPhi: number
-  theta: number
-  targetTheta: number
   isPointerDown: boolean
   lastPointerX: number
   lastPointerY: number
+  lastPointerTime: number
+  renderedWidth: number
+  renderedHeight: number
   staticRedrawUntil: number
   overlayEls: Map<string, HTMLDivElement>
   container: HTMLDivElement | null
@@ -86,10 +87,6 @@ function normalizePhi(value: number): number {
   return next
 }
 
-function clampTheta(value: number): number {
-  return Math.min(Math.max(value, MIN_THETA), MAX_THETA)
-}
-
 function getCtx(ref: { current: GlobeCtx | null }): GlobeCtx {
   ref.current ??= createCtx()
   return ref.current
@@ -103,9 +100,16 @@ function createCtx(): GlobeCtx {
     targetPhi: DEFAULT_PHI,
     theta: INITIAL_THETA,
     targetTheta: INITIAL_THETA,
+    velocityPhi: 0,
+    velocityTheta: 0,
+    autoVelocity: 0,
+    lastFrameTime: null,
     isPointerDown: false,
     lastPointerX: 0,
     lastPointerY: 0,
+    lastPointerTime: 0,
+    renderedWidth: 0,
+    renderedHeight: 0,
     staticRedrawUntil: 0,
     overlayEls: new Map(),
     container: null,
@@ -116,6 +120,7 @@ function createCtx(): GlobeCtx {
       arcs: [],
       colors: getThemeColors(false),
       autoRotate: true,
+      reducedMotion: false,
       shouldRender: false,
       width: 0,
       height: 0,
@@ -132,6 +137,9 @@ function resetStoppedView(ctx: GlobeCtx) {
   ctx.targetPhi = DEFAULT_PHI
   ctx.theta = INITIAL_THETA
   ctx.targetTheta = INITIAL_THETA
+  ctx.velocityPhi = 0
+  ctx.velocityTheta = 0
+  ctx.autoVelocity = 0
 }
 
 function triggerStaticRedrawWindow(ctx: GlobeCtx, duration = 1500) {
@@ -192,7 +200,6 @@ function syncClusterOverlayPosition(ctx: GlobeCtx, cluster: RegionCluster, el: H
   const { width, height } = getRenderSize(ctx)
   if (width <= 0 || height <= 0) {
     el.style.opacity = '0'
-    el.style.filter = 'blur(20px)'
     return
   }
 
@@ -202,22 +209,20 @@ function syncClusterOverlayPosition(ctx: GlobeCtx, cluster: RegionCluster, el: H
   const cosPhi = Math.cos(ctx.phi)
   const sinPhi = Math.sin(ctx.phi)
   const markerRadius = GLOBE_RADIUS + MARKER_ELEVATION
-  const visibleThreshold = GLOBE_RADIUS * GLOBE_RADIUS
   const [baseX, baseY, baseZ] = coordToGlobePoint(cluster.coord)
   const x = baseX * markerRadius
   const y = baseY * markerRadius
   const z = baseZ * markerRadius
   const screenX = cosPhi * x + sinPhi * z
   const screenY = sinPhi * sinTheta * x + cosTheta * y - cosPhi * sinTheta * z
-  const visible =
-    -sinPhi * cosTheta * x + sinTheta * y + cosPhi * cosTheta * z >= 0 ||
-    screenX * screenX + screenY * screenY >= visibleThreshold
+  const facing = (-sinPhi * cosTheta * x + sinTheta * y + cosPhi * cosTheta * z) / markerRadius
+  // 地平线附近随深度渐隐，避免前后半球切换时突然跳出 / 消失。
+  const opacity = Math.min(1, Math.max(0, (facing + 0.02) / 0.16))
   const xPx = (((screenX / aspect) * GLOBE_SCALE + 1) * width) / 2
   const yPx = ((-screenY * GLOBE_SCALE + 1) * height) / 2
 
   el.style.transform = `translate3d(${xPx}px, ${yPx}px, 0)`
-  el.style.opacity = visible ? '1' : '0'
-  el.style.filter = visible ? 'blur(0px)' : 'blur(20px)'
+  el.style.opacity = String(opacity)
 }
 
 function syncClusterOverlayPositions(ctx: GlobeCtx) {
@@ -231,53 +236,51 @@ function syncClusterOverlayPositions(ctx: GlobeCtx) {
 function updateGlobeFrame(ctx: GlobeCtx) {
   if (!ctx.globe) return
   const { width, height } = getRenderSize(ctx)
-  ctx.globe.update({ phi: ctx.phi, theta: ctx.theta, width, height })
+  // cobe 在收到 width/height 时会重设 canvas 绘图缓冲区，只在尺寸变化时传入。
+  const resized = width !== ctx.renderedWidth || height !== ctx.renderedHeight
+  ctx.globe.update({ phi: ctx.phi, theta: ctx.theta, ...(resized ? { width, height } : {}) })
+  ctx.renderedWidth = width
+  ctx.renderedHeight = height
   syncClusterOverlayPositions(ctx)
 }
 
-function stepFrame(ctx: GlobeCtx) {
+function wantsFrames(ctx: GlobeCtx): boolean {
+  return (
+    ctx.latest.shouldRender &&
+    (ctx.latest.autoRotate || ctx.isPointerDown || hasGlobeMotion(ctx) || shouldKeepStaticRedraw(ctx))
+  )
+}
+
+function stepFrame(ctx: GlobeCtx, timestamp: number) {
   if (!ctx.globe) return
-  const prevPhi = ctx.phi
-  const prevTheta = ctx.theta
-  if (!ctx.isPointerDown && ctx.latest.autoRotate) ctx.targetPhi += 0.002
-  ctx.phi += (ctx.targetPhi - ctx.phi) * 1
-  ctx.theta += (ctx.targetTheta - ctx.theta) * 1
-  if (
-    Math.abs(ctx.phi - prevPhi) < ORIENTATION_IDLE_EPSILON &&
-    Math.abs(ctx.theta - prevTheta) < ORIENTATION_IDLE_EPSILON
-  ) {
-    if (!ctx.latest.autoRotate && shouldKeepStaticRedraw(ctx)) updateGlobeFrame(ctx)
-    return
-  }
-  updateGlobeFrame(ctx)
+  const moved = advanceGlobeMotion(ctx, timestamp, ctx.isPointerDown, ctx.latest.autoRotate, ctx.latest.reducedMotion)
+  if (moved || shouldKeepStaticRedraw(ctx)) updateGlobeFrame(ctx)
 }
 
 function pauseRaf(ctx: GlobeCtx) {
-  if (ctx.rafId !== null) {
-    cancelAnimationFrame(ctx.rafId)
-    ctx.rafId = null
-  }
+  if (ctx.rafId !== null) cancelAnimationFrame(ctx.rafId)
+  ctx.rafId = null
+  ctx.lastFrameTime = null
 }
 
 function resumeRaf(ctx: GlobeCtx) {
   if (ctx.rafId !== null) return
-  const tick = () => {
-    ctx.rafId = requestAnimationFrame(tick)
-    stepFrame(ctx)
+  const tick = (timestamp: number) => {
+    ctx.rafId = null
+    stepFrame(ctx, timestamp)
+    if (wantsFrames(ctx)) ctx.rafId = requestAnimationFrame(tick)
+    else ctx.lastFrameTime = null
   }
   ctx.rafId = requestAnimationFrame(tick)
 }
 
 function syncRafState(ctx: GlobeCtx) {
   if (!ctx.globe) return
-
-  if (ctx.latest.shouldRender && (ctx.latest.autoRotate || ctx.isPointerDown)) {
-    resumeRaf(ctx)
-    return
+  if (wantsFrames(ctx)) resumeRaf(ctx)
+  else {
+    pauseRaf(ctx)
+    if (ctx.latest.shouldRender) updateGlobeFrame(ctx)
   }
-
-  pauseRaf(ctx)
-  if (ctx.latest.shouldRender) updateGlobeFrame(ctx)
 }
 
 function startGlobe(ctx: GlobeCtx, earthViewMode: string) {
@@ -311,6 +314,8 @@ function startGlobe(ctx: GlobeCtx, earthViewMode: string) {
     markerElevation: MARKER_ELEVATION,
   }
   ctx.globe = createGlobe(canvas, options)
+  ctx.renderedWidth = width
+  ctx.renderedHeight = height
   syncClusterOverlayPositions(ctx)
   // 静止地球没有自转帧，首帧需要在实际尺寸稳定后主动重绘一次。
   requestAnimationFrame(() => {
@@ -335,13 +340,15 @@ function stopGlobe(ctx: GlobeCtx) {
   }
 }
 
-export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps) {
+export default function NodeEarthGlobe({ nodes, className, suspendMotion = false }: NodeEarthGlobeProps) {
   const earthNodes = useNodesStore(state => state.earthNodes)
   const earthViewMode = useAppStore(state => state.settings.earthViewMode)
   const visitorInfoCardEnabled = useAppStore(state => state.settings.visitorInfoCardEnabled)
   const visitorCountryCode = useAppStore(state => state.visitorCountryCode)
   const byteDecimals = useAppStore(state => state.byteDecimals)
   const isDark = useIsDark()
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const [rotationPaused, setRotationPaused] = useState(false)
   const displayNodes = nodes ?? earthNodes
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -391,16 +398,15 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
   }))
 
   // 从各地区汇聚到用户当前位置
-  const arcs: Arc[] =
-    !arcsEnabled || !userCoord || regionClusters.length === 0
-      ? []
-      : regionClusters.map(cluster => ({
-          from: cluster.coord,
-          to: userCoord,
-        }))
+  const arcs: Arc[] = arcsEnabled
+    ? buildGlobeArcs(
+        regionClusters.map(cluster => cluster.coord),
+        userCoord,
+      )
+    : []
 
-  const shouldRender = documentVisible && elementVisible
-  const shouldAutoRotate = earthViewMode !== 'earth-stop'
+  const shouldRender = documentVisible && elementVisible && !suspendMotion
+  const shouldAutoRotate = earthViewMode !== 'earth-stop' && !rotationPaused && !reducedMotion
   const colors = getThemeColors(isDark)
 
   // 同步最新渲染数据给命令式循环（须排在其他 effect 之前）
@@ -412,6 +418,7 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
       arcs,
       colors,
       autoRotate: shouldAutoRotate,
+      reducedMotion,
       shouldRender,
       width: size.width,
       height: size.height,
@@ -458,10 +465,11 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
 
   useEffect(() => {
     const ctx = getCtx(ctxRef)
+    ctx.latest.autoRotate = shouldAutoRotate
     if (earthViewMode === 'earth-stop') resetStoppedView(ctx)
     triggerStaticRedrawWindow(ctx)
     syncRafState(ctx)
-  }, [ctxRef, earthViewMode])
+  }, [ctxRef, earthViewMode, shouldAutoRotate])
 
   // 地区 / 访客位置变化：只更新 markers 与 arcs，不重建 globe
   const clusterSignature = regionClusters.map(clusterKey).join(',')
@@ -482,7 +490,10 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     const ctx = getCtx(ctxRef)
+    if (e.button !== 0) return
     ctx.isPointerDown = true
+    beginGlobeDrag(ctx)
+    ctx.lastPointerTime = e.timeStamp
     ctx.lastPointerX = e.clientX
     ctx.lastPointerY = e.clientY
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -491,16 +502,22 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     const ctx = getCtx(ctxRef)
     if (!ctx.isPointerDown) return
-    const deltaX = e.clientX - ctx.lastPointerX
-    const deltaY = e.clientY - ctx.lastPointerY
-    ctx.lastPointerX = e.clientX
-    ctx.lastPointerY = e.clientY
-    ctx.targetPhi += deltaX / 200
-    ctx.targetTheta = clampTheta(ctx.targetTheta + deltaY / 300)
+    const sample = e.nativeEvent.getCoalescedEvents?.().at(-1) ?? e.nativeEvent
+    const deltaX = sample.clientX - ctx.lastPointerX
+    const deltaY = sample.clientY - ctx.lastPointerY
+    const elapsed = Math.max(1, sample.timeStamp - ctx.lastPointerTime)
+    ctx.lastPointerX = sample.clientX
+    ctx.lastPointerY = sample.clientY
+    ctx.lastPointerTime = sample.timeStamp
+    moveGlobeDrag(ctx, deltaX, deltaY, elapsed, getRenderSize(ctx).width)
   }
   function onPointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
     const ctx = getCtx(ctxRef)
     ctx.isPointerDown = false
+    if (e.type === 'pointercancel' || e.type === 'lostpointercapture' || e.timeStamp - ctx.lastPointerTime > 80) {
+      ctx.velocityPhi = 0
+      ctx.velocityTheta = 0
+    }
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
     syncRafState(ctx)
   }
@@ -521,11 +538,14 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
     >
       <canvas
         ref={canvasRef}
-        className="earth-globe-canvas absolute inset-0 w-full h-full select-none touch-none cursor-grab active:cursor-grabbing"
+        className="earth-globe-canvas absolute inset-0 w-full h-full select-none touch-pan-y cursor-grab active:cursor-grabbing"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onLostPointerCapture={event => {
+          if (getCtx(ctxRef).isPointerDown) onPointerUp(event)
+        }}
       />
 
       {regionClusters.map(cluster => {
@@ -536,21 +556,21 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
             ref={el => {
               if (!el) return undefined
               const ctx = getCtx(ctxRef)
-              el.style.willChange = 'transform, opacity, filter'
+              el.style.willChange = 'transform, opacity'
               ctx.overlayEls.set(cluster.code, el)
               syncClusterOverlayPosition(ctx, cluster, el)
               return () => {
                 if (ctx.overlayEls.get(cluster.code) === el) ctx.overlayEls.delete(cluster.code)
               }
             }}
-            className="absolute -top-7.5 left-0 pointer-events-none rounded backdrop-blur transition-[opacity,filter] duration-500"
+            className="absolute -top-7.5 left-0 pointer-events-none rounded"
           >
             <img
               src={`/assets/flags/${cluster.code}.svg`}
               alt={cluster.code}
               className="size-4 block absolute -bottom-2 -left-2 z-1"
             />
-            <div className="relative z-2 bg-background/60 rounded py-0.5 px-1 text-xs zoom-80 items-start justify-center text-nowrap">
+            <div className="relative z-2 bg-background/90 rounded py-0.5 px-1 text-xs zoom-80 items-start justify-center text-nowrap">
               <div className="num flex flex-row items-center gap-0.5 text-emerald-700 dark:text-emerald-300">
                 <Icon icon="tabler:arrow-up" width="12" height="12" /> {formatRate(rate.up)}
               </div>
@@ -562,8 +582,19 @@ export default function NodeEarthGlobe({ nodes, className }: NodeEarthGlobeProps
         )
       })}
 
+      {earthViewMode !== 'earth-stop' && !reducedMotion && (
+        <button
+          type="button"
+          aria-label={rotationPaused ? '继续地球自转' : '暂停地球自转'}
+          title={rotationPaused ? '继续地球自转' : '暂停地球自转'}
+          className="absolute top-0 right-0 md:top-8 z-10 flex size-7 items-center justify-center rounded-md bg-background/80 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
+          onClick={() => setRotationPaused(paused => !paused)}
+        >
+          <Icon icon={rotationPaused ? 'tabler:player-play' : 'tabler:player-pause'} width={12} height={12} />
+        </button>
+      )}
       {totalServers > 0 && (
-        <div className="absolute top-6 md:top-12 left-0 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
+        <div className="absolute top-0 md:top-8 left-0 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
           {onlineServers > 0 && (
             <div className="flex items-center gap-1">
               <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />

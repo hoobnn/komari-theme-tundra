@@ -27,11 +27,13 @@ function ProgressThin({
 
   return (
     <div
+      data-slot="progress-thin"
       className={cn('relative w-full overflow-hidden rounded-full bg-muted', className)}
       style={{ height: typeof height === 'number' ? `${height}px` : height, ...style }}
       {...props}
     >
       <div
+        data-slot="progress-thin-fill"
         className={cn('h-full rounded-full transition-[width] duration-300 ease-out', statusClasses[status])}
         style={{ width: `${clamped}%` }}
       />

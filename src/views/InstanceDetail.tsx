@@ -1,4 +1,5 @@
 import type { CurrencyCode } from '@/utils/financeHelper'
+import ChartPlaceholder from '@/components/charts/ChartPlaceholder'
 import { Icon } from '@iconify/react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
@@ -19,7 +20,7 @@ import {
   getStoredFinanceCurrency,
 } from '@/utils/financeHelper'
 import { formatDateTime } from '@/utils/helper'
-import { getTrafficUsed } from '@/utils/nodeHelpers'
+import { getTrafficUsed, hasRegion } from '@/utils/nodeHelpers'
 import { getOSImage, getOSName } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
 import { getBillingCycleText, getExpireText, getExpireTextClass } from '@/utils/tagHelper'
@@ -62,8 +63,9 @@ function InstanceDetail() {
   const [financeBaseCurrency] = useState<CurrencyCode>(() => getStoredFinanceCurrency())
 
   useEffect(() => {
+    if (!id) return
     window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [])
+  }, [id])
 
   const data = useNode(id)
 
@@ -202,7 +204,7 @@ function InstanceDetail() {
 
   if (!data) {
     return (
-      <div className="instance-detail space-y-4">
+      <div className="instance-detail page-enter space-y-4">
         <div className="p-4">
           <CardX className={cardClass}>
             <Empty
@@ -216,8 +218,8 @@ function InstanceDetail() {
   }
 
   return (
-    <div className="instance-detail space-y-4">
-      <div className="px-4 flex gap-4 items-center">
+    <div className="instance-detail page-enter space-y-4">
+      <div className="px-4 flex gap-2 sm:gap-4 items-start">
         <Button
           variant="ghost"
           size="icon-sm"
@@ -227,17 +229,19 @@ function InstanceDetail() {
         >
           <Icon icon="tabler:arrow-left" width={16} height={16} />
         </Button>
-        <div className="flex min-w-0 items-center gap-2 text-lg font-semibold">
-          <img
-            src={getFlagSrc(data.region)}
-            alt={getRegionDisplayName(data.region)}
-            className="h-4 w-6 shrink-0 rounded-[2px] object-cover"
-          />
-          <span>{data.name}</span>
+        <div className="flex min-w-0 flex-1 items-start gap-2 text-lg font-semibold">
+          {hasRegion(data.region) && (
+            <img
+              src={getFlagSrc(data.region)}
+              alt={getRegionDisplayName(data.region)}
+              className="mt-1 h-4 w-6 shrink-0 rounded-[2px] object-cover"
+            />
+          )}
+          <span className="min-w-0 break-words">{data.name}</span>
         </div>
         <span
           className={cn(
-            'rounded-md px-1.5 py-0.5 text-xs font-medium',
+            'mt-1 shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium',
             data.online
               ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
               : 'bg-red-500/10 text-red-600 dark:text-red-400',
@@ -394,13 +398,13 @@ function InstanceDetail() {
 
       <section className="space-y-3">
         <h2 className="px-4 text-base font-semibold">负载</h2>
-        <Suspense fallback={null}>
+        <Suspense fallback={<ChartPlaceholder />}>
           <LoadChart uuid={data.uuid} className="px-4" />
         </Suspense>
       </section>
       <section className="space-y-3">
         <h2 className="px-4 text-base font-semibold">延迟与丢包</h2>
-        <Suspense fallback={null}>
+        <Suspense fallback={<ChartPlaceholder />}>
           <PingChart uuid={data.uuid} className="px-4" />
         </Suspense>
       </section>

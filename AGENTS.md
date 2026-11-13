@@ -20,9 +20,11 @@ Repo guide for `komari-theme-tundra` (Tundra, a Komari theme derived from Tokinx
 
 ## Tundra design rules
 
-- Look: modern and clean. Neutral cool-gray background, solid white cards (`bg-card shadow-xs`, `rounded-xl`), vivid Tailwind `emerald` as the only accent. No grid patterns, gradient washes, dashed dividers or sage/olive tones (they read as retro).
+- Look: modern and clean. Neutral cool-gray background, solid white cards (`bg-card shadow-xs`, `rounded-xl`), vivid Tailwind `emerald` for primary actions. Resource metrics use sky (CPU), emerald (memory), orange (disk), violet (traffic); network upload is emerald and download is sky. Keep warning / error colors meaningful. No grid patterns, gradient washes, dashed dividers or sage/olive tones (they read as retro).
+- Rectangular surfaces use continuous-curvature corners through the shared `--surface-corner-shape` token and native `corner-shape` when supported. Keep true circles round; unsupported browsers retain `border-radius`.
 - Tokens live on `:root` / `.dark` in `src/styles/main.css`.
 - Font: Geist Variable for UI and numbers; `.num` adds tabular figures. Do not use monospace for data.
+- Group selection uses a neutral muted background and foreground text; no emerald fill, border or focus glow. Keep a neutral keyboard focus outline.
 - Ping colors: normal latency stays neutral text; only fast (emerald), slow (amber) and bad (red) get color. Bars use the same thresholds as text.
 - Never join values with `/` in node cards or lists; use aligned rows instead.
 - Dual-stack ping: IPv4 and IPv6 each get their own row; v6 must stay visually distinct from v4 (chart: darker color + dashed line).
@@ -124,6 +126,7 @@ Release notes and version numbers are user-facing; follow these rules for every 
 - Check `vite.config.ts` for build behavior, global constants, and zip packaging
 - Check `komari-theme.json` for theme metadata and managed configuration schema
 - Check `src/` for app behavior
+- Check `docs/architecture.md` for component boundaries and UI adjustment entry points
 - Check `.github/workflows/release-on-version-bump.yml` for CI and release behavior
 
 Contributor density, useful for triage:

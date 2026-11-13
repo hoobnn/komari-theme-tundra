@@ -11,6 +11,7 @@ import { useBackgroundSurface } from '@/hooks/useBackgroundSurface'
 import { useNodeFormatters } from '@/hooks/useNodeFormatters'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
+import { sortNodes } from '@/utils/nodeSort'
 import { formatDateTime, getStatus } from '@/utils/helper'
 import {
   formatOfflineTime,
@@ -36,13 +37,12 @@ interface ColumnConfig {
 
 interface NodeListProps {
   nodes: NodeData[]
-  transitionKey?: string
   onClick?: (node: NodeData) => void
   onPingClick?: (node: NodeData) => void
 }
 
-const rowStaggerMs = 35
-const rowStaggerLimit = 12
+const rowStaggerMs = 16
+const rowStaggerLimit = 6
 
 // 列表只在 ≥1024px 出现（更窄时固定卡片视图）。最小列宽合计 878px + 10 个 8px 间距，
 // 1024 宽时行内可用约 982px，不出现横向滚动；更宽时多出的空间优先给节点名，其次给标签。
@@ -123,39 +123,6 @@ const offlineOverlayContentStyle = (() => {
   return { gridColumn: `${startColumn} / -1` }
 })()
 
-function compareText(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0
-}
-
-function sortNodes(source: NodeData[], key: string, dir: 1 | -1): NodeData[] {
-  const nodes = [...source]
-  if (!key) return nodes
-  return nodes.sort((a, b) => {
-    switch (key) {
-      case 'status':
-        return dir * ((a.online ? 1 : 0) - (b.online ? 1 : 0))
-      case 'region':
-        return dir * compareText((a.region || '').toLowerCase(), (b.region || '').toLowerCase())
-      case 'name':
-        return dir * compareText((a.name || '').toLowerCase(), (b.name || '').toLowerCase())
-      case 'os':
-        return dir * compareText((a.os || '').toLowerCase(), (b.os || '').toLowerCase())
-      case 'cpu':
-        return dir * ((a.cpu ?? 0) - (b.cpu ?? 0))
-      case 'mem':
-        return dir * ((a.ram ?? 0) / (a.mem_total || 1) - (b.ram ?? 0) / (b.mem_total || 1))
-      case 'disk':
-        return dir * ((a.disk ?? 0) / (a.disk_total || 1) - (b.disk ?? 0) / (b.disk_total || 1))
-      case 'traffic':
-        return dir * (getTrafficUsedPercentage(a) - getTrafficUsedPercentage(b))
-      case 'rate':
-        return dir * ((a.net_out ?? 0) + (a.net_in ?? 0) - ((b.net_out ?? 0) + (b.net_in ?? 0)))
-      default:
-        return 0
-    }
-  })
-}
-
 interface NodeRowProps {
   node: NodeData
   index: number
@@ -216,9 +183,13 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                   className="h-3.5 w-5 shrink-0 rounded-[2px] object-cover"
                 />
               )}
-              <span className="truncate" title={node.name}>
+              <button
+                type="button"
+                className="min-w-0 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                title={node.name}
+              >
                 {node.name}
-              </span>
+              </button>
             </div>
             <div className="flex flex-row text-[11px] text-muted-foreground/70">
               {node.online && (
@@ -451,16 +422,20 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
         'relative flex h-16 cursor-pointer flex-col justify-center rounded-xl border bg-card shadow-xs px-2 transition-colors duration-150 hover:border-foreground/20',
         pickSurfaceClass('', 'backdrop-blur-sm'),
         !node.online && 'border-red-600/25 dark:border-red-400/25',
-        animate &&
-          'animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards motion-reduce:animate-none',
+        animate && 'node-enter',
       )}
+      role="row"
       style={animate ? { animationDelay: `${Math.min(index, rowStaggerLimit) * rowStaggerMs}ms` } : undefined}
       onClick={() => onClick?.(node)}
     >
-      <div className="grid gap-2 items-center" style={gridStyle}>
+      <div role="presentation" className="grid gap-2 items-center" style={gridStyle}>
         {columns.map(col => {
           const cell = renderCell(col.key)
-          return cell ? <Fragment key={col.key}>{cell}</Fragment> : null
+          return cell ? (
+            <div role="cell" key={col.key} className="min-w-0">
+              {cell}
+            </div>
+          ) : null
         })}
       </div>
 
@@ -481,7 +456,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
 })
 NodeRow.displayName = 'NodeRow'
 
-export default function NodeList({ nodes, transitionKey, onClick, onPingClick }: NodeListProps) {
+export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps) {
   const disablePageAnimation = useAppStore(state => state.settings.disablePageAnimation)
   const { pickSurfaceClass } = useBackgroundSurface()
 
@@ -502,9 +477,10 @@ export default function NodeList({ nodes, transitionKey, onClick, onPingClick }:
 
   return (
     <div className="overflow-x-auto overflow-y-hidden min-w-0 p-1 -m-1">
-      <div className="min-w-fit w-full flex flex-col gap-1">
+      <div role="table" aria-label="节点列表" className="min-w-fit w-full flex flex-col gap-1">
         {/* 表头 */}
         <div
+          role="row"
           className={cn('grid gap-2 rounded-xl border bg-card p-2', pickSurfaceClass('', 'backdrop-blur-sm'))}
           style={gridStyle}
         >
@@ -515,6 +491,7 @@ export default function NodeList({ nodes, transitionKey, onClick, onPingClick }:
                 'flex items-center',
                 ['status', 'os'].includes(col.key) ? 'justify-center' : 'justify-start',
               )}
+              role="columnheader"
               aria-sort={
                 col.sortable ? (sortKey === col.key ? (sortDir === 1 ? 'ascending' : 'descending') : 'none') : undefined
               }
@@ -553,10 +530,10 @@ export default function NodeList({ nodes, transitionKey, onClick, onPingClick }:
           ))}
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div role="rowgroup" className="flex flex-col gap-1">
           {sortedNodes.map((node, index) => (
             <NodeRow
-              key={transitionKey ? `${transitionKey}-${node.uuid}` : node.uuid}
+              key={node.uuid}
               node={node}
               index={index}
               animate={!disablePageAnimation}

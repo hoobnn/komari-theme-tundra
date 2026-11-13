@@ -148,6 +148,7 @@ export default function NodeEarthMaps({ nodes, className }: NodeEarthMapsProps) 
       borderColor: 'transparent',
       borderWidth: 0,
       borderRadius: 6,
+      className: 'tundra-chart-tooltip',
       textStyle: {
         color: colors.text,
         fontSize: 12,
@@ -248,7 +249,7 @@ export default function NodeEarthMaps({ nodes, className }: NodeEarthMapsProps) 
           <img key={point.code} src={`/assets/flags/${point.code}.svg`} />
         ))}
       </div>
-      <div className="relative flex h-88 flex-col items-center">
+      <div className="relative flex h-full min-h-0 flex-col items-center">
         {totalServers > 0 && (
           <div className="absolute top-0 right-0 z-2 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
             {onlineServers > 0 && (
@@ -266,7 +267,7 @@ export default function NodeEarthMaps({ nodes, className }: NodeEarthMapsProps) 
           </div>
         )}
 
-        <div className="relative flex-1 w-full md:-translate-y-1/6 -translate-y-1/5">
+        <div className="relative min-h-0 flex-1 w-full">
           <Spinner show={loading} className="h-full w-full" contentClass="!bg-transparent">
             {mapName ? (
               <EChart option={chartOption} className="h-full w-full" />
