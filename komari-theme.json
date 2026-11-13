@@ -2,7 +2,7 @@
   "name": "Tundra",
   "short": "Tundra",
   "description": "简洁现代的 Komari 主题，支持 GPU 图表与 IPv4 / IPv6 双栈延迟对照（基于 Tokinx/komari-theme-emerald）",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "hoobnn",
   "url": "https://github.com/hoobnn/komari-theme-tundra",
   "preview": "preview.png",

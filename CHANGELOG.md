@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.2.1] - 2026-11-14
+
 ### 改进
 
 - 底部访客信息支持平滑展开与收起，摘要宽度保持稳定；图表弹窗预留加载空间，关闭时完整淡出，并在打开期间暂停背景地球
@@ -84,7 +86,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.0...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.1...v0.1.2
