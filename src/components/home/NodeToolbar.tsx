@@ -45,9 +45,15 @@ export default function NodeToolbar(props: NodeToolbarProps) {
       className={cn(
         'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-xl border px-2 py-1 shadow-xs',
         pickSurfaceClass('bg-card', 'bg-card/90 backdrop-blur-xl'),
+        // 桌面端地球会伸到工具栏后面：工具栏去掉整条底色，只保留控件本身，空白处可拖动地球
+        'md:pointer-events-none md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none',
       )}
     >
-      <ScrollableTabsList selectedValue={props.selectedGroup} aria-label="节点分组" className="bg-transparent p-0">
+      <ScrollableTabsList
+        selectedValue={props.selectedGroup}
+        aria-label="节点分组"
+        className="bg-transparent p-0 md:pointer-events-auto md:rounded-md md:bg-background/60 md:backdrop-blur-xl"
+      >
         {groups.map(group => (
           <TabsTrigger
             key={group.name}
@@ -58,7 +64,7 @@ export default function NodeToolbar(props: NodeToolbarProps) {
           </TabsTrigger>
         ))}
       </ScrollableTabsList>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 md:pointer-events-auto md:rounded-md md:bg-background/60 md:backdrop-blur-xl">
         {props.showViewModes && (
           <div role="group" aria-label="节点视图" className="inline-flex rounded-md bg-muted/60 p-0.5">
             {viewModes.map(mode => (
@@ -93,7 +99,12 @@ export default function NodeToolbar(props: NodeToolbarProps) {
         </Button>
       </div>
       {expanded && (
-        <div id={searchId} role="search" aria-label="搜索节点" className="relative col-span-2 mb-1">
+        <div
+          id={searchId}
+          role="search"
+          aria-label="搜索节点"
+          className="relative col-span-2 mb-1 md:pointer-events-auto md:mt-2 md:mb-0"
+        >
           <Input
             ref={inputRef}
             autoFocus

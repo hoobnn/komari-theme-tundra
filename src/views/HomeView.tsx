@@ -42,7 +42,7 @@ export default function HomeView() {
           />
         </Suspense>
       )}
-      <section aria-label="节点" className="relative px-4">
+      <section aria-label="节点" className="relative z-10 px-4">
         <Tabs value={home.selectedGroup} onValueChange={home.setSelectedGroup} className="flex-col gap-3">
           <NodeToolbar
             groupNames={home.groupNames}

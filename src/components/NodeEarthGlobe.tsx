@@ -587,14 +587,14 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
           type="button"
           aria-label={rotationPaused ? '继续地球自转' : '暂停地球自转'}
           title={rotationPaused ? '继续地球自转' : '暂停地球自转'}
-          className="absolute top-0 right-0 md:top-8 z-10 flex size-7 items-center justify-center rounded-md bg-background/80 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
+          className="absolute top-0 right-0 md:top-12 z-10 flex size-7 items-center justify-center rounded-md bg-background/80 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
           onClick={() => setRotationPaused(paused => !paused)}
         >
           <Icon icon={rotationPaused ? 'tabler:player-play' : 'tabler:player-pause'} width={12} height={12} />
         </button>
       )}
       {totalServers > 0 && (
-        <div className="absolute top-0 md:top-8 left-0 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
+        <div className="absolute top-0 md:top-12 left-0 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
           {onlineServers > 0 && (
             <div className="flex items-center gap-1">
               <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
