@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.2.3] - 2026-11-15
+
 ### 新增
 
 - 首页支持配置多段线路延迟与流光展示，点击查看各段近期曲线、丢包和数据状态，并可暂停动画
@@ -107,7 +109,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.2...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.1.3...v0.2.0
