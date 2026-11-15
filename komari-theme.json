@@ -88,6 +88,21 @@
         "default": false,
         "help": "开启后离线节点默认显示到所有节点最后"
       },
+      { "name": "线路延迟", "type": "title" },
+      {
+        "key": "relayRoutesEnabled",
+        "name": "显示线路延迟",
+        "type": "switch",
+        "default": false,
+        "help": "在首页概览与节点列表之间显示分段延迟和流光，点击线路展开近期曲线"
+      },
+      {
+        "key": "relayRoutes",
+        "name": "线路配置 JSON",
+        "type": "string",
+        "default": "",
+        "help": "JSON 数组，每项包含 name、nodes（节点名数组）、legs（探测段数组）。每段填写 client（发起探测的节点 UUID）、taskId（Ping 任务 ID），可选 staleAfterSeconds（过期秒数，默认 180）。nodes 数量必须比 legs 多 1。配置示例见项目 docs/relay-routes.md。分段合计不代表端到端延迟。"
+      },
       { "name": "备案设置", "type": "title" },
       { "key": "icpEnabled", "name": "显示备案号", "type": "switch", "default": false, "help": "在页脚显示网站备案号" },
       {

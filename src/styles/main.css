@@ -277,6 +277,27 @@
     opacity: 1;
   }
 }
+
+/* ---- RelayRoutes: 单个光带跨过所有探测段，节点标签遮住光带 ---- */
+@keyframes relay-routes-sweep {
+  from {
+    transform: translateX(0);
+  }
+  64%,
+  to {
+    transform: translateX(calc(100% + 120px));
+  }
+}
+
+.relay-routes-flow {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-relay-motion='on'] .relay-routes-flow {
+    display: block;
+    animation: relay-routes-sweep 5.6s linear infinite;
+  }
+}
 @keyframes surface-fade-out {
   from {
     opacity: 1;

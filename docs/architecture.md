@@ -25,6 +25,7 @@ views（页面组合）→ components（独立界面区域）→ components/ui�
 | 要调整的内容                   | 入口                                                               |
 | ------------------------------ | ------------------------------------------------------------------ |
 | 首页区域顺序                   | `src/views/HomeView.tsx`                                           |
+| 首页线路流光、分段配置与状态   | `src/components/home/RelayRoutes.tsx`、`src/utils/relayRoutes.ts`  |
 | 分组、搜索、视图按钮及窄屏布局 | `src/components/home/NodeToolbar.tsx`                              |
 | 搜索字段、匹配规则             | `src/utils/nodeSearch.ts`                                          |
 | 分组过滤、离线置后、视图断点   | `src/hooks/useHomeNodes.ts`                                        |

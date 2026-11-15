@@ -36,6 +36,7 @@ interface SharedPingRecordsState {
 }
 
 interface SharedPingRecordsSnapshot {
+  observedAt: number
   data: SharedPingRecordsState | null
   loading: boolean
   error: string | null
@@ -60,6 +61,20 @@ export interface NodePingPerTaskStat {
 }
 
 export const NODE_PING_BAR_COUNT = 10
+
+/** 线路组件复用节点卡片的同一份记录与刷新任务，不建立额外连接。 */
+export function useSharedPingRecords(hours: number, enabled: boolean) {
+  const entry = getSharedPingRecordsEntry(hours)
+  const snapshot = useSyncExternalStore(entry.subscribe, () => entry.snapshot)
+  useEffect(() => {
+    if (!enabled) return undefined
+    const release = retainSharedPingRecordsEntry(hours)
+    if (!entry.snapshot.data || Date.now() - entry.lastFetchedAt >= PING_RECORD_REFRESH_INTERVAL_MS)
+      void loadSharedPingRecords(entry, hours).catch(() => {})
+    return release
+  }, [entry, hours, enabled])
+  return snapshot
+}
 const CACHE_VERSION = 8
 const CACHE_KEY_PREFIX = 'komari-theme-tundra:node-ping-stats'
 const FULL_LOSS_EPSILON = 1e-6
@@ -185,7 +200,7 @@ function writeStatsCache(uuid: string, hours: number, value: NodePingStatsState)
 function createSharedPingRecordsEntry(): SharedPingRecordsEntry {
   const listeners = new Set<() => void>()
   return {
-    snapshot: { data: null, loading: false, error: null },
+    snapshot: { data: null, loading: false, error: null, observedAt: 0 },
     listeners,
     subscribe: listener => {
       listeners.add(listener)
@@ -234,7 +249,7 @@ async function loadSharedPingRecords(entry: SharedPingRecordsEntry, hours: numbe
   if (entry.promise) return entry.promise
 
   const rpc = getSharedRpc()
-  patchSnapshot(entry, { loading: true, error: null })
+  patchSnapshot(entry, { loading: true, error: null, observedAt: Date.now() })
 
   entry.promise = (async () => {
     try {
@@ -263,6 +278,7 @@ async function loadSharedPingRecords(entry: SharedPingRecordsEntry, hours: numbe
           tasks: orderedTasks,
         },
         loading: false,
+        observedAt: Date.now(),
       })
     } catch (err) {
       patchSnapshot(entry, {
@@ -481,17 +497,7 @@ export function useNodePingStats(
 ) {
   const hours = Math.max(1, Math.floor(options?.hours ?? 24))
   const active = (options?.enabled ?? true) && uuid.trim() !== ''
-  const entry = getSharedPingRecordsEntry(hours)
-  const snapshot = useSyncExternalStore(entry.subscribe, () => entry.snapshot)
-
-  useEffect(() => {
-    if (!active) return
-    const release = retainSharedPingRecordsEntry(hours)
-    const current = getSharedPingRecordsEntry(hours)
-    if (!current.snapshot.data || Date.now() - current.lastFetchedAt >= PING_RECORD_REFRESH_INTERVAL_MS)
-      void loadSharedPingRecords(current, hours).catch(() => {})
-    return release
-  }, [active, hours])
+  const snapshot = useSharedPingRecords(hours, active)
 
   // stats 由共享 getRecords 的近期样本派生，不将结果视为完整的 hours 时段数据
   const stats = useMemo<NodePingStatsState>(() => {

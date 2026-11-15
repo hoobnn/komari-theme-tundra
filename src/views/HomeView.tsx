@@ -5,6 +5,7 @@ import HomeNotices from '@/components/home/HomeNotices'
 import NodeToolbar from '@/components/home/NodeToolbar'
 import NodeResults from '@/components/home/NodeResults'
 import NodePingDialog from '@/components/home/NodePingDialog'
+import RelayRoutes from '@/components/home/RelayRoutes'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { useHomeNodes } from '@/hooks/useHomeNodes'
 import { useHomeScrollRestoration } from '@/hooks/useHomeScrollRestoration'
@@ -42,6 +43,7 @@ export default function HomeView() {
           />
         </Suspense>
       )}
+      <RelayRoutes />
       <section aria-label="节点" className="relative z-10 px-4">
         <Tabs value={home.selectedGroup} onValueChange={home.setSelectedGroup} className="flex-col gap-3">
           <NodeToolbar

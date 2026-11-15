@@ -2,6 +2,8 @@ import type { PublicSettings } from '@/utils/api'
 import type { ByteDecimalsConfig } from '@/utils/helper'
 import { create } from 'zustand'
 import { readStorage, writeStorage } from '@/lib/storage'
+import { parseRelayRoutes } from '@/utils/relayRoutes'
+import type { RelayRoutesConfig } from '@/utils/relayRoutes'
 
 export type ThemeMode = 'auto' | 'light' | 'dark'
 type Lang = 'zh-CN' | 'en-US'
@@ -37,6 +39,8 @@ function isValidEarthViewMode(value: unknown): value is EarthViewMode {
 
 /** 主题设置（komari-theme.json 的 configuration.data），已做类型校验并补默认值 */
 export interface ThemeSettings {
+  relayRoutesEnabled: boolean
+  relayRoutes: RelayRoutesConfig
   defaultViewMode: NodeViewMode
   rpcTransportMode: RpcTransportMode
   alertEnabled: boolean
@@ -83,6 +87,8 @@ export function deriveThemeSettings(publicSettings: PublicSettings | undefined):
   const backgroundOverlay = s.backgroundOverlay
 
   return {
+    relayRoutesEnabled: bool('relayRoutesEnabled', false),
+    relayRoutes: parseRelayRoutes(str('relayRoutes')),
     defaultViewMode: isValidViewMode(s.defaultViewMode) ? s.defaultViewMode : 'card',
     rpcTransportMode: s.rpcTransportMode === 'http' ? 'http' : 'websocket',
     alertEnabled: bool('alertEnabled', false),
