@@ -20,11 +20,11 @@ Repo guide for `komari-theme-tundra` (Tundra, a Komari theme derived from Tokinx
 
 ## Tundra design rules
 
-- Look: modern and clean. Neutral cool-gray background, solid white cards (`bg-card shadow-xs`, `rounded-xl`), vivid Tailwind `emerald` for primary actions. Resource metrics use sky (CPU), emerald (memory), orange (disk), violet (traffic); network upload is emerald and download is sky. Keep warning / error colors meaningful. No grid patterns, gradient washes, dashed dividers or sage/olive tones (they read as retro).
+- Look: modern and clean. Neutral cool-gray background, solid white cards (`bg-card shadow-xs`, `rounded-xl`), vivid Tailwind `emerald` for primary actions. Resource metrics use sky (CPU), emerald (memory), orange (disk), violet (traffic); network upload is emerald and download is sky. Hue lives on icons, bars and direction arrows only: metric values stay foreground and change color only for warning / error. No decorative tinted panels or filled meta chips inside cards (data bars such as relay leg segments are fine); group content with spacing, solid hairlines or outlined badges. Card depth comes from the shared `--elevation-1/2` tokens (layered light shadows; a 1px top highlight in dark mode). Keep warning / error colors meaningful. No grid patterns, gradient washes, dashed dividers or sage/olive tones (they read as retro).
 - Rectangular surfaces use continuous-curvature corners through the shared `--surface-corner-shape` token and native `corner-shape` when supported. Keep true circles round; unsupported browsers retain `border-radius`.
 - Tokens live on `:root` / `.dark` in `src/styles/main.css`.
 - Font: Geist Variable for UI and numbers; `.num` adds tabular figures. Do not use monospace for data.
-- Group selection uses a neutral muted background and foreground text; no emerald fill, border or focus glow. Keep a neutral keyboard focus outline.
+- Group selection, time-range tabs, segmented controls and toggles use a neutral muted background and foreground text; no emerald fill, text, border or focus glow. `--ring` is neutral gray, so keyboard focus outlines stay neutral.
 - Ping colors: normal latency stays neutral text; only fast (emerald), slow (amber) and bad (red) get color. Bars use the same thresholds as text.
 - Never join values with `/` in node cards or lists; use aligned rows instead.
 - Dual-stack ping: IPv4 and IPv6 each get their own row; v6 must stay visually distinct from v4 (chart: darker color + dashed line).

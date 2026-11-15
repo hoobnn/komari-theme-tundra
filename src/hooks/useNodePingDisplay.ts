@@ -77,10 +77,11 @@ const LOSS_TEXT_TONES: Record<PingTier, string> = {
   fast: 'text-muted-foreground',
 }
 
-// 柱条：快 / 丢包正常为实心翡翠绿，延迟正常为浅翡翠绿（不用灰，避免和「无数据」混淆）
+// 柱条：快 / 丢包正常为柔和翡翠绿，延迟正常为更浅的翡翠绿（不用灰，避免和「无数据」混淆）；
+// 整体降低饱和度，让偏慢和很差的柱子自然跳出来
 const BAR_TONES: Record<PingTier, string> = {
-  fast: 'bg-emerald-500 dark:bg-emerald-400/90',
-  normal: 'bg-emerald-500/55 dark:bg-emerald-400/50',
+  fast: 'bg-emerald-500/75 dark:bg-emerald-400/70',
+  normal: 'bg-emerald-500/35 dark:bg-emerald-400/30',
   slow: 'bg-amber-400 dark:bg-amber-400/90',
   bad: 'bg-red-500 dark:bg-red-500/90',
 }

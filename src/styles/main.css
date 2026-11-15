@@ -14,7 +14,7 @@
  * 中性色带极轻的冷调，避免暖米色和灰绿色带来的复古感。
  */
 :root {
-  --background: oklch(0.982 0.002 247);
+  --background: oklch(0.976 0.003 250);
   --foreground: oklch(0.21 0.006 265);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.21 0.006 265);
@@ -36,9 +36,13 @@
   --success-foreground: oklch(0.99 0 0);
   --info: oklch(0.62 0.17 250);
   --info-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0.004 255);
-  --input: oklch(0.92 0.004 255);
-  --ring: oklch(0.7 0.13 163);
+  --border: oklch(0.918 0.005 255);
+  --input: oklch(0.9 0.006 255);
+  /* 卡片层次：一道极浅的近距阴影加一层更散的环境阴影，不用灰色大投影 */
+  --elevation-1: 0 1px 1px oklch(0.25 0.02 260 / 0.035), 0 2px 6px -2px oklch(0.25 0.02 260 / 0.06);
+  --elevation-2: 0 1px 2px oklch(0.25 0.02 260 / 0.05), 0 8px 24px -8px oklch(0.25 0.02 260 / 0.14);
+  /* 中性焦点色：与白底对比度约 4:1，满足焦点指示 3:1 的要求 */
+  --ring: oklch(0.58 0.014 255);
   --chart-1: oklch(0.696 0.17 162.5);
   --chart-2: oklch(0.62 0.17 250);
   --chart-3: oklch(0.77 0.16 70);
@@ -73,9 +77,12 @@
   --success-foreground: oklch(0.17 0.01 165);
   --info: oklch(0.7 0.15 250);
   --info-foreground: oklch(0.17 0.01 165);
-  --border: oklch(1 0 0 / 8%);
+  --border: oklch(1 0 0 / 7.5%);
   --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.6 0.12 163);
+  /* 深色模式阴影几乎不可见，改用顶部一像素高光表达层次 */
+  --elevation-1: inset 0 1px 0 oklch(1 0 0 / 0.035), 0 1px 2px oklch(0 0 0 / 0.3);
+  --elevation-2: inset 0 1px 0 oklch(1 0 0 / 0.05), 0 12px 32px -12px oklch(0 0 0 / 0.6);
+  --ring: oklch(0.62 0.012 255);
   --chart-1: oklch(0.765 0.165 162);
   --chart-2: oklch(0.7 0.15 250);
   --chart-3: oklch(0.8 0.15 75);
@@ -120,6 +127,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --shadow-xs: var(--elevation-1);
+  --shadow-sm: var(--elevation-1);
+  --shadow-lg: var(--elevation-2);
 }
 
 @layer base {
@@ -135,6 +145,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 }
 
@@ -278,14 +291,14 @@
   }
 }
 
-/* ---- RelayRoutes: 单个光带跨过所有探测段，节点标签遮住光带 ---- */
+/* ---- RelayRoutes: 每条轨道一道细亮线穿过站点，站点与延迟标签遮住它 ---- */
 @keyframes relay-routes-sweep {
   from {
     transform: translateX(0);
   }
   64%,
   to {
-    transform: translateX(calc(100% + 120px));
+    transform: translateX(calc(100% + 72px));
   }
 }
 

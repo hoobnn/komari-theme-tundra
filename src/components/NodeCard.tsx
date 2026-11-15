@@ -40,7 +40,7 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
       contentClass="flex flex-1 flex-col"
       headerClass="pb-2"
       className={cn(
-        'node-card group/card h-full w-full cursor-pointer rounded-xl border bg-card shadow-xs transition-colors duration-150 hover:border-foreground/20',
+        'node-card group/card h-full w-full cursor-pointer rounded-xl border bg-card shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-foreground/15 hover:shadow-lg',
         pickSurfaceClass('', 'backdrop-blur-sm'),
         !node.online && 'border-red-600/25 dark:border-red-400/25',
       )}
@@ -49,7 +49,7 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
         <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              'size-2 shrink-0 rounded-full ring-3',
+              'size-1.5 shrink-0 rounded-full ring-[3px]',
               node.online
                 ? 'bg-emerald-600 ring-emerald-600/15 dark:bg-emerald-400 dark:ring-emerald-400/15'
                 : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15',
@@ -65,13 +65,13 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
         </div>
       }
       headerExtra={
-        <div className="flex items-center gap-2 opacity-90">
-          <img src={getOSImage(node.os)} alt={getOSName(node.os)} className="size-4" />
+        <div className="flex items-center gap-2">
+          <img src={getOSImage(node.os)} alt={getOSName(node.os)} className="size-4 opacity-80" />
           {hasRegion(node.region) && (
             <img
               src={getFlagSrc(node.region)}
               alt={getRegionDisplayName(node.region)}
-              className="h-3.5 w-5 shrink-0 rounded-[2px] object-cover"
+              className="h-3.5 w-5 shrink-0 rounded-[2px] object-cover ring-1 ring-foreground/10"
             />
           )}
         </div>
@@ -89,16 +89,18 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
           className={cn('flex flex-1 flex-col gap-2.5', !node.online && 'pointer-events-none opacity-35 blur-[1.5px]')}
         >
           {/* 在线时长与费用 */}
-          <div className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-1">
-              <Icon icon="lucide:clock-3" width="12" height="12" />
+          {/* 元信息不加底色块，靠留白和图标分组，减少卡中卡 */}
+          <div className="-mt-1 flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Icon icon="lucide:clock-3" width="12" height="12" className="opacity-70" />
               <span>
                 在线{' '}
                 <span className="num text-foreground/80">{node.uptime > 0 ? formatUptime(node.uptime) : '--'}</span>
               </span>
             </span>
             <DataTooltip placement="top" content={expiredDate} contentClass="whitespace-nowrap">
-              <span className="num inline-flex flex-wrap gap-x-2 gap-y-1 rounded-md bg-muted/60 px-1.5 py-1">
+              <span className="num inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                <Icon icon="lucide:wallet" width="12" height="12" className="opacity-70" />
                 {priceTags.map(tag => (
                   <span key={tag.text} className={tag.highlight ? remainingTimeTagClass : ''}>
                     {tag.text}
@@ -118,7 +120,7 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
               <Badge
                 key={index}
                 variant="outline"
-                className="rounded-md border-transparent bg-muted px-1.5 !text-[11px] font-normal text-muted-foreground"
+                className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-[11px] font-normal text-muted-foreground"
               >
                 {tag}
               </Badge>

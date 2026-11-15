@@ -162,7 +162,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
           <div className="flex justify-center">
             <span
               className={cn(
-                'size-2 rounded-full ring-3',
+                'size-1.5 rounded-full ring-[3px]',
                 node.online
                   ? 'bg-emerald-600 ring-emerald-600/15 dark:bg-emerald-400 dark:ring-emerald-400/15'
                   : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15',
@@ -235,7 +235,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 <Badge
                   key={tagIndex}
                   variant="outline"
-                  className="rounded-md border-transparent bg-muted px-1.5 !text-[11px] font-normal text-muted-foreground"
+                  className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-[11px] font-normal text-muted-foreground"
                 >
                   {tag}
                 </Badge>
@@ -399,12 +399,17 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
         return (
           <div>
             <div className="num flex flex-col text-[11px]">
-              <span className="flex flex-row items-center gap-1 text-emerald-700 dark:text-emerald-300">
-                <Icon icon="tabler:arrow-up" width="12" height="12" />
+              <span className="flex flex-row items-center gap-1">
+                <Icon
+                  icon="tabler:arrow-up"
+                  width="12"
+                  height="12"
+                  className="text-emerald-600 dark:text-emerald-400"
+                />
                 {formatBytesPerSecond(node.net_out ?? 0)}
               </span>
-              <span className="flex flex-row items-center gap-1 text-sky-700 dark:text-sky-300">
-                <Icon icon="tabler:arrow-down" width="12" height="12" />
+              <span className="flex flex-row items-center gap-1">
+                <Icon icon="tabler:arrow-down" width="12" height="12" className="text-sky-600 dark:text-sky-400" />
                 {formatBytesPerSecond(node.net_in ?? 0)}
               </span>
             </div>
@@ -516,11 +521,7 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
                     }
                     width="12"
                     height="12"
-                    className={
-                      sortKey === col.key
-                        ? 'text-emerald-700 dark:text-emerald-300'
-                        : 'opacity-40 group-hover/sort:opacity-80'
-                    }
+                    className={sortKey === col.key ? 'text-foreground' : 'opacity-40 group-hover/sort:opacity-80'}
                   />
                 </button>
               ) : (

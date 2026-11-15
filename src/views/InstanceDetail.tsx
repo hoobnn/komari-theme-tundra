@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { CardX } from '@/components/ui/card-x'
 import { Empty } from '@/components/ui/empty'
+import { ProgressThin } from '@/components/ui/progress-thin'
 import { useBackgroundSurface } from '@/hooks/useBackgroundSurface'
 import { useExchangeRates } from '@/hooks/useExchangeRates'
 import { useNodeFormatters } from '@/hooks/useNodeFormatters'
@@ -196,9 +197,7 @@ function InstanceDetail() {
   const trafficLimit = data?.traffic_limit ?? 0
   const hasTrafficLimit = trafficLimit > 0
   const trafficUsedPercentage = trafficLimit > 0 ? Math.min((trafficUsed / trafficLimit) * 100, 100) : 0
-  const trafficUsageText = hasTrafficLimit
-    ? `${formatBytes(trafficUsed)} / ${formatBytes(trafficLimit)}`
-    : `${formatBytes(trafficUsed)} / 不限`
+  const trafficLimitText = hasTrafficLimit ? `限 ${formatBytes(trafficLimit)}` : '不限'
 
   const cardClass = pickSurfaceClass(SURFACE_DEFAULT, SURFACE_CUSTOM)
 
@@ -251,7 +250,7 @@ function InstanceDetail() {
         </span>
       </div>
 
-      <div className="px-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 px-4 lg:grid-cols-4">
         {metricCards.map(item => (
           <CardX
             key={item.label}
@@ -259,10 +258,10 @@ function InstanceDetail() {
             className={cn('h-full rounded-xl border', cardClass)}
             contentClass="h-full !p-3"
           >
-            <div className="flex h-full min-h-10 md:min-h-18 flex-col justify-between gap-3">
+            <div className="flex h-full flex-col justify-between gap-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
-                <Icon icon={item.icon} width={18} height={18} className="text-muted-foreground/50" />
+                <Icon icon={item.icon} width={15} height={15} className="text-muted-foreground/50" />
               </div>
               <div className="min-w-0 space-y-1">
                 <div
@@ -271,7 +270,7 @@ function InstanceDetail() {
                     item.empty ? 'text-muted-foreground/60' : item.valueClass,
                   )}
                 >
-                  <span className="num truncate text-base sm:text-[26px]">{item.value}</span>
+                  <span className="num truncate text-lg tracking-tight sm:text-[22px]">{item.value}</span>
                   {item.unit && (
                     <span className="shrink-0 text-[11px] font-medium text-muted-foreground sm:text-xs">
                       {item.unit}
@@ -288,37 +287,34 @@ function InstanceDetail() {
         ))}
       </div>
 
-      <div className="px-4 gap-4 grid grid-cols-1 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 px-4 lg:grid-cols-2">
         <CardX title="硬件信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
-          <div className="gap-3 grid grid-cols-3">
+          <div className="grid grid-cols-3 gap-x-4 gap-y-3">
             {hardwareInfo.map((item, index) => (
-              <div
-                key={item.label}
-                className={cn('min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2', !index && 'col-span-3')}
-              >
-                <div className="flex gap-1 items-center text-muted-foreground">
-                  {item.icon && <Icon icon={item.icon} width={14} height={14} className="text-muted-foreground/70" />}
-                  <span className="text-xs sm:text-sm">{item.label}</span>
+              <div key={item.label} className={cn('flex min-w-0 flex-col gap-1', !index && 'col-span-3')}>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {item.icon && <Icon icon={item.icon} width={13} height={13} className="opacity-70" />}
+                  <span>{item.label}</span>
                 </div>
-                <span className="text-xs sm:text-sm break-words">{item.value}</span>
+                <span className="break-words text-[13px] font-medium">{item.value}</span>
               </div>
             ))}
           </div>
         </CardX>
 
         <CardX title="系统信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
-          <div className="gap-3 grid grid-cols-1 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
             {systemInfo.map(item => (
-              <div key={item.label} className="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2">
-                <div className="flex gap-1 items-center text-muted-foreground">
-                  {item.icon && <Icon icon={item.icon} width={14} height={14} className="text-muted-foreground/70" />}
-                  <span className="text-xs sm:text-sm">{item.label}</span>
+              <div key={item.label} className="flex min-w-0 flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {item.icon && <Icon icon={item.icon} width={13} height={13} className="opacity-70" />}
+                  <span>{item.label}</span>
                 </div>
                 <div className="flex min-w-0 gap-2 items-center">
                   {item.label === '操作系统' && (
-                    <img src={getOSImage(data.os)} alt={getOSName(data.os)} className="size-5 shrink-0" />
+                    <img src={getOSImage(data.os)} alt={getOSName(data.os)} className="size-4 shrink-0" />
                   )}
-                  <span className="text-xs sm:text-sm break-words">{item.value}</span>
+                  <span className="break-words text-[13px] font-medium">{item.value}</span>
                 </div>
               </div>
             ))}
@@ -326,68 +322,70 @@ function InstanceDetail() {
         </CardX>
 
         <CardX title="存储信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
-          <div className="gap-3 grid grid-cols-3">
+          <div className="grid grid-cols-3 gap-x-4 gap-y-3">
             {storageInfo.map(item => (
-              <div key={item.label} className="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2">
-                <div className="flex gap-1 items-center text-muted-foreground">
-                  {item.icon && <Icon icon={item.icon} width={14} height={14} className="text-muted-foreground/70" />}
-                  <span className="text-xs sm:text-sm">{item.label}</span>
+              <div key={item.label} className="flex min-w-0 flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {item.icon && <Icon icon={item.icon} width={13} height={13} className="opacity-70" />}
+                  <span>{item.label}</span>
                 </div>
-                <span className="text-xs sm:text-sm break-words">{item.value}</span>
+                <span className="break-words text-[13px] font-medium">{item.value}</span>
               </div>
             ))}
           </div>
         </CardX>
 
-        <CardX title="网络信息" size="small" className={cn('h-full rounded-xl border', cardClass)} contentClass="pt-0">
-          <div className="gap-3 grid grid-cols-2">
-            <div className="relative min-w-0 overflow-hidden rounded-sm bg-slate-500/5 p-2">
+        <CardX title="网络信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Icon icon="icon-park-outline:transfer-data" width={13} height={13} className="opacity-70" />
+                <span>总流量</span>
+              </div>
+              <div className="num flex items-baseline justify-between gap-2">
+                <span className="text-[13px] font-medium">{formatBytes(trafficUsed)}</span>
+                <span className="text-[11px] text-muted-foreground">{trafficLimitText}</span>
+              </div>
               {hasTrafficLimit && (
-                <div
-                  className="absolute inset-y-0 left-0 rounded-sm bg-primary/10 pointer-events-none transition-[width] duration-300 ease-out"
-                  style={{ width: `${trafficUsedPercentage}%` }}
+                <ProgressThin
+                  percentage={trafficUsedPercentage}
+                  height={3}
+                  className="[&>div]:bg-violet-600 dark:[&>div]:bg-violet-400"
                 />
               )}
-              <div className="relative flex flex-col gap-1.5">
-                <div className="flex gap-1 items-center text-muted-foreground">
-                  <Icon icon="icon-park-outline:transfer-data" width={14} height={14} />
-                  <span className="text-xs sm:text-sm">总流量</span>
-                </div>
-                <span className="num text-xs sm:text-sm break-words">{trafficUsageText}</span>
-                <div className="num flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-0.5">
-                    <Icon
-                      icon="tabler:arrow-up"
-                      width="11"
-                      height="11"
-                      className="text-emerald-700 dark:text-emerald-300"
-                    />
-                    {formatBytes(data.net_total_up ?? 0)}
-                  </span>
-                  <span className="flex items-center gap-0.5">
-                    <Icon icon="tabler:arrow-down" width="11" height="11" className="text-sky-700 dark:text-sky-300" />
-                    {formatBytes(data.net_total_down ?? 0)}
-                  </span>
-                </div>
+              <div className="num flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-0.5">
+                  <Icon
+                    icon="tabler:arrow-up"
+                    width="11"
+                    height="11"
+                    className="text-emerald-600 dark:text-emerald-400"
+                  />
+                  {formatBytes(data.net_total_up ?? 0)}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Icon icon="tabler:arrow-down" width="11" height="11" className="text-sky-600 dark:text-sky-400" />
+                  {formatBytes(data.net_total_down ?? 0)}
+                </span>
               </div>
             </div>
-            <div className="min-w-0 flex flex-col gap-1 rounded-sm bg-slate-500/5 p-2">
-              <div className="flex gap-1 items-center text-muted-foreground">
-                <Icon icon="icon-park-outline:dashboard-one" width={14} height={14} />
-                <span className="text-xs sm:text-sm">网络速率</span>
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Icon icon="icon-park-outline:dashboard-one" width={13} height={13} className="opacity-70" />
+                <span>网络速率</span>
               </div>
-              <span className="num flex flex-col gap-0.5 text-xs sm:text-sm">
+              <span className="num flex flex-col gap-0.5 text-[13px] font-medium">
                 <span className="flex items-center gap-1">
                   <Icon
                     icon="tabler:arrow-up"
                     width="12"
                     height="12"
-                    className="text-emerald-700 dark:text-emerald-300"
+                    className="text-emerald-600 dark:text-emerald-400"
                   />
                   {formatBytesPerSecond(data.net_out ?? 0)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Icon icon="tabler:arrow-down" width="12" height="12" className="text-sky-700 dark:text-sky-300" />
+                  <Icon icon="tabler:arrow-down" width="12" height="12" className="text-sky-600 dark:text-sky-400" />
                   {formatBytesPerSecond(data.net_in ?? 0)}
                 </span>
               </span>
@@ -397,13 +395,13 @@ function InstanceDetail() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="px-4 text-base font-semibold">负载</h2>
+        <h2 className="px-4 text-sm font-semibold">负载</h2>
         <Suspense fallback={<ChartPlaceholder />}>
           <LoadChart uuid={data.uuid} className="px-4" />
         </Suspense>
       </section>
       <section className="space-y-3">
-        <h2 className="px-4 text-base font-semibold">延迟与丢包</h2>
+        <h2 className="px-4 text-sm font-semibold">延迟与丢包</h2>
         <Suspense fallback={<ChartPlaceholder />}>
           <PingChart uuid={data.uuid} className="px-4" />
         </Suspense>

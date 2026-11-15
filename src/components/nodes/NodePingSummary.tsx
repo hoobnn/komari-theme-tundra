@@ -25,7 +25,7 @@ export default function NodePingSummary({ node, onClick }: { node: NodeData; onC
     <div
       role="button"
       tabIndex={0}
-      className="-mx-1.5 flex flex-col gap-2 rounded-md px-1.5 py-1 text-[11px] transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="-mx-1.5 flex flex-col gap-2 rounded-md px-1.5 py-1 text-[11px] transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`${node.name} 延迟详情`}
       onClick={event => {
         event.stopPropagation()
@@ -42,8 +42,8 @@ export default function NodePingSummary({ node, onClick }: { node: NodeData; onC
       <div className="grid grid-cols-2 gap-x-4">
         {trendPanels.map(panel => (
           <div key={panel.metric} className="flex flex-col gap-1">
-            <span className="text-[10px] leading-none text-muted-foreground">{panel.label}</span>
-            <div className="flex h-4 flex-col gap-[2px]">
+            <span className="text-[11px] leading-none text-muted-foreground">{panel.label}</span>
+            <div className="flex h-3.5 flex-col gap-[2px]">
               {panel.rows.length ? (
                 panel.rows.map(row => (
                   <div
@@ -59,13 +59,13 @@ export default function NodePingSummary({ node, onClick }: { node: NodeData; onC
                         className="h-full w-full"
                         contentClass="whitespace-pre-wrap w-max"
                       >
-                        <span className={cn('block h-full w-full rounded-[2px]', bar.className)} />
+                        <span className={cn('block h-full w-full rounded-[1.5px]', bar.className)} />
                       </DataTooltip>
                     ))}
                   </div>
                 ))
               ) : (
-                <div className="flex-1 rounded-[2px] bg-muted" />
+                <div className="flex-1 rounded-[1.5px] bg-muted" />
               )}
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function NodePingSummary({ node, onClick }: { node: NodeData; onC
           <span className="text-right font-sans text-[11px] text-muted-foreground">丢包</span>
           {pingTable.rows.map(row => (
             <Fragment key={`${row.stack}`}>
-              <span className="text-[10px] text-muted-foreground/80">{row.stack ?? ''}</span>
+              <span className="text-[11px] text-muted-foreground">{row.stack ?? ''}</span>
               {row.cells.map(cell => (
                 <DataTooltip
                   key={cell.key}
@@ -102,14 +102,16 @@ export default function NodePingSummary({ node, onClick }: { node: NodeData; onC
               ))}
               <span className={cn('text-right text-xs font-medium', row.latencyTone)}>
                 {row.latency}
-                {row.latency !== '--' && <span className="text-[10px] font-normal text-muted-foreground">ms</span>}
+                {row.latency !== '--' && (
+                  <span className="ml-px text-[10px] font-normal text-muted-foreground">ms</span>
+                )}
               </span>
               <span className={cn('text-right text-xs', row.lossTone)}>{row.loss}</span>
             </Fragment>
           ))}
         </div>
       ) : (
-        <div className="text-[11px] text-muted-foreground/70">未配置延迟监测</div>
+        <div className="text-[11px] text-muted-foreground">未配置延迟监测</div>
       )}
     </div>
   )

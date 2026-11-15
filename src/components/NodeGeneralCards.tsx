@@ -25,6 +25,7 @@ export default function NodeGeneralCards({
   suspendMotion = false,
 }: NodeGeneralCardsProps) {
   const mode = useAppStore(state => state.settings.earthViewMode)
+  const relayRoutesShown = useAppStore(state => state.settings.relayRoutesEnabled)
   const storeNodes = useNodesStore(state => state.nodes)
   const summaryNodes = nodes ?? storeNodes
   const metrics = useNodeOverview(summaryNodes)
@@ -49,7 +50,11 @@ export default function NodeGeneralCards({
               <NodeEarthGlobe
                 nodes={globeNodes}
                 suspendMotion={suspendMotion}
-                className="w-full max-w-88 translate-y-0 md:absolute md:inset-x-0 md:top-0 md:max-w-md md:-translate-y-12"
+                className={cn(
+                  'w-full max-w-88 translate-y-0 md:absolute md:inset-x-0 md:top-0 md:max-w-md md:-translate-y-12',
+                  // 线路卡片紧贴概览下方：球体在卡片上缘之前淡出，不被卡片一刀切断
+                  relayRoutesShown && 'md:[mask-image:linear-gradient(to_bottom,black_44%,transparent_60%)]',
+                )}
               />
             ) : (
               <NodeEarthMaps nodes={globeNodes} />

@@ -22,8 +22,7 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
   const metrics = [
     {
       key: 'cpu',
-      tone: 'text-sky-700 dark:text-sky-400',
-      iconTone: 'bg-sky-50 text-sky-700 dark:bg-sky-400/10 dark:text-sky-400',
+      iconTone: 'text-sky-600 dark:text-sky-400',
       barTone: '[&>div]:bg-sky-600 dark:[&>div]:bg-sky-400',
       icon: 'lucide:cpu',
       label: 'CPU',
@@ -35,8 +34,7 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
     },
     {
       key: 'mem',
-      tone: 'text-emerald-700 dark:text-emerald-400',
-      iconTone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-400',
+      iconTone: 'text-emerald-600 dark:text-emerald-400',
       barTone: '[&>div]:bg-emerald-600 dark:[&>div]:bg-emerald-400',
       icon: 'lucide:memory-stick',
       label: '内存',
@@ -48,8 +46,7 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
     },
     {
       key: 'disk',
-      tone: 'text-orange-700 dark:text-orange-400',
-      iconTone: 'bg-orange-50 text-orange-700 dark:bg-orange-400/10 dark:text-orange-400',
+      iconTone: 'text-orange-600 dark:text-orange-400',
       barTone: '[&>div]:bg-orange-600 dark:[&>div]:bg-orange-400',
       icon: 'lucide:hard-drive',
       label: '硬盘',
@@ -61,8 +58,7 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
     },
     {
       key: 'traffic',
-      tone: 'text-violet-700 dark:text-violet-400',
-      iconTone: 'bg-violet-50 text-violet-700 dark:bg-violet-400/10 dark:text-violet-400',
+      iconTone: 'text-violet-600 dark:text-violet-400',
       barTone: '[&>div]:bg-violet-600 dark:[&>div]:bg-violet-400',
       icon: 'lucide:arrow-down-up',
       label: '流量',
@@ -75,7 +71,7 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+    <div className="grid grid-cols-2 gap-x-5 gap-y-3">
       {metrics.map(metric => (
         <DataTooltip
           key={metric.key}
@@ -84,22 +80,21 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
           content={metric.tip}
           contentClass={cn(!metric.tip && '!hidden', 'whitespace-pre-wrap w-max')}
         >
-          <div className="flex min-w-0 flex-col gap-1">
+          {/* 色相只落在图标和进度条上，数值保持前景色，只有告警时才变色 */}
+          <div className="flex min-w-0 flex-col gap-1.5">
             <div className="flex h-5 items-center justify-between gap-1">
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md', metric.iconTone)}>
-                  <Icon icon={metric.icon} width="13" height="13" />
-                </span>
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Icon icon={metric.icon} width="13" height="13" className={cn('shrink-0', metric.iconTone)} />
                 {metric.label}
               </span>
               <span
                 className={cn(
-                  'num whitespace-nowrap text-base font-semibold leading-none tracking-tight',
+                  'num whitespace-nowrap text-[15px] font-semibold leading-none tracking-tight',
                   metric.status === 'error'
-                    ? 'text-red-700 dark:text-red-400'
+                    ? 'text-red-600 dark:text-red-400'
                     : metric.status === 'warning'
-                      ? 'text-amber-700 dark:text-amber-400'
-                      : metric.tone,
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-foreground',
                 )}
               >
                 {metric.key === 'traffic' && !showTrafficProgress(node) ? (
@@ -107,7 +102,7 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
                 ) : (
                   <>
                     {metric.value.toFixed(1)}
-                    <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">%</span>
+                    <span className="ml-px text-[11px] font-normal text-muted-foreground">%</span>
                   </>
                 )}
               </span>
@@ -115,13 +110,13 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
             <ProgressThin
               percentage={metric.value}
               status={metric.status}
-              height={4}
+              height={3}
               className={cn((metric.status === 'success' || metric.status === 'info') && metric.barTone)}
             />
-            <div className="num flex min-w-0 flex-wrap items-baseline justify-between gap-x-1 text-[11px] leading-4">
-              <span className="text-foreground/80">{metric.detail}</span>
+            <div className="num flex min-w-0 flex-wrap items-baseline justify-between gap-x-1 text-[11px] leading-4 text-muted-foreground">
+              <span className="text-foreground/75">{metric.detail}</span>
               {metric.key !== 'cpu' && !(metric.key === 'traffic' && !showTrafficProgress(node)) && (
-                <span className="text-[10px] text-muted-foreground">{metric.total}</span>
+                <span>{metric.total}</span>
               )}
             </div>
           </div>

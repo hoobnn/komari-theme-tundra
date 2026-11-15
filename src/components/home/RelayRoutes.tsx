@@ -47,142 +47,258 @@ function HistoryLine({ records }: { records: PingRecord[] }) {
   )
 }
 
-function RouteRow({
-  route,
+type RelayLeg = ReturnType<typeof summarizeRelayLeg>
+type Stack = 'v4' | 'v6' | null
+
+interface RouteLine {
+  route: RelayRouteConfig
+  stack: Stack
+  legs: RelayLeg[]
+  total: number | null
+}
+
+const parseStack = (name: string): { stack: Stack; base: string } => {
+  const stack: Stack = /IPv6/i.test(name) ? 'v6' : /IPv4/i.test(name) ? 'v4' : null
+  return { stack, base: stack ? name.replace(/\s*[·|—-]?\s*IPv[46]\s*$/i, '').trim() : name }
+}
+
+/** 同名、同节点的 v4 / v6 线路合成一组，共用站点，各占一条轨道。 */
+function groupRoutes(routes: RelayRouteConfig[]) {
+  const groups = new Map<
+    string,
+    { name: string; nodes: string[]; routes: { route: RelayRouteConfig; stack: Stack }[] }
+  >()
+  for (const route of routes) {
+    const { stack, base } = parseStack(route.name)
+    const key = JSON.stringify([base, ...route.nodes])
+    const group = groups.get(key) ?? { name: base, nodes: route.nodes, routes: [] }
+    group.routes.push({ route, stack })
+    groups.set(key, group)
+  }
+  return [...groups.values()].map(group => ({
+    ...group,
+    routes: group.routes.toSorted((a, b) => (a.stack === 'v6' ? 1 : 0) - (b.stack === 'v6' ? 1 : 0)),
+  }))
+}
+
+/** 轨道颜色与延迟文字共用阈值：常规延迟保持中性，只有快、慢、差才上色。 */
+function trackTone(leg: RelayLeg): string {
+  if (leg.state === 'lost') return 'border-red-500/60'
+  if (leg.latency === null) return 'border-foreground/12'
+  if (leg.latency <= 80) return 'border-emerald-500/70'
+  if (leg.latency <= 180) return 'border-foreground/25'
+  if (leg.latency <= 240) return 'border-amber-500/70'
+  return 'border-red-500/70'
+}
+
+/** 名称 | 站点 段 站点 … | 协议 | 合计 | 展开 */
+const relayColumns = (maxNodes: number) =>
+  [
+    'auto',
+    ...Array.from({ length: maxNodes * 2 - 1 }, (_, index) => (index % 2 ? 'minmax(0, 1fr)' : 'auto')),
+    'auto',
+    'auto',
+    'auto',
+  ].join(' ')
+
+function StackBadge({ stack }: { stack: Stack }) {
+  if (!stack) return null
+  return (
+    <span
+      className={cn(
+        // v4 实线描边，v6 虚线描边，与轨道线型对应
+        'inline-flex h-4 items-center rounded border px-1 text-[10px] leading-none text-muted-foreground',
+        stack === 'v6' ? 'border-dashed border-foreground/30' : 'border-border',
+      )}
+    >
+      {stack}
+    </span>
+  )
+}
+
+function RouteGroup({
+  name,
+  nodes,
+  routes,
   records,
   loading,
   error,
   now,
+  order,
+  paused,
+  onTogglePaused,
+  maxNodes,
 }: {
-  route: RelayRouteConfig
+  name: string
+  nodes: string[]
+  routes: { route: RelayRouteConfig; stack: Stack }[]
   records: Map<string, PingRecord[]> | undefined
   loading: boolean
   error: string | null
   now: number
+  order: number
+  paused: boolean
+  onTogglePaused: () => void
+  maxNodes: number
 }) {
-  const legs = route.legs.map(leg => summarizeRelayLeg(leg, records?.get(leg.client) ?? [], now))
-  const complete = legs.every(leg => leg.state === 'ok')
-  const total = complete ? legs.reduce((sum, leg) => sum + (leg.latency ?? 0), 0) : null
-  const weight = legs.reduce((sum, leg) => sum + Math.max(leg.latency ?? 0, 1), 0)
-  const stack = /IPv6/i.test(route.name) ? 'v6' : /IPv4/i.test(route.name) ? 'v4' : null
-  const name = stack ? route.name.replace(/\s*[·|—-]?\s*IPv[46]\s*$/i, '').trim() : route.name
+  // 所有线路共用父级列：站点列按最长名称对齐，各段等宽，协议标与合计固定在右侧
+  const stackColumn = maxNodes * 2 + 1
+  const lines: RouteLine[] = routes.map(({ route, stack }) => {
+    const legs = route.legs.map(leg => summarizeRelayLeg(leg, records?.get(leg.client) ?? [], now))
+    const complete = legs.every(leg => leg.state === 'ok')
+    return { route, stack, legs, total: complete ? legs.reduce((sum, leg) => sum + (leg.latency ?? 0), 0) : null }
+  })
+  const span = `1 / span ${lines.length}`
   const status = loading && !records ? '加载中' : error ? '刷新失败' : '线路数据不完整'
+  const summaryTitle = lines
+    .map(
+      line =>
+        `${line.route.name}：${nodes.join(' → ')}，${line.total === null ? status : `分段合计 ${line.total.toFixed(1)} ms`}`,
+    )
+    .join('\n')
   return (
-    <details className="relay-route group border-t border-border/40 first:border-t-0">
+    <details className="relay-route group col-span-full grid grid-cols-subgrid border-t border-border/60 first-of-type:border-t-0">
       <summary
-        title={`${route.name} · ${route.nodes.join(' → ')} · ${total === null ? status : `分段合计 ${total.toFixed(1)} ms`}`}
-        className="grid min-h-10 cursor-pointer list-none grid-cols-[4.5rem_minmax(0,1fr)_3.5rem_0.75rem] items-center gap-1.5 px-2.5 pr-9 text-[11px] transition-colors hover:bg-muted/35 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground/40 sm:min-h-8 sm:grid-cols-[6.5rem_minmax(0,1fr)_4rem_0.75rem] sm:gap-3 sm:px-3 sm:pr-9 [&::-webkit-details-marker]:hidden"
+        title={summaryTitle}
+        className="col-span-full grid cursor-pointer list-none grid-cols-subgrid items-center px-3 py-2 text-[11px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground/40 sm:px-4 [&::-webkit-details-marker]:hidden"
       >
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate font-semibold text-foreground">{name}</span>
-          {stack && (
-            <span
-              className={cn(
-                'shrink-0 rounded px-1 py-px text-[9px] leading-none',
-                stack === 'v6'
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-muted text-muted-foreground',
-              )}
-            >
-              {stack}
-            </span>
-          )}
+        <span
+          className="max-w-16 min-w-0 truncate text-xs font-semibold text-foreground sm:max-w-32 sm:min-w-20"
+          style={{ gridRow: span, gridColumn: 1 }}
+        >
+          {name}
         </span>
-        <span className="relative isolate flex min-w-0 items-center gap-1 overflow-hidden text-[10px] sm:text-[11px]">
-          {complete && (
-            <span
-              aria-hidden="true"
-              className="relay-routes-flow pointer-events-none absolute inset-y-0 left-[-120px] z-10 w-full"
-            >
-              <span className="block h-full w-[120px] bg-linear-to-r from-transparent via-amber-400/30 to-transparent" />
+        {nodes.map((node, index) => (
+          <span
+            key={`node-${index}`}
+            className="relative z-20 flex h-full items-center justify-center self-stretch"
+            style={{ gridRow: span, gridColumn: 2 + index * 2 }}
+          >
+            {/* 窄屏只保留站点竖条，宽屏显示站点名称 */}
+            <span aria-hidden="true" className="h-full min-h-3 w-[3px] rounded-full bg-foreground/20 sm:hidden" />
+            <span className="hidden max-w-24 truncate text-muted-foreground transition-colors group-hover:text-foreground/80 sm:block">
+              {node}
             </span>
-          )}
-          <span className="relative z-20 hidden max-w-24 shrink-0 truncate bg-card text-muted-foreground sm:inline">
-            {route.nodes[0]}
           </span>
-          {legs.map((leg, index) => (
-            <Fragment key={index}>
+        ))}
+        {lines.map((line, row) => (
+          <Fragment key={line.route.name}>
+            {line.total !== null && (
               <span
-                title={`${route.nodes[index]} → ${route.nodes[index + 1]}：${leg.latency === null ? relayStateLabel[leg.state] : `${leg.latency.toFixed(1)} ms`}`}
-                className={cn(
-                  'num relative min-w-0 overflow-hidden rounded-[3px] bg-muted/70 px-0.5 text-center leading-4 sm:px-1',
-                  relayLatencyTone(leg.latency),
-                  stack === 'v6' && 'border-b border-dashed border-emerald-600/30 dark:border-emerald-300/30',
-                  leg.state === 'lost' && 'text-red-600 dark:text-red-400',
-                )}
-                style={{
-                  flex: `${Math.max(leg.latency ?? 0, 1) / weight} 1 0`,
-                  minWidth: `min(3.25rem, calc((100% - ${(legs.length - 1) * 4}px) / ${legs.length}))`,
-                }}
+                aria-hidden="true"
+                className="pointer-events-none relative h-full self-stretch overflow-hidden"
+                style={{ gridRow: row + 1, gridColumn: `3 / ${nodes.length * 2}` }}
               >
-                <span className="relative z-20 block truncate">
-                  {leg.latency === null ? (
-                    relayStateLabel[leg.state]
-                  ) : (
-                    <>
-                      {leg.latency.toFixed(1)}
-                      <span className="hidden sm:inline"> ms</span>
-                    </>
-                  )}
+                <span
+                  className="relay-routes-flow absolute inset-y-0 left-[-72px] w-full"
+                  style={{ animationDelay: `${order * 0.9 + row * 0.4}s` }}
+                >
+                  <span className="absolute top-1/2 left-0 block h-[2px] w-[72px] -translate-y-1/2 rounded-full bg-linear-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_6px_1px] shadow-emerald-400/40 dark:via-emerald-300" />
                 </span>
               </span>
-              <span className="relative z-20 hidden max-w-24 shrink-0 truncate bg-card text-muted-foreground sm:inline">
-                {route.nodes[index + 1]}
+            )}
+            {line.legs.map((leg, index) => (
+              <span
+                key={index}
+                title={`${line.stack ?? ''} ${nodes[index]} → ${nodes[index + 1]}：${leg.latency === null ? relayStateLabel[leg.state] : `${leg.latency.toFixed(1)} ms`}`}
+                className="relative flex h-[22px] min-w-0 items-center justify-center"
+                style={{ gridRow: row + 1, gridColumn: 3 + index * 2 }}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'absolute inset-x-0 top-1/2 border-t-[1.5px]',
+                    line.stack === 'v6' && 'border-dashed',
+                    trackTone(leg),
+                  )}
+                />
+                <span
+                  className={cn(
+                    'num relative z-20 min-w-0 truncate bg-card px-0.5 leading-4 sm:px-1',
+                    relayLatencyTone(leg.latency),
+                    leg.state === 'lost' && 'text-red-600 dark:text-red-400',
+                  )}
+                >
+                  {leg.latency === null ? relayStateLabel[leg.state] : leg.latency.toFixed(1)}
+                </span>
               </span>
-            </Fragment>
-          ))}
-        </span>
-        <span className={cn('num text-right text-xs font-semibold tracking-tight', relayLatencyTone(total))}>
-          {total === null ? (
-            <span className="font-normal text-muted-foreground" aria-label={status}>
-              --
+            ))}
+            <span className="flex justify-center" style={{ gridRow: row + 1, gridColumn: stackColumn }}>
+              <StackBadge stack={line.stack} />
             </span>
-          ) : (
-            <>
-              {total.toFixed(1)}
-              <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">ms</span>
-            </>
-          )}
-        </span>
+            <span
+              className={cn(
+                'num min-w-[3.25rem] text-right text-xs font-semibold tracking-tight sm:min-w-[4.25rem]',
+                relayLatencyTone(line.total),
+              )}
+              style={{ gridRow: row + 1, gridColumn: stackColumn + 1 }}
+            >
+              {line.total === null ? (
+                <span className="font-normal text-muted-foreground" aria-label={status}>
+                  --
+                </span>
+              ) : (
+                <>
+                  {line.total.toFixed(1)}
+                  <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">ms</span>
+                </>
+              )}
+            </span>
+          </Fragment>
+        ))}
         <Icon
           icon="lucide:chevron-down"
           aria-hidden="true"
-          className="size-3 text-muted-foreground/60 group-open:rotate-180"
+          className="size-3 text-muted-foreground/60 transition-[rotate,color] group-open:rotate-180 group-hover:text-foreground"
+          style={{ gridRow: span, gridColumn: stackColumn + 2 }}
         />
       </summary>
-      <div className="space-y-3 border-t border-border/40 px-3 py-3 sm:px-4">
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          各段独立探测，合计不代表经过中转的端到端延迟。曲线展示近期可用样本；丢包率按最近 10 分钟样本计算。
-        </p>
+      <div className="col-span-full space-y-3 border-t border-border/60 px-3 py-3 sm:px-4">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            各段独立探测，合计不代表经过中转的端到端延迟。曲线展示近期可用样本；丢包率按最近 10 分钟样本计算。
+          </p>
+          <button
+            type="button"
+            onClick={onTogglePaused}
+            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground/40"
+          >
+            <Icon icon={paused ? 'lucide:play' : 'lucide:pause'} aria-hidden="true" className="size-3" />
+            {paused ? '播放流光' : '暂停流光'}
+          </button>
+        </div>
         {error && (
           <p role="status" className="text-xs text-amber-700 dark:text-amber-400">
             刷新失败，保留的记录可能已过期，请稍后重试。
           </p>
         )}
         <div className="grid gap-2 sm:grid-cols-2">
-          {legs.map((leg, index) => (
-            <div key={index} className="rounded-lg bg-muted/40 p-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
-                <span className="font-medium wrap-anywhere">
-                  {route.nodes[index]} → {route.nodes[index + 1]}
-                </span>
-                <span className="num text-muted-foreground">
-                  {relayStateLabel[leg.state]} · 丢包 {leg.loss === null ? '--' : `${leg.loss.toFixed(1)}%`}
-                </span>
+          {lines.flatMap(line =>
+            line.legs.map((leg, index) => (
+              <div key={`${line.route.name}-${index}`} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="flex min-w-0 items-center gap-1.5 font-medium wrap-anywhere">
+                    <StackBadge stack={line.stack} />
+                    {nodes[index]} → {nodes[index + 1]}
+                  </span>
+                  <span className="num text-muted-foreground">
+                    {relayStateLabel[leg.state]}，丢包 {leg.loss === null ? '--' : `${leg.loss.toFixed(1)}%`}
+                  </span>
+                </div>
+                <HistoryLine records={leg.samples} />
+                <div className="flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground">
+                  <span className="num">
+                    {leg.updated
+                      ? `${formatDateTime(leg.samples[0].time, 'HH:mm')}–${formatDateTime(leg.updated, 'HH:mm')}，${leg.samples.length} 个样本`
+                      : '等待探测数据'}
+                  </span>
+                  <Link to={`/instance/${encodeURIComponent(leg.client)}`} className="underline underline-offset-2">
+                    探测节点任务 #{leg.taskId}
+                  </Link>
+                </div>
               </div>
-              <HistoryLine records={leg.samples} />
-              <div className="flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground">
-                <span className="num">
-                  {leg.updated
-                    ? `${formatDateTime(leg.samples[0].time, 'HH:mm')}–${formatDateTime(leg.updated, 'HH:mm')} · ${leg.samples.length} 个样本`
-                    : '等待探测数据'}
-                </span>
-                <Link to={`/instance/${encodeURIComponent(leg.client)}`} className="underline underline-offset-2">
-                  探测节点 · 任务 #{leg.taskId}
-                </Link>
-              </div>
-            </div>
-          ))}
+            )),
+          )}
         </div>
       </div>
     </details>
@@ -195,32 +311,31 @@ export default function RelayRoutes() {
   const [paused, setPaused] = useState(false)
   const snapshot = useSharedPingRecords(1, settings.relayRoutesEnabled && config.routes.length > 0)
   if (!settings.relayRoutesEnabled) return null
+  const maxNodes = Math.max(2, ...config.routes.map(route => route.nodes.length))
   return (
     <section
       aria-label="线路延迟"
       className="relative z-10 px-4"
       data-relay-motion={!paused && !settings.disablePageAnimation ? 'on' : 'off'}
     >
-      <div className="relative overflow-hidden rounded-xl bg-card py-1 shadow-xs">
+      <div
+        className="relative grid gap-x-1 overflow-hidden rounded-xl border bg-card py-1 shadow-xs sm:gap-x-2"
+        style={{ gridTemplateColumns: relayColumns(maxNodes) }}
+      >
         <h2 className="sr-only">线路延迟</h2>
-        <button
-          type="button"
-          onClick={() => setPaused(value => !value)}
-          title={paused ? '播放流光' : '暂停流光'}
-          aria-label={paused ? '播放流光' : '暂停流光'}
-          className="absolute top-3 right-1 z-30 flex size-6 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground/40 sm:top-2"
-        >
-          <Icon icon={paused ? 'lucide:play' : 'lucide:pause'} aria-hidden="true" className="size-3" />
-        </button>
         {config.error || !config.routes.length ? (
-          <p role="status" className="px-4 py-3 text-sm text-muted-foreground">
+          <p role="status" className="col-span-full px-4 py-3 text-sm text-muted-foreground">
             {config.error ?? '请在主题设置中配置线路节点和 Ping 任务。'}
           </p>
         ) : (
-          config.routes.map(route => (
-            <RouteRow
-              key={route.name}
-              route={route}
+          groupRoutes(config.routes).map((group, index) => (
+            <RouteGroup
+              key={group.routes[0].route.name}
+              {...group}
+              order={index}
+              maxNodes={maxNodes}
+              paused={paused}
+              onTogglePaused={() => setPaused(value => !value)}
               records={snapshot.data?.recordsByClient}
               loading={snapshot.loading}
               error={snapshot.error}

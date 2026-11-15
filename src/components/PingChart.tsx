@@ -457,9 +457,13 @@ function PingChart({ uuid, className }: PingChartProps) {
   const allSelected = selectedTaskIds.length === tasks.length
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div className={cn('flex h-full min-h-0 flex-col gap-4', className)}>
       {/* 时间选择器；窄屏时筛选按钮换到第二行，避免把范围标签挤掉 */}
-      <Tabs value={selectedView} onValueChange={setPickedView} className="w-full flex-row flex-wrap items-center gap-2">
+      <Tabs
+        value={selectedView}
+        onValueChange={setPickedView}
+        className="w-full shrink-0 flex-row flex-wrap items-center gap-2"
+      >
         <ScrollableTabsList
           selectedValue={selectedView}
           aria-label="延迟时间范围"
@@ -521,8 +525,12 @@ function PingChart({ uuid, className }: PingChartProps) {
         )}
       </Tabs>
 
-      {/* 内容区域 */}
-      <Spinner show={loading} contentClass="flex flex-col gap-4">
+      {/* 内容区域；弹窗里这一层撑满剩余高度，图表卡片再吃掉多余空间 */}
+      <Spinner
+        show={loading}
+        className="flex min-h-0 flex-[1_1_auto] flex-col gap-4"
+        contentClass="flex flex-col gap-4"
+      >
         {error ? (
           <div className="text-red-500 py-8 text-center">{error}</div>
         ) : tasks.length === 0 && !loading ? (
@@ -532,24 +540,32 @@ function PingChart({ uuid, className }: PingChartProps) {
         ) : (
           <>
             {/* 最新值统计卡片：按线路分组，组内每个协议栈一行（点击行切换选中） */}
+            {/* 卡片区保持完整，空间不够时先压缩图表 */}
             {latestValueGroups.length > 0 && (
-              <div className="gap-3 grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+              <div
+                className="grid shrink-0 gap-3"
+                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))' }}
+              >
                 {latestValueGroups.map(group => (
                   <div
                     key={group.base}
                     className={cn(
-                      'flex flex-col gap-1 p-3',
+                      'flex flex-col gap-1.5 p-3',
                       pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs'),
                     )}
                   >
-                    <div className="grid grid-cols-[2rem_repeat(3,minmax(0,1fr))_1.5rem] items-center gap-x-2">
-                      <div className="col-span-2 flex min-w-0 items-center gap-2">
-                        <div
-                          className="h-4 w-1 shrink-0 rounded"
-                          style={{ backgroundColor: group.items[0]?.item.color }}
-                        />
-                        <span className="truncate text-sm font-semibold">{group.base}</span>
-                      </div>
+                    {/* 线路名独占一行，下面才是对齐的数值表 */}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div
+                        className="h-4 w-1 shrink-0 rounded"
+                        style={{ backgroundColor: group.items[0]?.item.color }}
+                      />
+                      <span className="truncate text-sm font-semibold">{group.base}</span>
+                    </div>
+                    {/* 表头与数据行共用同一套列宽，数值列不会被均分撑开 */}
+                    <div className="grid grid-cols-[2rem_3.75rem_3.5rem_3rem_1.5rem] items-center justify-between gap-x-2">
+                      <span />
+                      <span className="text-right text-[11px] text-muted-foreground">延迟</span>
                       <span className="text-right text-[11px] text-muted-foreground">丢包</span>
                       <span
                         className="text-right text-[11px] text-muted-foreground"
@@ -563,7 +579,7 @@ function PingChart({ uuid, className }: PingChartProps) {
                       <div
                         key={task.id}
                         className={cn(
-                          'grid cursor-pointer select-none grid-cols-[2rem_repeat(3,minmax(0,1fr))_1.5rem] items-center gap-x-2 rounded-sm text-xs text-muted-foreground transition-opacity',
+                          'grid cursor-pointer select-none grid-cols-[2rem_3.75rem_3.5rem_3rem_1.5rem] items-center justify-between gap-x-2 rounded-sm text-xs text-muted-foreground transition-opacity',
                           !selectedTaskIds.includes(task.id) && 'opacity-30',
                         )}
                         onClick={() => toggleTask(task.id)}
@@ -581,7 +597,7 @@ function PingChart({ uuid, className }: PingChartProps) {
                         ) : (
                           <span />
                         )}
-                        <span className="num font-medium text-foreground" title="平均延迟">
+                        <span className="num text-right font-medium text-foreground" title="平均延迟">
                           {task.avg !== undefined ? `${Math.round(task.avg)} ms` : '--'}
                         </span>
                         <span className="num text-right">{task.loss.toFixed(2)}%</span>
@@ -679,7 +695,7 @@ function PingChart({ uuid, className }: PingChartProps) {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex shrink-0 flex-wrap gap-2 items-center">
               {/* 延迟可视化开关 */}
               <Button
                 variant="ghost"
@@ -723,14 +739,14 @@ function PingChart({ uuid, className }: PingChartProps) {
               </div>
             </div>
 
-            {/* 图表 */}
+            {/* 图表；在弹窗里吃掉剩余高度，空间不够时先压缩图表 */}
             <div
               className={cn(
-                'h-80 p-4',
+                'flex min-h-48 flex-[1_1_20rem] flex-col p-4',
                 pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs'),
               )}
             >
-              <EChart option={pingChartOption} />
+              <EChart option={pingChartOption} className="min-h-0 flex-1" />
             </div>
           </>
         )}
