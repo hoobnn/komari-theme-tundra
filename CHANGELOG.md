@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.3.5] - 2026-11-17
+
 ### 修复
 
 - 首页切换节点分组或搜索时，结果数量变化和页面滚动条显隐不再带动分组标签左右跳动
@@ -176,7 +178,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.4...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.1...v0.3.2
