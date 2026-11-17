@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useDeferredValue, useEffect, useState } from 'react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { selectNodeViewMode, useAppStore } from '@/stores/app'
 import { useNodeGroups, useNodesStore } from '@/stores/nodes'
@@ -17,12 +17,7 @@ export function useHomeNodes() {
   const setViewMode = useAppStore(state => state.setNodeViewMode)
   const isWideScreen = useMediaQuery('(min-width: 1024px)')
   const [searchText, setSearchText] = useState('')
-  const [query, setQuery] = useState('')
-
-  useEffect(() => {
-    const timer = setTimeout(() => setQuery(searchText.trim()), 300)
-    return () => clearTimeout(timer)
-  }, [searchText])
+  const query = useDeferredValue(searchText.trim())
 
   useEffect(() => {
     // 初次载入前不清除持久化分组。
@@ -36,7 +31,6 @@ export function useHomeNodes() {
 
   function clearSearch() {
     setSearchText('')
-    setQuery('')
   }
 
   return {

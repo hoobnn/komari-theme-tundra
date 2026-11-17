@@ -18,12 +18,7 @@ export default function Header() {
       : themeMode === 'light'
         ? '主题：浅色（点击切换为深色）'
         : '主题：深色（点击切换为跟随系统）'
-  const icon =
-    themeMode === 'auto'
-      ? 'icon-park-outline:dark-mode'
-      : themeMode === 'light'
-        ? 'icon-park-outline:sun-one'
-        : 'icon-park-outline:moon'
+  const icon = themeMode === 'auto' ? 'lucide:monitor' : themeMode === 'light' ? 'lucide:sun' : 'lucide:moon'
 
   return (
     <header
@@ -50,6 +45,7 @@ export default function Header() {
             type="button"
             variant="ghost"
             size="icon-sm"
+            className="size-9 text-muted-foreground hover:text-foreground"
             aria-label={title}
             title={title}
             onClick={() => updateThemeMode()}
@@ -57,9 +53,14 @@ export default function Header() {
             <Icon icon={icon} width={18} height={18} />
           </Button>
           {(isLoggedIn || !hideAdminEntry) && (
-            <Button asChild variant="ghost" size="icon-sm">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-sm"
+              className="size-9 text-muted-foreground hover:text-foreground"
+            >
               <a href="/admin" aria-label="后台管理" title="后台管理">
-                <Icon icon="icon-park-outline:setting" width={18} height={18} />
+                <Icon icon="lucide:settings" width={18} height={18} />
               </a>
             </Button>
           )}

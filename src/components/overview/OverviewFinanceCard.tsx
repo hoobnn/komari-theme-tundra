@@ -52,21 +52,21 @@ export default function OverviewFinanceCard({ nodes, transitionKey }: { nodes: N
   const financeSummaryItems = [
     {
       label: '总价值',
-      icon: 'tabler:wallet',
+      icon: 'lucide:wallet',
       value: formattedTotalValue.value,
       symbol: formattedTotalValue.symbol,
       currency: formattedTotalValue.currency,
     },
     {
       label: '月均支出',
-      icon: 'tabler:receipt-2',
+      icon: 'lucide:receipt-text',
       value: formattedMonthlyAverageCost.value,
       symbol: formattedMonthlyAverageCost.symbol,
       currency: `${formattedMonthlyAverageCost.currency}/月`,
     },
     {
       label: '剩余价值',
-      icon: 'tabler:coins',
+      icon: 'lucide:coins',
       value: formattedRemainingValue.value,
       symbol: formattedRemainingValue.symbol,
       currency: formattedRemainingValue.currency,
@@ -97,7 +97,7 @@ export default function OverviewFinanceCard({ nodes, transitionKey }: { nodes: N
           aria-label="查看费用与汇率"
           className={cn(
             OVERVIEW_CELL_CLASS,
-            'text-left transition-colors hover:bg-foreground/[0.025] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring data-[state=open]:bg-foreground/[0.035]',
+            'group/finance cursor-pointer text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring data-[state=open]:bg-muted/50 sm:col-start-3 sm:row-start-1 sm:border-b',
           )}
         >
           <span className="flex w-full items-center justify-between gap-1 text-xs text-muted-foreground">
@@ -105,15 +105,20 @@ export default function OverviewFinanceCard({ nodes, transitionKey }: { nodes: N
               <span
                 className={cn('flex size-5 shrink-0 items-center justify-center rounded-md', OVERVIEW_TONES.fuchsia)}
               >
-                <Icon icon="tabler:coins" width={12} height={12} />
+                <Icon icon="lucide:coins" width={12} height={12} />
               </span>
               剩余价值
             </span>
-            <Icon icon="tabler:chevron-down" width={12} height={12} />
+            <Icon
+              icon="lucide:chevron-down"
+              width={14}
+              height={14}
+              className="motion-safe:transition-transform group-data-[state=open]/finance:rotate-180"
+            />
           </span>
           <span
             key={transitionKey}
-            className={cn(OVERVIEW_VALUE_CLASS, 'block w-full max-[359px]:text-xs', metricSwitchClass)}
+            className={cn(OVERVIEW_VALUE_CLASS, 'block w-full', metricSwitchClass)}
             title={`${formattedRemainingValue.symbol}${formattedRemainingValue.value}`}
           >
             {formattedRemainingValue.symbol}
@@ -144,28 +149,28 @@ export default function OverviewFinanceCard({ nodes, transitionKey }: { nodes: N
           sideOffset={8}
           collisionPadding={16}
           className={cn(
-            'z-40 w-88 max-w-[calc(100vw-2rem)] rounded-xl border p-4 shadow-lg focus:outline-none',
+            'z-40 w-88 max-w-[calc(100vw-2rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto overscroll-contain rounded-xl border p-4 shadow-lg focus:outline-none',
             pickSurfaceClass('bg-popover', 'bg-popover/95 backdrop-blur-xl'),
           )}
           aria-label="费用与汇率"
         >
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-compact font-semibold">费用与汇率</h2>
+            <h2 className="text-value font-semibold">费用与汇率</h2>
             <Popover.Close
               aria-label="关闭费用详情"
               className="flex size-8 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Icon icon="tabler:x" width={16} height={16} />
+              <Icon icon="lucide:x" width={16} height={16} />
             </Popover.Close>
           </div>
-          <div className="flex h-full min-w-0 flex-col overflow-hidden">
-            <div className="shrink-0 grid grid-cols-3 gap-1.5">
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {financeSummaryItems.map((item, index) => (
                 <div key={item.label} className="min-w-0">
                   <div className="flex mb-1.5 items-center text-xs font-medium text-muted-foreground">{item.label}</div>
                   <div
                     key={`remaining-value-${item.label}-${exchangeRateBaseCurrency}`}
-                    className={cn('flex min-w-0 items-baseline truncate', metricSwitchClass)}
+                    className={cn('num min-w-0 wrap-anywhere', metricSwitchClass)}
                     style={getMetricSwitchStyle(index)}
                   >
                     <span className="shrink-0 text-xs mr-0.5 font-semibold leading-none text-muted-foreground">
@@ -176,19 +181,14 @@ export default function OverviewFinanceCard({ nodes, transitionKey }: { nodes: N
                 </div>
               ))}
             </div>
-            <div className="flex-1 my-1.5" />
-            <div className="shrink-0 flex flex-col flex-1">
-              <div className="flex mb-1 items-center justify-between gap-2">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">今日汇率</div>
+            <div className="border-t pt-2">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground">参考汇率 · 每 1 {exchangeRateBaseCurrency}</div>
                 <select
                   value={exchangeRateBaseCurrency}
-                  className="shrink-0 rounded-sm border border-border/70 bg-background/70 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus:text-foreground"
+                  className="min-h-8 shrink-0 cursor-pointer rounded-md border bg-card px-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-ring"
                   aria-label="切换汇率基准币种"
-                  onClick={event => event.stopPropagation()}
-                  onChange={event => {
-                    event.stopPropagation()
-                    handleBaseCurrencyChange(event.target.value)
-                  }}
+                  onChange={event => handleBaseCurrencyChange(event.target.value)}
                 >
                   {financeRateCurrencies.map(currency => (
                     <option key={currency} value={currency}>
@@ -197,7 +197,7 @@ export default function OverviewFinanceCard({ nodes, transitionKey }: { nodes: N
                   ))}
                 </select>
               </div>
-              <div className="h-15 grid grid-cols-2 gap-y-1 gap-x-4 overflow-auto">
+              <div className="num grid grid-cols-2 gap-x-5 gap-y-1.5">
                 {exchangeRateRows.map((row, index) => (
                   <div key={row.currency} className="text-2xs flex items-center">
                     <div

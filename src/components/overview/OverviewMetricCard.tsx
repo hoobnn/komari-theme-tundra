@@ -64,7 +64,14 @@ export default function OverviewMetricCard({
           </span>
           {label}
         </span>
-        {aside && <span className="num hidden truncate text-2xs text-muted-foreground sm:block">{aside}</span>}
+        {aside && (
+          <span
+            className="num min-w-0 truncate text-3xs text-muted-foreground sm:text-2xs"
+            title={typeof aside === 'string' ? aside : undefined}
+          >
+            {aside}
+          </span>
+        )}
       </div>
       <div
         key={transitionKey}
@@ -88,7 +95,7 @@ export default function OverviewMetricCard({
         </div>
       ) : (
         footer && (
-          <div className="num flex min-h-[5px] min-w-0 items-center gap-2 text-2xs leading-none text-muted-foreground">
+          <div className="num flex min-h-[5px] min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-2xs leading-none text-muted-foreground">
             {footer}
           </div>
         )

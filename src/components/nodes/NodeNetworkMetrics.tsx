@@ -5,14 +5,14 @@ import { cn } from '@/lib/utils'
 
 /** 上下行各一格：方向色底块 + 实时网速，下面一行是累计流量。 */
 export default function NodeNetworkMetrics({ node }: { node: NodeData }) {
-  const { formatBytes, formatBytesPerSecond } = useNodeFormatters()
+  const { formatBytes, splitRate } = useNodeFormatters()
   const rows = [
     {
       key: 'up',
       label: '上行',
       icon: 'lucide:arrow-up',
       chip: 'bg-emerald-500/12 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-300',
-      rate: formatBytesPerSecond(node.net_out ?? 0),
+      rate: splitRate(node.net_out ?? 0),
       total: formatBytes(node.net_total_up ?? 0),
     },
     {
@@ -20,7 +20,7 @@ export default function NodeNetworkMetrics({ node }: { node: NodeData }) {
       label: '下行',
       icon: 'lucide:arrow-down',
       chip: 'bg-sky-500/12 text-sky-600 dark:bg-sky-400/15 dark:text-sky-300',
-      rate: formatBytesPerSecond(node.net_in ?? 0),
+      rate: splitRate(node.net_in ?? 0),
       total: formatBytes(node.net_total_down ?? 0),
     },
   ]
@@ -32,7 +32,11 @@ export default function NodeNetworkMetrics({ node }: { node: NodeData }) {
             <Icon icon={row.icon} width="13" height="13" />
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="num truncate text-value font-semibold leading-none tracking-tight">{row.rate}</span>
+            <span className="num flex items-baseline gap-1 leading-none">
+              <span className="sr-only">{row.label}</span>
+              <span className="truncate text-value font-semibold tracking-tight">{row.rate.value}</span>
+              <span className="shrink-0 text-2xs text-muted-foreground">{row.rate.unit}</span>
+            </span>
             <span className="num truncate text-2xs leading-4 text-muted-foreground">
               累计 <span className="text-foreground/80">{row.total}</span>
             </span>

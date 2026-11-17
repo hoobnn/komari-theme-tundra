@@ -3,6 +3,7 @@ import { execSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
+import { icons as lucide } from '@iconify-json/lucide'
 import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
@@ -11,6 +12,55 @@ import { defineConfig } from 'vite'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8')) as { version: string }
+
+// 首屏与图表操作无需等待 Iconify CDN。构建时只取使用的图形，完整图标集留在开发依赖中。
+const interfaceIcons = [
+  'activity',
+  'app-window',
+  'arrow-down',
+  'arrow-down-up',
+  'arrow-left',
+  'arrow-up',
+  'arrow-up-down',
+  'banknote',
+  'calendar-clock',
+  'chevron-down',
+  'chevron-right',
+  'clock-3',
+  'coins',
+  'cpu',
+  'database',
+  'hard-drive',
+  'info',
+  'layout-grid',
+  'memory-stick',
+  'monitor',
+  'moon',
+  'network',
+  'pause',
+  'play',
+  'receipt-text',
+  'search',
+  'settings',
+  'square',
+  'square-check',
+  'sun',
+  'table-2',
+  'wallet',
+  'x',
+]
+const themeIcons = {
+  prefix: lucide.prefix,
+  width: lucide.width,
+  height: lucide.height,
+  icons: Object.fromEntries(
+    interfaceIcons.map(name => {
+      const icon = lucide.icons[name]
+      if (!icon) throw new Error(`Missing interface icon: ${name}`)
+      return [name, icon]
+    }),
+  ),
+}
 
 function getCommitHash(): string {
   try {
@@ -68,6 +118,7 @@ export default defineConfig({
   define: {
     __BUILD_VERSION__: JSON.stringify(packageJson.version),
     __BUILD_GIT_HASH__: JSON.stringify(getCommitHash()),
+    TUNDRA_INTERFACE_ICONS: JSON.stringify(themeIcons),
   },
   plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss(), komariThemeZip()],
   resolve: {

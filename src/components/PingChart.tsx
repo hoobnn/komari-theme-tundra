@@ -1,7 +1,9 @@
 import { Icon } from '@iconify/react'
 import dayjs from 'dayjs'
-import { useState } from 'react'
+import { format } from 'echarts/core'
+import { Fragment, useState } from 'react'
 import { EChart } from '@/components/EChart'
+import PingTaskDetails from '@/components/charts/PingTaskDetails'
 import { Button } from '@/components/ui/button'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { Spinner } from '@/components/ui/spinner'
@@ -21,7 +23,7 @@ import {
 } from '@/utils/chartTheme'
 import { buildChartViews, PING_CHART_VIEWS } from '@/utils/chartViews'
 import { HISTORY_MAX_POINTS } from '@/utils/pingHistory'
-import { groupPingTasksByStack, parsePingTaskName, pingStackLabel } from '@/utils/pingStack'
+import { groupPingTasksByStack } from '@/utils/pingStack'
 import { cutPeakValues, interpolateNullsLinear } from '@/utils/recordHelper'
 import { CARD_SURFACE_CLASS, segmentClass, TAB_TRIGGER_CLASS, TOGGLE_BASE_CLASS, toggleClass } from '@/utils/uiClasses'
 
@@ -37,7 +39,7 @@ const chartMargin = {
   left: 56,
 }
 
-// 长范围 fill_empty 可能产生大量空桶，限制标记数量避免 markLine 过密拖垮渲染
+// 长范围 fill_empty 可能产生大量空桶，限制每条线路同时绘制的标记数量。
 const MAX_LOSS_MARKERS_PER_TASK = 200
 
 function formatTime(time: string, showDate: boolean): string {
@@ -182,7 +184,9 @@ function PingChart({ uuid, className }: PingChartProps) {
     }
   })
 
-  const hasDualStack = [...taskMeta.values()].some(m => m.stack === 'v6')
+  const ipv6Ids = tasks.filter(task => taskMeta.get(task.id)?.stack === 'v6').map(task => task.id)
+  const ipv4Ids = tasks.filter(task => taskMeta.get(task.id)?.stack !== 'v6').map(task => task.id)
+  const hasDualStack = ipv6Ids.length > 0 && ipv4Ids.length > 0
 
   function getTaskColor(taskId: number): string {
     return taskMeta.get(taskId)?.color ?? SERIES_PALETTE[0]
@@ -275,7 +279,9 @@ function PingChart({ uuid, className }: PingChartProps) {
 
   // 切换任务选中状态
   function toggleTask(taskId: number) {
-    setSelectedTaskIds(prev => (prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]))
+    setSelectedTaskIds(
+      selectedTaskIds.includes(taskId) ? selectedTaskIds.filter(id => id !== taskId) : [...selectedTaskIds, taskId],
+    )
   }
 
   function showAllTasks() {
@@ -286,25 +292,8 @@ function PingChart({ uuid, className }: PingChartProps) {
     setSelectedTaskIds([])
   }
 
-  // 只看某个协议栈：v4 同时包含未标注协议栈的任务
-  function showStackTasks(stack: 'v4' | 'v6') {
-    setSelectedTaskIds(
-      tasks
-        .filter(t => {
-          const taskStack = parsePingTaskName(t.name).stack
-          return stack === 'v6' ? taskStack === 'v6' : taskStack !== 'v6'
-        })
-        .map(t => t.id),
-    )
-  }
-
-  function isStackSelected(stack: 'v4' | 'v6'): boolean {
-    if (!selectedTaskIds.length) return false
-    return selectedTaskIds.every(id => {
-      const taskStack = taskMeta.get(id)?.stack ?? null
-      return stack === 'v6' ? taskStack === 'v6' : taskStack !== 'v6'
-    })
-  }
+  const onlyIPv4 = ipv4Ids.length === selectedTaskIds.length && ipv4Ids.every(id => selectedTaskIds.includes(id))
+  const onlyIPv6 = ipv6Ids.length === selectedTaskIds.length && ipv6Ids.every(id => selectedTaskIds.includes(id))
 
   // ==================== 图表配置 ====================
 
@@ -338,8 +327,21 @@ function PingChart({ uuid, className }: PingChartProps) {
           color,
           opacity: showDelay ? 1 : 0,
         },
+        markPoint:
+          showLoss && showDelay && lossMarkerIndexes.length
+            ? {
+                silent: true,
+                animation: false,
+                symbol: isV6 ? 'diamond' : 'rect',
+                symbolSize: isV6 ? [4, 5] : [2, 6],
+                symbolOffset: [0, isV6 ? -11 : -4],
+                label: { show: false },
+                itemStyle: { color: CHART_COLORS.loss, opacity: 0.85 },
+                data: lossMarkerIndexes.map(index => ({ coord: [index, 0] })),
+              }
+            : undefined,
         markLine:
-          showLoss && lossMarkerIndexes.length
+          showLoss && !showDelay && lossMarkerIndexes.length
             ? {
                 silent: true,
                 symbol: ['none', 'none'],
@@ -370,6 +372,8 @@ function PingChart({ uuid, className }: PingChartProps) {
       color: tasks.map(task => getTaskColor(task.id)),
       tooltip: {
         ...baseTooltipConfig,
+        confine: true,
+        extraCssText: `${baseTooltipConfig.extraCssText};max-width:100%;box-sizing:border-box`,
         formatter: (params: unknown) => {
           const p = params as Array<{ seriesName: string; value: number | null; dataIndex: number }>
           if (!p.length) return ''
@@ -387,16 +391,18 @@ function PingChart({ uuid, className }: PingChartProps) {
           const sortedParams = [...p].sort((a, b) => (a.value ?? 0) - (b.value ?? 0))
 
           for (const item of sortedParams) {
-            if (item.value !== null && item.value !== undefined) {
-              // 通过任务名找到对应的任务ID，再获取颜色
-              const task = tasks.find(t => t.name === item.seriesName)
-              const color = task ? colorMap.get(task.id) || SERIES_PALETTE[0] : SERIES_PALETTE[0]
-              const isV6 = task ? taskMeta.get(task.id)?.stack === 'v6' : false
-              const colorDot = isV6
+            const task = taskList.find(t => t.name === item.seriesName)
+            if (!task) continue
+            const hadLoss = showLoss && packetLossMarkers.get(task.id)?.includes(item.dataIndex)
+            const value = showDelay && typeof item.value === 'number' ? `${Math.round(item.value)} ms` : ''
+            if (!value && !hadLoss) continue
+            const color = colorMap.get(task.id) || SERIES_PALETTE[0]
+            const colorDot =
+              taskMeta.get(task.id)?.stack === 'v6'
                 ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;border:2px solid ${color};box-sizing:border-box;margin-right:8px;flex-shrink:0"></span>`
                 : `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:8px;flex-shrink:0"></span>`
-              html += `<div style="display:flex;align-items:center">${colorDot}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.seriesName}</span><span style="margin-left:auto;font-weight:600;margin-left:16px;font-variant-numeric:tabular-nums">${Math.round(item.value)} ms</span></div>`
-            }
+            const loss = hadLoss ? `<span style="color:${CHART_COLORS.loss};margin-left:8px">丢包</span>` : ''
+            html += `<div style="display:flex;align-items:center">${colorDot}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${format.encodeHTML(item.seriesName)}</span><span style="margin-left:12px;font-weight:600;font-variant-numeric:tabular-nums">${value}</span>${loss}</div>`
           }
           html += '</div>'
           return html
@@ -433,9 +439,9 @@ function PingChart({ uuid, className }: PingChartProps) {
       },
       yAxis: {
         type: 'value',
-        name: '延迟 (ms)',
+        name: showDelay ? '延迟 (ms)' : '丢包事件',
         nameTextStyle: { color: chartThemeColors.textSecondary },
-        axisLabel: { fontSize: 11, color: chartThemeColors.textSecondary, formatter: '{value}' },
+        axisLabel: { show: showDelay, fontSize: 11, color: chartThemeColors.textSecondary, formatter: '{value}' },
         axisLine: { show: false },
         axisTick: { show: false },
         axisPointer: {
@@ -444,6 +450,7 @@ function PingChart({ uuid, className }: PingChartProps) {
           label: { show: false },
         },
         splitLine: {
+          show: showDelay,
           lineStyle: {
             color: chartThemeColors.splitLineColor,
             type: 'dashed' as const,
@@ -495,18 +502,18 @@ function PingChart({ uuid, className }: PingChartProps) {
                 <Button
                   variant="ghost"
                   size="xs"
-                  className={cn('h-6.5', TOGGLE_BASE_CLASS, segmentClass(isStackSelected('v4')))}
-                  aria-pressed={isStackSelected('v4')}
-                  onClick={() => showStackTasks('v4')}
+                  className={cn('h-6.5', TOGGLE_BASE_CLASS, segmentClass(onlyIPv4))}
+                  aria-pressed={onlyIPv4}
+                  onClick={() => setSelectedTaskIds(ipv4Ids)}
                 >
                   IPv4
                 </Button>
                 <Button
                   variant="ghost"
                   size="xs"
-                  className={cn('h-6.5', TOGGLE_BASE_CLASS, segmentClass(isStackSelected('v6')))}
-                  aria-pressed={isStackSelected('v6')}
-                  onClick={() => showStackTasks('v6')}
+                  className={cn('h-6.5', TOGGLE_BASE_CLASS, segmentClass(onlyIPv6))}
+                  aria-pressed={onlyIPv6}
+                  onClick={() => setSelectedTaskIds(ipv6Ids)}
                 >
                   IPv6
                 </Button>
@@ -539,12 +546,90 @@ function PingChart({ uuid, className }: PingChartProps) {
           </div>
         ) : (
           <>
+            <div
+              className={cn(
+                'flex min-h-64 flex-[1_1_20rem] flex-col gap-2 p-3 sm:p-4',
+                pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs'),
+              )}
+            >
+              <div className="flex shrink-0 flex-wrap gap-2 items-center">
+                {/* 延迟可视化开关 */}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className={cn(TOGGLE_BASE_CLASS, toggleClass(showDelay))}
+                  aria-pressed={showDelay}
+                  onClick={() => setShowDelay(v => !v)}
+                >
+                  延迟
+                </Button>
+                {/* 丢包可视化开关 */}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className={cn(TOGGLE_BASE_CLASS, toggleClass(showLoss))}
+                  aria-pressed={showLoss}
+                  title="红色标记表示丢包，查看对应时刻可见受影响的线路"
+                  onClick={() => setShowLoss(v => !v)}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn('h-2 w-0.5 rounded-full', showLoss ? 'bg-red-500' : 'bg-muted-foreground')}
+                  />
+                  丢包
+                </Button>
+                {/* 平滑峰值开关 */}
+                <div className="flex gap-2 items-center">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className={cn(TOGGLE_BASE_CLASS, toggleClass(cutPeak))}
+                    aria-pressed={cutPeak}
+                    onClick={() => setCutPeak(v => !v)}
+                  >
+                    平滑峰值
+                  </Button>
+                  <DataTooltip
+                    content="使用 EWMA 算法平滑数据并过滤突变值"
+                    placement="top"
+                    contentClass="whitespace-nowrap"
+                  >
+                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="平滑峰值说明">
+                      <Icon icon="lucide:info" width={14} height={14} />
+                    </Button>
+                  </DataTooltip>
+                </div>
+              </div>
+              {tasks.length > 0 && (!selectedTaskIds.length || (!showDelay && !showLoss)) ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 text-xs text-muted-foreground">
+                  <span>{!selectedTaskIds.length ? '尚未选择线路' : '延迟和丢包曲线均已隐藏'}</span>
+                  {!selectedTaskIds.length ? (
+                    <Button variant="outline" size="sm" onClick={showAllTasks}>
+                      显示全部线路
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowDelay(true)
+                        setShowLoss(true)
+                      }}
+                    >
+                      显示曲线
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <EChart option={pingChartOption} className="min-h-0 flex-1" />
+              )}
+            </div>
+
             {/* 最新值统计卡片：按线路分组，组内每个协议栈一行（点击行切换选中） */}
-            {/* 卡片区保持完整，空间不够时先压缩图表 */}
             {latestValueGroups.length > 0 && (
               <div
                 className="grid shrink-0 gap-3"
-                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))' }}
+                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 16rem), 1fr))' }}
               >
                 {latestValueGroups.map(group => (
                   <div
@@ -562,8 +647,7 @@ function PingChart({ uuid, className }: PingChartProps) {
                       />
                       <span className="truncate text-compact font-semibold">{group.base}</span>
                     </div>
-                    {/* 表头与数据行共用同一套列宽，数值列不会被均分撑开 */}
-                    <div className="grid grid-cols-[2rem_3.75rem_3.5rem_3rem_1.5rem] items-center justify-between gap-x-2">
+                    <div className="grid grid-cols-[2.7rem_minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,0.8fr)_1.75rem] items-center gap-x-1 gap-y-0.5">
                       <span />
                       <span className="text-right text-2xs text-muted-foreground">延迟</span>
                       <span className="text-right text-2xs text-muted-foreground">丢包</span>
@@ -574,180 +658,48 @@ function PingChart({ uuid, className }: PingChartProps) {
                         波动
                       </span>
                       <span />
+                      {group.items.map(({ stack, item: task }) => {
+                        const selected = selectedTaskIds.includes(task.id)
+                        return (
+                          <Fragment key={task.id}>
+                            <button
+                              type="button"
+                              aria-pressed={selected}
+                              aria-label={`${task.name} 曲线`}
+                              className={cn(
+                                'col-span-4 grid min-h-8 cursor-pointer grid-cols-subgrid items-center rounded-md text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring',
+                                !selected && 'text-muted-foreground',
+                              )}
+                              onClick={() => toggleTask(task.id)}
+                            >
+                              <span className="flex items-center gap-1">
+                                <Icon
+                                  icon={selected ? 'lucide:square-check' : 'lucide:square'}
+                                  className="size-3.5 shrink-0"
+                                  aria-hidden="true"
+                                />
+                                <span
+                                  className={cn('border-b-2 text-2xs', stack === 'v6' && 'border-dashed')}
+                                  style={{ borderColor: task.color }}
+                                >
+                                  {stack ?? 'Ping'}
+                                </span>
+                              </span>
+                              <span className="num text-right font-medium" title="平均延迟">
+                                {task.avg !== undefined ? `${Math.round(task.avg)} ms` : '--'}
+                              </span>
+                              <span className="num text-right">{task.loss.toFixed(2)}%</span>
+                              <span className="num text-right">{task.p99_p50_ratio?.toFixed(2) ?? '--'}</span>
+                            </button>
+                            <PingTaskDetails task={task} />
+                          </Fragment>
+                        )
+                      })}
                     </div>
-                    {group.items.map(({ stack, item: task }) => (
-                      <div
-                        key={task.id}
-                        className={cn(
-                          'grid cursor-pointer select-none grid-cols-[2rem_3.75rem_3.5rem_3rem_1.5rem] items-center justify-between gap-x-2 rounded-sm text-xs text-muted-foreground transition-opacity',
-                          !selectedTaskIds.includes(task.id) && 'opacity-30',
-                        )}
-                        onClick={() => toggleTask(task.id)}
-                      >
-                        {stack ? (
-                          <span
-                            className={cn(
-                              'w-8 shrink-0 rounded-sm border px-1 text-center text-3xs leading-4',
-                              stack === 'v6' && 'border-dashed',
-                            )}
-                            style={{ borderColor: task.color, color: task.color }}
-                          >
-                            {stack === 'v6' ? 'v6' : 'v4'}
-                          </span>
-                        ) : (
-                          <span />
-                        )}
-                        <span className="num text-right font-medium text-foreground" title="平均延迟">
-                          {task.avg !== undefined ? `${Math.round(task.avg)} ms` : '--'}
-                        </span>
-                        <span className="num text-right">{task.loss.toFixed(2)}%</span>
-                        <span className="num text-right">
-                          {task.p99_p50_ratio !== undefined ? task.p99_p50_ratio.toFixed(2) : '--'}
-                        </span>
-                        <DataTooltip
-                          placement="left"
-                          contentClass="w-60 p-3"
-                          content={
-                            <>
-                              <div className="mb-2 text-xs font-semibold">
-                                {task.name}
-                                {stack && `（${pingStackLabel(stack)}）`}
-                              </div>
-                              <div className="text-xs gap-x-4 gap-y-1.5 grid grid-cols-4">
-                                {task.min !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">最小</span>
-                                    <span className="font-medium">{`${Math.round(task.min)} ms`}</span>
-                                  </>
-                                )}
-                                {task.max !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">最大</span>
-                                    <span className="font-medium">{`${Math.round(task.max)} ms`}</span>
-                                  </>
-                                )}
-                                {task.avg !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">平均</span>
-                                    <span className="font-medium">{`${Math.round(task.avg)} ms`}</span>
-                                  </>
-                                )}
-                                {task.latest !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">最新</span>
-                                    <span className="font-medium">{`${Math.round(task.latest)} ms`}</span>
-                                  </>
-                                )}
-                                {task.p50 !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">P50</span>
-                                    <span className="font-medium">{`${Math.round(task.p50)} ms`}</span>
-                                  </>
-                                )}
-                                {task.p99 !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">P99</span>
-                                    <span className="font-medium">{`${Math.round(task.p99)} ms`}</span>
-                                  </>
-                                )}
-                                {task.p99_p50_ratio !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">波动率</span>
-                                    <span className="font-medium">{task.p99_p50_ratio.toFixed(2)}</span>
-                                  </>
-                                )}
-                                {task.interval !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">间隔</span>
-                                    <span className="font-medium">{`${task.interval}s`}</span>
-                                  </>
-                                )}
-                                {task.type && (
-                                  <>
-                                    <span className="text-muted-foreground">类型</span>
-                                    <span className="font-medium">{task.type.toUpperCase()}</span>
-                                  </>
-                                )}
-                                {task.total !== undefined && (
-                                  <>
-                                    <span className="text-muted-foreground">总数</span>
-                                    <span className="font-medium">{task.total}</span>
-                                  </>
-                                )}
-                              </div>
-                            </>
-                          }
-                        >
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground"
-                            aria-label="线路详情"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <Icon icon="carbon:information" width={14} height={14} />
-                          </Button>
-                        </DataTooltip>
-                      </div>
-                    ))}
                   </div>
                 ))}
               </div>
             )}
-
-            <div className="flex shrink-0 flex-wrap gap-2 items-center">
-              {/* 延迟可视化开关 */}
-              <Button
-                variant="ghost"
-                size="xs"
-                className={cn(TOGGLE_BASE_CLASS, toggleClass(showDelay))}
-                aria-pressed={showDelay}
-                onClick={() => setShowDelay(v => !v)}
-              >
-                延迟
-              </Button>
-              {/* 丢包可视化开关 */}
-              <Button
-                variant="ghost"
-                size="xs"
-                className={cn(TOGGLE_BASE_CLASS, toggleClass(showLoss))}
-                aria-pressed={showLoss}
-                onClick={() => setShowLoss(v => !v)}
-              >
-                丢包
-              </Button>
-              {/* 平滑峰值开关 */}
-              <div className="flex gap-2 items-center">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  className={cn(TOGGLE_BASE_CLASS, toggleClass(cutPeak))}
-                  aria-pressed={cutPeak}
-                  onClick={() => setCutPeak(v => !v)}
-                >
-                  平滑峰值
-                </Button>
-                <DataTooltip
-                  content="使用 EWMA 算法平滑数据并过滤突变值"
-                  placement="top"
-                  contentClass="whitespace-nowrap"
-                >
-                  <Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="平滑峰值说明">
-                    <Icon icon="carbon:information" width={14} height={14} />
-                  </Button>
-                </DataTooltip>
-              </div>
-            </div>
-
-            {/* 图表；在弹窗里吃掉剩余高度，空间不够时先压缩图表 */}
-            <div
-              className={cn(
-                'flex min-h-48 flex-[1_1_20rem] flex-col p-4',
-                pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs'),
-              )}
-            >
-              <EChart option={pingChartOption} className="min-h-0 flex-1" />
-            </div>
           </>
         )}
       </Spinner>

@@ -16,7 +16,7 @@ const EMPTY_RECORDS: PingRecord[] = []
 const EMPTY_LOSS: PingLossRecord[] = []
 const EMPTY_TASKS: PingTaskInfo[] = []
 
-/** 请求按节点和时间范围归属，切换时丢弃过期响应，并重置任务选择。 */
+/** 请求按节点和时间范围归属；同一节点换范围时沿用已选线路。 */
 export function usePingChartData(uuid: string, selectedHours: number) {
   // 数据状态：结果带上请求键，loading / 过期数据均由键比较派生
   const [result, setResult] = useState<FetchResult | null>(null)
@@ -30,7 +30,12 @@ export function usePingChartData(uuid: string, selectedHours: number) {
   const error = result?.key === fetchKey ? result.error : null
 
   // 任务选择
-  const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([])
+  const [selection, setSelection] = useState<{ uuid: string; ids: number[] } | null>(null)
+  const taskIds = tasks.map(task => task.id)
+  const selectedTaskIds = selection?.uuid === uuid ? taskIds.filter(id => selection.ids.includes(id)) : taskIds
+  function setSelectedTaskIds(ids: number[]) {
+    setSelection(ids.length === taskIds.length ? null : { uuid, ids })
+  }
   // ==================== 数据获取 ====================
 
   // 切换视图或节点时重新拉取；cancelled 取代原先的 requestId 防乱序
@@ -51,8 +56,6 @@ export function usePingChartData(uuid: string, selectedHours: number) {
           tasks: fetched.tasks,
           error: null,
         })
-        // 每次拉取完成后默认全选
-        setSelectedTaskIds(fetched.tasks.map(t => t.id))
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -64,7 +67,6 @@ export function usePingChartData(uuid: string, selectedHours: number) {
           tasks: EMPTY_TASKS,
           error: err instanceof Error ? err.message : '获取数据失败',
         })
-        setSelectedTaskIds([])
       })
 
     return () => {

@@ -1,7 +1,7 @@
-import type { KeyboardEvent } from 'react'
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/react'
 import { memo, useState } from 'react'
+import { Link } from 'react-router'
 import NodePingListCell from '@/components/NodePingListCell'
 import TrafficProgress from '@/components/TrafficProgress'
 import { Badge } from '@/components/ui/badge'
@@ -31,104 +31,57 @@ import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
 interface ColumnConfig {
   key: string
   label: string
-  width: string | number
-  sortable: boolean
+  width?: string
+  sortable?: boolean
 }
 
 interface NodeListProps {
   nodes: NodeData[]
   onClick?: (node: NodeData) => void
-  onPingClick?: (node: NodeData) => void
+  onPingClick?: (node: NodeData, trigger: HTMLElement) => void
 }
 
 const rowStaggerMs = 16
 const rowStaggerLimit = 6
 
-// 列表只在 ≥1024px 出现（更窄时固定卡片视图）。最小列宽合计 878px + 10 个 8px 间距，
-// 1024 宽时行内可用约 982px，不出现横向滚动；更宽时多出的空间优先给节点名，其次给标签。
+// 给读数留出稳定列宽，其余空间优先留给节点名。
 const columns: ColumnConfig[] = [
-  {
-    key: 'status',
-    label: '状态',
-    width: '40px',
-    sortable: true,
-  },
-  {
-    key: 'os',
-    label: '系统',
-    width: '40px',
-    sortable: true,
-  },
-  {
-    key: 'name',
-    label: '节点',
-    width: 'minmax(150px, 1.6fr)',
-    sortable: true,
-  },
-  {
-    key: 'tags',
-    label: '标签',
-    width: 'minmax(72px, 1fr)',
-    sortable: false,
-  },
-  {
-    key: 'cpu',
-    label: 'CPU',
-    width: '68px',
-    sortable: true,
-  },
-  {
-    key: 'mem',
-    label: '内存',
-    width: '68px',
-    sortable: true,
-  },
-  {
-    key: 'disk',
-    label: '硬盘',
-    width: '68px',
-    sortable: true,
-  },
-  {
-    key: 'traffic',
-    label: '流量',
-    width: '68px',
-    sortable: true,
-  },
-  {
-    key: 'rate',
-    label: '速率',
-    width: '76px',
-    sortable: true,
-  },
-  {
-    key: 'networks',
-    label: '延迟与丢包',
-    width: '228px',
-    sortable: false,
-  },
+  { key: 'status', label: '状态', width: '3.25rem', sortable: true },
+  { key: 'os', label: '系统', width: '3.25rem', sortable: true },
+  { key: 'name', label: '节点', sortable: true },
+  { key: 'tags', label: '标签', width: '12%' },
+  { key: 'cpu', label: 'CPU', width: '4.75rem', sortable: true },
+  { key: 'mem', label: '内存', width: '4.75rem', sortable: true },
+  { key: 'disk', label: '硬盘', width: '4.75rem', sortable: true },
+  { key: 'traffic', label: '流量', width: '4.75rem', sortable: true },
+  { key: 'rate', label: '速率', width: '5.25rem', sortable: true },
+  { key: 'networks', label: '延迟与丢包', width: '14.75rem' },
 ]
 
-const gridStyle = {
-  gridTemplateColumns: columns.map(c => c.width).join(' '),
+function ResourceValue({ value, tone }: { value: number; tone: string }) {
+  const status = getStatus(value)
+  return (
+    <div className="space-y-1">
+      <div
+        className={cn(
+          'num text-xs font-medium',
+          status === 'warning' && 'text-amber-700 dark:text-amber-400',
+          status === 'error' && 'text-red-600 dark:text-red-400',
+        )}
+      >
+        {value.toFixed(1)}%
+      </div>
+      <ProgressThin percentage={value} status={status} height={4} className={status === 'success' ? tone : undefined} />
+    </div>
+  )
 }
-
-const offlineOverlayContentStyle = (() => {
-  const keys = columns.map(c => c.key)
-  const statusIndex = keys.indexOf('status')
-  const regionIndex = keys.indexOf('region')
-  const nameIndex = keys.indexOf('name')
-  const startColumn =
-    nameIndex !== -1 ? nameIndex + 1 : regionIndex !== -1 ? regionIndex + 2 : statusIndex === -1 ? 1 : statusIndex + 2
-  return { gridColumn: `${startColumn} / -1` }
-})()
 
 interface NodeRowProps {
   node: NodeData
   index: number
   animate: boolean
   onClick?: (node: NodeData) => void
-  onPingClick?: (node: NodeData) => void
+  onPingClick?: (node: NodeData, trigger: HTMLElement) => void
 }
 
 const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowProps) => {
@@ -141,24 +94,13 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
   const memPercentage = getMemPercentage(node)
   const diskPercentage = getDiskPercentage(node)
 
-  function openPingDialog() {
-    onPingClick?.(node)
-  }
-
-  function handlePingKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.stopPropagation()
-      event.preventDefault()
-      openPingDialog()
-    }
-  }
-
   function renderCell(key: string) {
     switch (key) {
       // 在线状态指示器
       case 'status':
         return (
-          <div className="flex justify-center">
+          <div className="flex justify-center" title={node.online ? '在线' : '离线'}>
+            <span className="sr-only">{node.online ? '在线' : '离线'}</span>
             <span
               className={cn(
                 'size-1.5 rounded-full ring-[3px]',
@@ -173,7 +115,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
       // 节点名称
       case 'name':
         return (
-          <div className={cn('space-y-0.5', !node.online && 'blur-sm opacity-30')}>
+          <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-compact font-semibold">
               {hasRegion(node.region) && (
                 <img
@@ -182,21 +124,23 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                   className="h-3.5 w-5 shrink-0 rounded-[2px] object-cover"
                 />
               )}
-              <button
-                type="button"
-                className="min-w-0 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              <Link
+                to={`/instance/${node.uuid}`}
+                onClick={event => event.stopPropagation()}
+                className="min-w-0 truncate rounded-sm text-left underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 title={node.name}
               >
                 {node.name}
-              </button>
+              </Link>
             </div>
-            <div className="flex flex-row gap-x-2 text-2xs text-muted-foreground/70">
+            <div className="flex flex-row gap-x-2 text-2xs text-muted-foreground">
+              {!node.online && <span className="shrink-0 text-red-600 dark:text-red-400">离线</span>}
               {node.online && (
                 <DataTooltip
                   content={formatUptime(node.uptime ?? 0)}
                   className="shrink-0"
                   placement="right"
-                  contentClass="whitespace-pre-wrap left-0 ml-0 w-max"
+                  contentClass="whitespace-pre-wrap w-max"
                 >
                   <span>{formatUptime(node.uptime ?? 0, 'day')}</span>
                 </DataTooltip>
@@ -205,7 +149,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 <DataTooltip
                   placement="left"
                   content={formatDateTime(node.expired_at, 'YYYY-MM-DD')}
-                  contentClass="whitespace-nowrap right-0 mr-0"
+                  contentClass="whitespace-nowrap"
                 >
                   <div className="flex gap-x-1.5 truncate">
                     {priceTags.map((tag, tagIndex) => (
@@ -248,16 +192,11 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
           <div className="flex flex-col gap-0.5">
             <NodePingListCell
               uuid={node.uuid}
-              online={node.online}
-              role="button"
-              tabIndex={0}
-              className="outline-none"
               aria-label={`查看 ${node.name} 的延迟与丢包`}
               onClick={event => {
                 event.stopPropagation()
-                openPingDialog()
+                onPingClick?.(node, event.currentTarget)
               }}
-              onKeyDown={handlePingKeyDown}
             />
           </div>
         )
@@ -289,10 +228,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 </div>
               }
             >
-              <div className="space-y-1">
-                <div className="num truncate text-xs text-foreground">{(node.cpu ?? 0).toFixed(1)}%</div>
-                <ProgressThin percentage={node.cpu ?? 0} status={getStatus(node.cpu ?? 0)} height={4} />
-              </div>
+              <ResourceValue value={node.cpu ?? 0} tone="[&>div]:bg-sky-500 dark:[&>div]:bg-sky-400" />
             </DataTooltip>
           </div>
         )
@@ -320,10 +256,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 </div>
               }
             >
-              <div className="space-y-1">
-                <div className="num truncate text-xs text-foreground">{memPercentage.toFixed(1)}%</div>
-                <ProgressThin percentage={memPercentage} status={getStatus(memPercentage)} height={4} />
-              </div>
+              <ResourceValue value={memPercentage} tone="[&>div]:bg-emerald-500 dark:[&>div]:bg-emerald-400" />
             </DataTooltip>
           </div>
         )
@@ -345,10 +278,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 </div>
               }
             >
-              <div className="space-y-1">
-                <div className="num truncate text-xs text-foreground">{diskPercentage.toFixed(1)}%</div>
-                <ProgressThin percentage={diskPercentage} status={getStatus(diskPercentage)} height={4} />
-              </div>
+              <ResourceValue value={diskPercentage} tone="[&>div]:bg-orange-500 dark:[&>div]:bg-orange-400" />
             </DataTooltip>
           </div>
         )
@@ -399,7 +329,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
             <div className="num flex flex-col text-2xs">
               <span className="flex flex-row items-center gap-1">
                 <Icon
-                  icon="tabler:arrow-up"
+                  icon="lucide:arrow-up"
                   width="12"
                   height="12"
                   className="text-emerald-600 dark:text-emerald-400"
@@ -407,7 +337,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 {formatBytesPerSecond(node.net_out ?? 0)}
               </span>
               <span className="flex flex-row items-center gap-1">
-                <Icon icon="tabler:arrow-down" width="12" height="12" className="text-sky-600 dark:text-sky-400" />
+                <Icon icon="lucide:arrow-down" width="12" height="12" className="text-sky-600 dark:text-sky-400" />
                 {formatBytesPerSecond(node.net_in ?? 0)}
               </span>
             </div>
@@ -420,39 +350,39 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
   }
 
   return (
-    <div
+    <tr
       className={cn(
-        'relative flex h-16 cursor-pointer flex-col justify-center border-t border-border/70 px-2 transition-colors duration-150 hover:bg-foreground/[0.025]',
+        'h-16 cursor-pointer border-t border-border/75 hover:bg-muted/45 focus-within:bg-muted/40',
         animate && 'node-enter',
       )}
-      role="row"
       style={animate ? { animationDelay: `${Math.min(index, rowStaggerLimit) * rowStaggerMs}ms` } : undefined}
       onClick={() => onClick?.(node)}
     >
-      <div role="presentation" className="grid gap-2 items-center" style={gridStyle}>
-        {columns.map(col => {
-          const cell = renderCell(col.key)
-          return cell ? (
-            <div role="cell" key={col.key} className="min-w-0">
-              {cell}
-            </div>
-          ) : null
-        })}
-      </div>
-
-      {!node.online && (
-        <div className="absolute inset-0 z-2 p-2 bg-background/10 rounded-lg flex items-center" aria-hidden="true">
-          <div className="grid gap-2 items-center justify-center" style={gridStyle}>
-            <div className="h-full space-y-1" style={offlineOverlayContentStyle}>
-              <div className="text-compact font-semibold truncate">
-                <span className="text-red-600 dark:text-red-400">离线</span> {node.name}
-              </div>
-              <div className="text-xs text-muted-foreground">{formatOfflineTime(node)}</div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {columns.map(col => {
+        // 离线时实时值没有参考意义，保留可操作的节点名、标签与历史延迟。
+        if (!node.online && col.key === 'cpu')
+          return (
+            <td key={col.key} colSpan={5} className="px-2 text-xs text-muted-foreground">
+              {node.time ? (
+                <>
+                  最后上报{' '}
+                  <time dateTime={node.time} className="num">
+                    {formatOfflineTime(node)}
+                  </time>
+                </>
+              ) : (
+                '暂无上报记录'
+              )}
+            </td>
+          )
+        if (!node.online && ['mem', 'disk', 'traffic', 'rate'].includes(col.key)) return null
+        return (
+          <td key={col.key} className="px-1.5 py-1">
+            {renderCell(col.key)}
+          </td>
+        )
+      })}
+    </tr>
   )
 })
 NodeRow.displayName = 'NodeRow'
@@ -477,60 +407,59 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
   const sortedNodes = sortNodes(nodes, sortKey, sortDir)
 
   return (
-    <div className="overflow-x-auto overflow-y-hidden min-w-0 p-1 -m-1">
-      <div
-        role="table"
-        aria-label="节点列表"
-        className={cn(
-          'flex w-full min-w-fit flex-col overflow-hidden rounded-xl border',
-          pickSurfaceClass('bg-card shadow-xs', 'bg-card/80 backdrop-blur-sm'),
-        )}
-      >
-        {/* 表头 */}
-        <div role="row" className="grid gap-2 px-2 py-2.5" style={gridStyle}>
+    <div
+      className={cn(
+        'overflow-x-auto rounded-xl border',
+        pickSurfaceClass('bg-card shadow-xs', 'bg-card/80 backdrop-blur-sm'),
+      )}
+    >
+      <table aria-label="节点列表" className="w-full min-w-[60rem] table-fixed border-collapse text-left">
+        <colgroup>
           {columns.map(col => (
-            <div
-              key={col.key}
-              className={cn(
-                'flex items-center',
-                ['status', 'os'].includes(col.key) ? 'justify-center' : 'justify-start',
-              )}
-              role="columnheader"
-              aria-sort={
-                col.sortable ? (sortKey === col.key ? (sortDir === 1 ? 'ascending' : 'descending') : 'none') : undefined
-              }
-            >
-              {col.sortable ? (
-                <button
-                  type="button"
-                  className={cn(
-                    'group/sort -mx-1 flex items-center gap-0.5 rounded px-1 py-0.5 text-xs transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    sortKey === col.key ? 'font-medium text-foreground' : 'text-muted-foreground',
-                  )}
-                  onClick={() => handleSort(col)}
-                >
-                  {col.label}
-                  <Icon
-                    icon={
-                      sortKey === col.key
-                        ? sortDir === 1
-                          ? 'tabler:arrow-up'
-                          : 'tabler:arrow-down'
-                        : 'tabler:arrows-sort'
-                    }
-                    width="12"
-                    height="12"
-                    className={sortKey === col.key ? 'text-foreground' : 'opacity-40 group-hover/sort:opacity-80'}
-                  />
-                </button>
-              ) : (
-                <span className="text-xs text-muted-foreground">{col.label}</span>
-              )}
-            </div>
+            <col key={col.key} style={{ width: col.width }} />
           ))}
-        </div>
-
-        <div role="rowgroup" className="flex flex-col">
+        </colgroup>
+        <thead className="bg-muted/55">
+          <tr>
+            {columns.map(col => (
+              <th
+                key={col.key}
+                scope="col"
+                className={cn('px-1.5 py-1.5 text-xs font-medium', ['status', 'os'].includes(col.key) && 'text-center')}
+                aria-sort={sortKey === col.key ? (sortDir === 1 ? 'ascending' : 'descending') : undefined}
+              >
+                {col.sortable ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      'group/sort -mx-1 inline-flex min-h-7 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-md px-1 text-xs transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      sortKey === col.key ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground',
+                    )}
+                    onClick={() => handleSort(col)}
+                  >
+                    {col.label}
+                    <Icon
+                      icon={
+                        sortKey === col.key
+                          ? sortDir === 1
+                            ? 'lucide:arrow-up'
+                            : 'lucide:arrow-down'
+                          : 'lucide:arrow-up-down'
+                      }
+                      aria-hidden="true"
+                      width="11"
+                      height="11"
+                      className={sortKey === col.key ? 'text-foreground' : 'opacity-40 group-hover/sort:opacity-80'}
+                    />
+                  </button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">{col.label}</span>
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
           {sortedNodes.map((node, index) => (
             <NodeRow
               key={node.uuid}
@@ -541,8 +470,8 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
               onPingClick={onPingClick}
             />
           ))}
-        </div>
-      </div>
+        </tbody>
+      </table>
     </div>
   )
 }

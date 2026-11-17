@@ -17,7 +17,7 @@ interface NodeResultsProps {
   query: string
   clearSearch: () => void
   onNodeClick: (node: NodeData) => void
-  onPingClick: (node: NodeData) => void
+  onPingClick: (node: NodeData, trigger: HTMLElement) => void
 }
 
 export default function NodeResults({
@@ -50,16 +50,15 @@ export default function NodeResults({
       ) : nodes.length !== 0 && viewMode === 'list' ? (
         <NodeList nodes={nodes} onClick={onNodeClick} onPingClick={onPingClick} />
       ) : query.length > 0 ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-compact text-muted-foreground">
-          <span>
-            没有匹配「
-            {query.trim()}
-            」的节点
-          </span>
-          <Button variant="outline" size="sm" onClick={clearSearch}>
-            清除搜索
-          </Button>
-        </div>
+        <Empty
+          className="min-h-44 wrap-anywhere rounded-xl border bg-card text-center shadow-xs [&>svg]:size-8"
+          description={`没有匹配「${query}」的节点`}
+          extra={
+            <Button variant="outline" size="sm" onClick={clearSearch}>
+              清除搜索
+            </Button>
+          }
+        />
       ) : (
         <div className="text-muted-foreground text-center py-8">
           <Empty description="暂无节点" />

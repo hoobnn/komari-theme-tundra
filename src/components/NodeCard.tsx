@@ -1,6 +1,7 @@
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/react'
 import { memo } from 'react'
+import { Link } from 'react-router'
 import NodeResourceMetrics from '@/components/nodes/NodeResourceMetrics'
 import NodeNetworkMetrics from '@/components/nodes/NodeNetworkMetrics'
 import NodePingSummary from '@/components/nodes/NodePingSummary'
@@ -20,13 +21,13 @@ interface NodeCardProps {
   node: NodeData
   /** 点击卡片，回传 node 方便父级复用同一个稳定回调 */
   onClick?: (node: NodeData) => void
-  onPingClick?: (node: NodeData) => void
+  onPingClick?: (node: NodeData, trigger: HTMLElement) => void
 }
 
 function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
   const lang = useAppStore(state => state.lang)
   const { pickSurfaceClass } = useBackgroundSurface()
-  const { formatUptime } = useNodeFormatters()
+  const { formatBytes, formatUptime } = useNodeFormatters()
 
   const offlineTime = formatDateTime(node.time)
   const expiredDate = formatDateTime(node.expired_at, 'YYYY-MM-DD')
@@ -37,12 +38,11 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
 
   return (
     <CardX
-      contentClass="flex flex-1 flex-col"
+      contentClass="flex flex-1 flex-col pb-3"
       headerClass="pb-1.5 pt-2.5"
       className={cn(
-        'node-card group/card h-full w-full cursor-pointer rounded-xl border bg-card shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-foreground/15 hover:shadow-lg',
+        'node-card group/card h-full w-full cursor-pointer rounded-xl border bg-card shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-foreground/20 hover:shadow-lg has-[:focus-visible]:border-ring/60',
         pickSurfaceClass('', 'backdrop-blur-sm'),
-        !node.online && 'border-red-600/25 dark:border-red-400/25',
       )}
       onClick={() => onClick?.(node)}
       header={
@@ -55,13 +55,14 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
                 : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15',
             )}
           />
-          <button
-            type="button"
-            className="min-w-0 flex-1 truncate rounded-sm text-left text-value font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <Link
+            to={`/instance/${node.uuid}`}
+            onClick={event => event.stopPropagation()}
+            className="min-w-0 truncate rounded-sm text-value font-semibold tracking-tight decoration-foreground/35 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
             title={node.name}
           >
             {node.name}
-          </button>
+          </Link>
         </div>
       }
       headerExtra={
@@ -77,18 +78,9 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
         </div>
       }
     >
-      <div className="relative flex flex-1 flex-col">
-        {!node.online && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground">
-            <span className="text-xs font-medium text-red-600 dark:text-red-400">离线</span>
-            <span className="num">{offlineTime}</span>
-          </div>
-        )}
-
-        <div className={cn('flex flex-1 flex-col gap-2', !node.online && 'pointer-events-none opacity-25 blur-[2px]')}>
-          {/* 在线时长与费用 */}
-          {/* 元信息不加底色块，靠留白和图标分组，减少卡中卡 */}
-          <div className="-mt-1 flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-muted-foreground">
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border/70 pb-2 text-2xs text-muted-foreground">
+          {node.online && (
             <span className="inline-flex items-center gap-1">
               <Icon icon="lucide:clock-3" width="12" height="12" className="opacity-70" />
               <span>
@@ -96,39 +88,69 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
                 <span className="num text-foreground/80">{node.uptime > 0 ? formatUptime(node.uptime) : '--'}</span>
               </span>
             </span>
-            <DataTooltip placement="top" content={expiredDate} contentClass="whitespace-nowrap">
-              <span className="num inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                <Icon icon="lucide:wallet" width="12" height="12" className="opacity-70" />
-                {priceTags.map(tag => (
-                  <span key={tag.text} className={tag.highlight ? remainingTimeTagClass : ''}>
-                    {tag.text}
-                  </span>
-                ))}
-              </span>
-            </DataTooltip>
-          </div>
-
-          <NodeResourceMetrics node={node} />
-          <NodeNetworkMetrics node={node} />
-          <div className="border-t border-border/70 pt-1">
-            <NodePingSummary node={node} onClick={onPingClick} />
-          </div>
-
-          {/* 底部只放自定义标签，没有就不渲染 */}
-          {customTags.length > 0 && (
-            <div className="mt-auto flex flex-wrap items-center gap-1">
-              {customTags.map((tag, index) => (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
           )}
+          {!node.online && <span className="font-medium text-red-600 dark:text-red-400">离线</span>}
+          <DataTooltip placement="top" content={expiredDate} contentClass="whitespace-nowrap">
+            <span className="num inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              <Icon icon="lucide:wallet" width="12" height="12" className="opacity-70" />
+              {priceTags.map(tag => (
+                <span key={tag.text} className={tag.highlight ? remainingTimeTagClass : ''}>
+                  {tag.text}
+                </span>
+              ))}
+            </span>
+          </DataTooltip>
         </div>
+
+        {node.online ? (
+          <>
+            <NodeResourceMetrics node={node} />
+            <NodeNetworkMetrics node={node} />
+          </>
+        ) : (
+          <div className="flex min-h-24 flex-1 flex-col justify-center gap-1 py-2">
+            <span className="flex items-center gap-1.5 text-xs font-medium">
+              <Icon icon="lucide:clock-3" className="size-3.5 text-muted-foreground" />
+              {node.time ? (
+                <>
+                  最后上报{' '}
+                  <time dateTime={node.time} className="num">
+                    {offlineTime}
+                  </time>
+                </>
+              ) : (
+                '暂无上报记录'
+              )}
+            </span>
+            <span className="num text-2xs text-muted-foreground">
+              {[
+                node.cpu_cores > 0 && `${node.cpu_cores} 核`,
+                node.mem_total > 0 && `内存 ${formatBytes(node.mem_total)}`,
+                node.disk_total > 0 && `硬盘 ${formatBytes(node.disk_total)}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </div>
+        )}
+        <div className="border-t border-border/70 pt-1">
+          <NodePingSummary node={node} onClick={onPingClick} />
+        </div>
+
+        {/* 底部只放自定义标签，没有就不渲染 */}
+        {customTags.length > 0 && (
+          <div className="mt-auto flex flex-wrap items-center gap-1">
+            {customTags.map((tag, index) => (
+              <Badge
+                key={index}
+                variant="outline"
+                className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
     </CardX>
   )

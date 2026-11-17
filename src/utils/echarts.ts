@@ -10,6 +10,7 @@ import {
   GridComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkPointComponent,
   TitleComponent,
   TooltipComponent,
 } from 'echarts/components'
@@ -26,6 +27,7 @@ registerEChartsModules([
   TooltipComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkPointComponent,
   TitleComponent,
   DataZoomComponent,
   CanvasRenderer,

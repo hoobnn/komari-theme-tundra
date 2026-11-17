@@ -1,5 +1,5 @@
 import type { NodeData } from '@/stores/nodes'
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import HomeNotices from '@/components/home/HomeNotices'
 import NodeToolbar from '@/components/home/NodeToolbar'
@@ -19,19 +19,25 @@ export default function HomeView() {
   const navigate = useNavigate()
   const earthViewMode = useAppStore(state => state.settings.earthViewMode)
   const home = useHomeNodes()
-  useHomeScrollRestoration()
+  const searchRef = useRef<HTMLInputElement>(null)
+  const homeRef = useHomeScrollRestoration()
   const [pingDialog, setPingDialog] = useState<{ uuid: string; open: boolean } | null>(null)
+  const pingTrigger = useRef<HTMLElement | null>(null)
   const pingNode = useNodesStore(state => (pingDialog ? (state.nodesByUuid.get(pingDialog.uuid) ?? null) : null))
   const openNode = useCallback(
     (node: NodeData) => {
+      if (window.getSelection()?.isCollapsed === false) return
       void navigate(`/instance/${node.uuid}`)
     },
     [navigate],
   )
-  const openPing = useCallback((node: NodeData) => setPingDialog({ uuid: node.uuid, open: true }), [])
+  const openPing = useCallback((node: NodeData, trigger: HTMLElement) => {
+    pingTrigger.current = trigger
+    setPingDialog({ uuid: node.uuid, open: true })
+  }, [])
 
   return (
-    <div className="home-view space-y-4">
+    <div ref={homeRef} className="home-view space-y-4">
       <HomeNotices />
       {earthViewMode !== 'hide' ? (
         <Suspense fallback={null}>
@@ -54,7 +60,9 @@ export default function HomeView() {
           <NodeToolbar
             groupNames={home.groupNames}
             selectedGroup={home.selectedGroup}
+            resultCount={home.visibleNodes.length}
             searchText={home.searchText}
+            searchRef={searchRef}
             onSearchChange={home.setSearchText}
             onClearSearch={home.clearSearch}
             viewMode={home.viewMode}
@@ -66,7 +74,10 @@ export default function HomeView() {
               nodes={home.visibleNodes}
               viewMode={home.viewMode}
               query={home.query}
-              clearSearch={home.clearSearch}
+              clearSearch={() => {
+                home.clearSearch()
+                searchRef.current?.focus()
+              }}
               onNodeClick={openNode}
               onPingClick={openPing}
             />
@@ -77,6 +88,7 @@ export default function HomeView() {
         node={pingNode}
         open={pingDialog?.open ?? false}
         onClose={() => setPingDialog(current => (current ? { ...current, open: false } : null))}
+        onRestoreFocus={() => pingTrigger.current?.focus({ preventScroll: true })}
         onExited={() => setPingDialog(current => (current?.open ? current : null))}
       />
     </div>

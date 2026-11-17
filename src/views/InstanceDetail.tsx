@@ -2,14 +2,15 @@ import type { CurrencyCode } from '@/utils/financeHelper'
 import ChartPlaceholder from '@/components/charts/ChartPlaceholder'
 import { Icon } from '@iconify/react'
 import type { ReactNode } from 'react'
-import { lazy, Suspense, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { lazy, Suspense, useState } from 'react'
+import { Link, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { CardX } from '@/components/ui/card-x'
 import { Empty } from '@/components/ui/empty'
 import { ProgressThin } from '@/components/ui/progress-thin'
 import { useBackgroundSurface } from '@/hooks/useBackgroundSurface'
 import { useExchangeRates } from '@/hooks/useExchangeRates'
+import { useDetailNavigation } from '@/hooks/useDetailNavigation'
 import { useNodeFormatters } from '@/hooks/useNodeFormatters'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
@@ -55,16 +56,21 @@ const SURFACE_CUSTOM = 'bg-card/60 backdrop-blur-xs'
 
 function SpecSection({
   title,
+  icon,
   items,
   renderValue,
 }: {
   title: string
+  icon: string
   items: InfoItem[]
   renderValue?: (item: InfoItem) => ReactNode | undefined
 }) {
   return (
     <section className="min-w-0 p-4">
-      <h2 className="mb-2.5 text-xs font-semibold text-foreground/80">{title}</h2>
+      <h3 className="mb-3 flex items-center gap-2 text-compact font-semibold">
+        <Icon icon={icon} className="size-4 text-muted-foreground" />
+        {title}
+      </h3>
       <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-compact">
         {items.map(item => (
           <div key={item.label} className="contents">
@@ -79,7 +85,6 @@ function SpecSection({
 
 function InstanceDetail() {
   const { id = '' } = useParams()
-  const navigate = useNavigate()
 
   const lang = useAppStore(state => state.lang)
   const { pickSurfaceClass } = useBackgroundSurface()
@@ -87,12 +92,8 @@ function InstanceDetail() {
   const { exchangeRates } = useExchangeRates()
   const [financeBaseCurrency] = useState<CurrencyCode>(() => getStoredFinanceCurrency())
 
-  useEffect(() => {
-    if (!id) return
-    window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [id])
-
   const data = useNode(id)
+  const detailRef = useDetailNavigation(data?.uuid)
 
   // 金额拆成「符号+数值」与币种：人民币只显示 ¥，其他币种在数值后补小字代码（避免 ¥ 同时表示日元时混淆）
   function formatFinanceMetric(amountCNY: number, currency: CurrencyCode): { value: string; unit?: string } {
@@ -148,15 +149,15 @@ function InstanceDetail() {
   const metricCards: MetricCard[] = data
     ? (
         [
-          { label: '节点价格', icon: 'tabler:cash', ...nodePriceMetric },
-          { label: '月均支出', icon: 'tabler:receipt-2', ...monthlyAverageCostMetric },
+          { label: '节点价格', icon: 'lucide:banknote', ...nodePriceMetric },
+          { label: '月均支出', icon: 'lucide:receipt-text', ...monthlyAverageCostMetric },
           {
             label: '剩余时间',
-            icon: 'tabler:calendar-dollar',
+            icon: 'lucide:calendar-clock',
             valueClass: remainingTimeValueClass,
             ...remainingTimeMetric,
           },
-          { label: '剩余价值', icon: 'tabler:coins', ...remainingValueMetric },
+          { label: '剩余价值', icon: 'lucide:coins', ...remainingValueMetric },
         ] satisfies MetricCard[]
       ).map(card => ({ ...card, empty: card.value === '--' }))
     : []
@@ -226,7 +227,11 @@ function InstanceDetail() {
           <CardX className={cardClass}>
             <Empty
               description="节点不存在或已被删除"
-              extra={<Button onClick={() => void navigate('/')}>返回首页</Button>}
+              extra={
+                <Button asChild>
+                  <Link to="/">返回首页</Link>
+                </Button>
+              }
             />
           </CardX>
         </div>
@@ -235,37 +240,55 @@ function InstanceDetail() {
   }
 
   return (
-    <div className="instance-detail page-enter space-y-4">
-      <div className="px-4 flex gap-2 sm:gap-4 items-start">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="bg-background/50 hover:bg-background"
-          aria-label="返回首页"
-          onClick={() => void navigate('/')}
-        >
-          <Icon icon="tabler:arrow-left" width={16} height={16} />
+    <div ref={detailRef} className="instance-detail page-enter space-y-4">
+      <div className="mx-4 flex flex-wrap items-center gap-x-3 gap-y-2 pt-2">
+        <Button asChild variant="ghost" size="icon-sm" className="size-9 rounded-lg border-border bg-card shadow-xs">
+          <Link to="/" aria-label="返回节点列表" title="返回节点列表">
+            <Icon icon="lucide:arrow-left" width={16} height={16} />
+          </Link>
         </Button>
-        <div className="flex min-w-0 flex-1 items-start gap-2 text-value font-semibold">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {hasRegion(data.region) && (
             <img
               src={getFlagSrc(data.region)}
               alt={getRegionDisplayName(data.region)}
-              className="mt-1 h-4 w-6 shrink-0 rounded-[2px] object-cover"
+              className="h-4 w-6 shrink-0 rounded-[2px] object-cover ring-1 ring-foreground/10"
             />
           )}
-          <span className="min-w-0 break-words">{data.name}</span>
+          <h1
+            tabIndex={-1}
+            className="min-w-0 wrap-anywhere text-value font-semibold tracking-tight outline-none sm:text-stat"
+          >
+            {data.name}
+          </h1>
         </div>
         <span
           className={cn(
-            'mt-1 shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium',
-            data.online
-              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-              : 'bg-red-500/10 text-red-600 dark:text-red-400',
+            'flex shrink-0 items-center gap-1.5 text-xs font-medium',
+            data.online ? 'text-muted-foreground' : 'text-red-600 dark:text-red-400',
           )}
         >
+          <span className={cn('size-1.5 rounded-full', data.online ? 'bg-emerald-500' : 'bg-red-500')} />
           {data.online ? '在线' : '离线'}
         </span>
+        <nav
+          aria-label="节点详情章节"
+          className="flex w-full items-center gap-1 border-t border-border/70 pt-2 sm:ml-2 sm:w-auto sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0"
+        >
+          {[
+            ['specifications', '规格参数'],
+            ['load', '负载'],
+            ['latency', '延迟与丢包'],
+          ].map(([anchor, label]) => (
+            <a
+              key={anchor}
+              href={`#${anchor}`}
+              className="inline-flex min-h-8 items-center rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
       </div>
 
       {/* 与首页概览一致：四项费用合成一块面板，格子之间用实线分隔 */}
@@ -281,7 +304,12 @@ function InstanceDetail() {
             <div className="flex h-full flex-col justify-between gap-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
-                <Icon icon={item.icon} width={15} height={15} className="text-muted-foreground/50" />
+                <Icon
+                  icon={item.icon}
+                  width={15}
+                  height={15}
+                  className="text-fuchsia-700/75 dark:text-fuchsia-300/80"
+                />
               </div>
               <div className="min-w-0 space-y-1">
                 <div
@@ -306,16 +334,20 @@ function InstanceDetail() {
       </div>
 
       {/* 规格表：硬件、系统、存储、网络合成一张卡，标签与数值两列对齐，分区之间用细线隔开 */}
-      <div
+      <section
+        id="specifications"
+        tabIndex={-1}
+        aria-label="规格参数"
         className={cn(
-          'mx-4 grid overflow-hidden rounded-xl border md:grid-cols-2 xl:grid-cols-4',
+          'mx-4 grid overflow-hidden rounded-xl border outline-none md:grid-cols-2 xl:grid-cols-4',
           cardClass,
           '[&>*]:border-border/70 max-md:[&>*+*]:border-t md:[&>*:nth-child(odd)]:border-r md:max-xl:[&>*:nth-child(-n+2)]:border-b xl:[&>*:not(:last-child)]:border-r',
         )}
       >
-        <SpecSection title="硬件" items={hardwareInfo} />
+        <SpecSection title="硬件" icon="lucide:cpu" items={hardwareInfo} />
         <SpecSection
           title="系统"
+          icon="lucide:app-window"
           items={systemInfo}
           renderValue={item =>
             item.label === '操作系统' ? (
@@ -326,9 +358,12 @@ function InstanceDetail() {
             ) : undefined
           }
         />
-        <SpecSection title="存储" items={storageInfo} />
+        <SpecSection title="存储" icon="lucide:database" items={storageInfo} />
         <section className="min-w-0 p-4">
-          <h2 className="mb-2.5 text-xs font-semibold text-foreground/80">网络</h2>
+          <h3 className="mb-3 flex items-center gap-2 text-compact font-semibold">
+            <Icon icon="lucide:network" className="size-4 text-muted-foreground" />
+            网络
+          </h3>
           <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-compact">
             <dt className="text-muted-foreground">总流量</dt>
             <dd className="num flex min-w-0 flex-col gap-1.5">
@@ -347,14 +382,14 @@ function InstanceDetail() {
             {[
               {
                 label: '上行',
-                icon: 'tabler:arrow-up',
+                icon: 'lucide:arrow-up',
                 tone: 'text-emerald-600 dark:text-emerald-400',
                 rate: formatBytesPerSecond(data.net_out ?? 0),
                 total: formatBytes(data.net_total_up ?? 0),
               },
               {
                 label: '下行',
-                icon: 'tabler:arrow-down',
+                icon: 'lucide:arrow-down',
                 tone: 'text-sky-600 dark:text-sky-400',
                 rate: formatBytesPerSecond(data.net_in ?? 0),
                 total: formatBytes(data.net_total_down ?? 0),
@@ -375,16 +410,20 @@ function InstanceDetail() {
             ))}
           </dl>
         </section>
-      </div>
+      </section>
 
       <section className="space-y-3">
-        <h2 className="px-4 text-value font-semibold tracking-tight">负载</h2>
+        <h2 id="load" tabIndex={-1} className="px-4 text-value font-semibold tracking-tight outline-none">
+          负载
+        </h2>
         <Suspense fallback={<ChartPlaceholder />}>
           <LoadChart uuid={data.uuid} className="px-4" />
         </Suspense>
       </section>
       <section className="space-y-3">
-        <h2 className="px-4 text-value font-semibold tracking-tight">延迟与丢包</h2>
+        <h2 id="latency" tabIndex={-1} className="px-4 text-value font-semibold tracking-tight outline-none">
+          延迟与丢包
+        </h2>
         <Suspense fallback={<ChartPlaceholder />}>
           <PingChart uuid={data.uuid} className="px-4" />
         </Suspense>

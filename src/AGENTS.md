@@ -67,7 +67,7 @@ New UI: compose existing primitives first; if one is missing, add it in the same
 
 ## Icons
 
-All icons go through `@iconify/react` (`<Icon icon="icon-park-outline:sun" />`), fetched on demand from the Iconify CDN. Lucide icons via the `lucide:` prefix. Do not add `lucide-react` or other icon-component packages.
+All icons go through `@iconify/react` (`<Icon icon="lucide:sun" />`). Core interface icons are registered before rendering from the Lucide subset selected in `vite.config.ts`. Other icons are fetched on demand from the Iconify CDN. Do not add `lucide-react` or other icon-component packages.
 
 ## Styles
 

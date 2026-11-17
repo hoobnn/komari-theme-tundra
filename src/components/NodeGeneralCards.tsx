@@ -55,14 +55,14 @@ export default function NodeGeneralCards({
     <section
       aria-label="节点概览"
       className={cn(
-        'grid gap-3 px-4',
+        'grid gap-3 px-4 pt-1',
         showVisual && 'grid-cols-1 gap-y-0 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] md:gap-3',
       )}
     >
       {showVisual && (
         <div
           className={cn(
-            'relative isolate col-start-1 row-start-1 h-[clamp(22rem,100vw,26rem)] min-w-0 overflow-hidden md:col-start-2 md:row-span-2',
+            'relative isolate col-start-1 row-start-1 h-[clamp(23rem,103vw,27rem)] min-w-0 overflow-hidden md:col-start-2 md:row-span-2',
             // 桌面端地球不裁切，向下伸到分组工具栏后面；地图铺满右列
             showEarth ? 'md:h-auto md:overflow-visible' : 'md:h-auto md:min-h-52',
           )}
@@ -83,51 +83,58 @@ export default function NodeGeneralCards({
       {/* 六项指标合成一块面板，格子之间用实线分隔 */}
       <div
         className={cn(
-          'grid min-w-0 grid-cols-2 overflow-hidden rounded-xl border sm:grid-cols-3',
+          'min-w-0 overflow-hidden rounded-xl border',
           pickSurfaceClass('bg-card shadow-xs', 'bg-card/60 backdrop-blur-xs'),
-          '[&>*]:border-border/70 max-sm:[&>*:nth-child(odd)]:border-r max-sm:[&>*:nth-child(-n+4)]:border-b sm:[&>*:not(:nth-child(3n))]:border-r sm:[&>*:nth-child(-n+3)]:border-b',
           showVisual && 'relative z-10 col-start-1 row-start-1 self-end md:self-start',
         )}
       >
-        <OverviewMetricCard
-          {...metrics.memory}
-          icon="lucide:memory-stick"
-          tone="emerald"
-          aside={metrics.memory.total}
-          transitionKey={transitionKey}
-          index={0}
-        />
-        <OverviewMetricCard
-          {...metrics.disk}
-          icon="lucide:hard-drive"
-          tone="orange"
-          aside={metrics.disk.total}
-          transitionKey={transitionKey}
-          index={1}
-        />
-        <OverviewFinanceCard nodes={summaryNodes} transitionKey={transitionKey} />
-        <OverviewMetricCard
-          {...metrics.speedUp}
-          icon="lucide:arrow-up"
-          tone="emerald"
-          transitionKey={transitionKey}
-          index={3}
-        />
-        <OverviewMetricCard
-          {...metrics.speedDown}
-          icon="lucide:arrow-down"
-          tone="sky"
-          transitionKey={transitionKey}
-          index={4}
-        />
-        <OverviewMetricCard
-          {...metrics.traffic}
-          icon="lucide:arrow-down-up"
-          tone="violet"
-          footer={traffic}
-          transitionKey={transitionKey}
-          index={5}
-        />
+        <div className="flex items-baseline justify-between gap-3 border-b border-border/70 px-3 py-1.5 md:px-4">
+          <h1 className="text-value font-semibold tracking-tight">运行概览</h1>
+          <span className="truncate text-2xs text-muted-foreground">
+            {transitionKey === 'all' ? '全部节点' : transitionKey}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 [&>*]:border-border/70 max-sm:[&>*:nth-child(odd)]:border-r max-sm:[&>*:nth-child(-n+4)]:border-b sm:[&>*:nth-child(-n+4)]:border-r sm:[&>*:nth-child(-n+2)]:border-b">
+          <OverviewMetricCard
+            {...metrics.memory}
+            icon="lucide:memory-stick"
+            tone="emerald"
+            aside={metrics.memory.total}
+            transitionKey={transitionKey}
+            index={0}
+          />
+          <OverviewMetricCard
+            {...metrics.disk}
+            icon="lucide:hard-drive"
+            tone="orange"
+            aside={metrics.disk.total}
+            transitionKey={transitionKey}
+            index={1}
+          />
+          <OverviewMetricCard
+            {...metrics.speedUp}
+            icon="lucide:arrow-up"
+            tone="emerald"
+            transitionKey={transitionKey}
+            index={3}
+          />
+          <OverviewMetricCard
+            {...metrics.speedDown}
+            icon="lucide:arrow-down"
+            tone="sky"
+            transitionKey={transitionKey}
+            index={4}
+          />
+          <OverviewFinanceCard nodes={summaryNodes} transitionKey={transitionKey} />
+          <OverviewMetricCard
+            {...metrics.traffic}
+            icon="lucide:arrow-down-up"
+            tone="violet"
+            footer={traffic}
+            transitionKey={transitionKey}
+            index={5}
+          />
+        </div>
       </div>
       {children && (
         <div className={cn('min-w-0 empty:hidden', showVisual && 'max-md:mt-3 md:col-start-1 md:row-start-2')}>

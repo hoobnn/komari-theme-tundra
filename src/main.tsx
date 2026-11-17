@@ -10,9 +10,7 @@ import './styles/main.css'
 
 window.$message = message
 
-setupIconify().catch(err => {
-  console.warn('[main] iconify init failed', err)
-})
+setupIconify()
 
 // 初始化随页面生命周期只跑一次，放在 React 之外，避免 StrictMode 重复挂载时建两条连接；
 // 失败时 InitManager 会自行重试并更新 store

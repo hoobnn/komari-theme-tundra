@@ -11,11 +11,13 @@ export default function NodePingDialog({
   node,
   open,
   onClose,
+  onRestoreFocus,
   onExited,
 }: {
   node: NodeData | null
   open: boolean
   onClose: () => void
+  onRestoreFocus: () => void
   onExited: () => void
 }) {
   const { pickSurfaceClass } = useBackgroundSurface()
@@ -33,12 +35,21 @@ export default function NodePingDialog({
             pickSurfaceClass('bg-background', 'bg-background/60'),
           )}
           aria-describedby={undefined}
+          onCloseAutoFocus={event => {
+            event.preventDefault()
+            onRestoreFocus()
+          }}
           onAnimationEnd={event => {
             if (event.target === event.currentTarget && event.currentTarget.dataset.state === 'closed') onExited()
           }}
         >
           <DialogHeader className="flex h-13 shrink-0 flex-row items-center border-b ps-4 pe-12">
-            <DialogTitle className="truncate">{node.name} 延迟与丢包</DialogTitle>
+            <DialogTitle className="flex min-w-0 flex-col gap-0.5 text-left sm:flex-row sm:items-baseline sm:gap-2">
+              <span className="shrink-0">延迟与丢包</span>
+              <span className="truncate text-xs font-normal text-muted-foreground" title={node.name}>
+                {node.name}
+              </span>
+            </DialogTitle>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
             <Suspense fallback={<ChartPlaceholder />}>

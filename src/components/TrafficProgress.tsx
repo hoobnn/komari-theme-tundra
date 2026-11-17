@@ -38,12 +38,12 @@ export default function TrafficProgress({
     <div className="flex w-full flex-col gap-1">
       {isDualColorMode ? (
         <div className={RAIL_CLASS} style={{ height: progressHeight }}>
-          <div className={`${FILL_CLASS} bg-green-600`} style={{ width: `${uploadPercentage}%` }} />
-          <div className={`${FILL_CLASS} ${FILL_LAST_CLASS} bg-blue-600`} style={{ width: `${downloadPercentage}%` }} />
+          <div className={`${FILL_CLASS} bg-emerald-500`} style={{ width: `${uploadPercentage}%` }} />
+          <div className={`${FILL_CLASS} ${FILL_LAST_CLASS} bg-sky-500`} style={{ width: `${downloadPercentage}%` }} />
         </div>
       ) : (
         <div className={RAIL_CLASS} style={{ height: progressHeight }}>
-          <div className={`${FILL_CLASS} ${FILL_LAST_CLASS} bg-green-600`} style={{ width: `${totalPercentage}%` }} />
+          <div className={`${FILL_CLASS} ${FILL_LAST_CLASS} bg-violet-500`} style={{ width: `${totalPercentage}%` }} />
         </div>
       )}
 

@@ -226,7 +226,7 @@ function buildPingTable(
 }
 
 /** 首页卡片 / 列表的三网延迟表 */
-export function useNodePingDisplay(uuid: string): { pingTable: NodePingTable | null } {
+export function useNodePingDisplay(uuid: string) {
   const configuredNames = useAppStore(state => state.settings.pingNetworkOrder)
   const { stats, loading, error } = useNodePingStats(uuid, { hours: PING_RECORDS_QUERY_HOURS })
   const placeholderTooltip = loading ? '加载中' : error ? '加载失败' : 'N/A'
@@ -234,5 +234,6 @@ export function useNodePingDisplay(uuid: string): { pingTable: NodePingTable | n
     () => buildPingTable(stats, configuredNames, placeholderTooltip),
     [stats, configuredNames, placeholderTooltip],
   )
-  return { pingTable }
+  const emptyText = loading ? '正在读取延迟数据' : error ? '延迟数据加载失败' : '暂无近期延迟数据'
+  return { pingTable, emptyText }
 }

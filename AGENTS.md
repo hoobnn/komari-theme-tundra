@@ -39,7 +39,7 @@ Repo guide for `komari-theme-tundra` (Tundra, a Komari theme derived from Tokinx
 ## Root structure
 
 - `src/` app source
-- `public/` only `favicon.ico`
+- `public/` contains `favicon.ico` and the bundled Lucide icon license
 - `.github/workflows/release-on-version-bump.yml` the only CI workflow
 - `docs/preview.png` release preview image (a real screenshot of the live panel)
 - `komari-theme.json` theme manifest consumed by the zip build

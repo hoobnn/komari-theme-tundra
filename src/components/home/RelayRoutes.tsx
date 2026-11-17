@@ -1,7 +1,7 @@
 import type { PingRecord } from '@/utils/rpc'
 import type { RelayRouteConfig } from '@/utils/relayRoutes'
 import type { ReactNode } from 'react'
-import { Fragment } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import { useSharedPingRecords } from '@/hooks/useNodePingStats'
 import { useThemeSettings } from '@/stores/app'
 import { cn } from '@/lib/utils'
@@ -122,9 +122,10 @@ function Lanes({
 }) {
   return (
     <span className="flex flex-col gap-1">
+      {lines.length === 1 && lines[0].stack === 'v6' && <span aria-hidden="true" className={VALUE_ROW} />}
       {lines.map((line, row) => {
         const { value, track } = children(line, row)
-        const below = row > 0
+        const below = line.stack === 'v6' || row > 0
         return (
           <span key={line.route.name} className="flex flex-col">
             {!below && <span className={cn('flex items-end justify-center', VALUE_ROW)}>{value}</span>}
@@ -133,29 +134,47 @@ function Lanes({
           </span>
         )
       })}
-      {lines.length === 1 && <span aria-hidden="true" className={VALUE_ROW} />}
+      {lines.length === 1 && lines[0].stack !== 'v6' && <span aria-hidden="true" className={VALUE_ROW} />}
     </span>
   )
 }
 
 function PathSummary({ name, nodes, lines, status, order }: SummaryProps) {
+  const trackRef = useRef<HTMLSpanElement>(null)
+  const [overflows, setOverflows] = useState(false)
+  useLayoutEffect(() => {
+    const track = trackRef.current
+    if (!track || !track.firstElementChild) return undefined
+    const measure = () => setOverflows(track.scrollWidth > track.clientWidth + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(track)
+    observer.observe(track.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
   return (
-    <span className="flex flex-col gap-3">
-      <span className="flex min-w-0 items-center gap-3">
-        <span className="min-w-0 truncate text-compact font-semibold">{name}</span>
-        <span className="ml-auto flex shrink-0 items-center gap-4">
+    <span className="flex flex-col gap-2">
+      <span className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
+        <span className="min-w-0 wrap-anywhere text-compact font-semibold tracking-tight">{name}</span>
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {lines.map(line => (
             <span key={line.route.name} className="flex items-center gap-1.5">
               <span className="flex items-center gap-1 text-3xs text-muted-foreground">
                 <StackSwatch stack={line.stack} />
-                {line.stack ?? '合计'}
+                {line.stack ? stackLabel(line.stack) : '合计'}
               </span>
               <LineTotal line={line} status={status} />
             </span>
           ))}
         </span>
       </span>
-      <span className="min-w-0 overflow-x-auto">
+      <span
+        ref={trackRef}
+        tabIndex={overflows ? 0 : undefined}
+        role={overflows ? 'region' : undefined}
+        aria-label={overflows ? `${name} 站点与分段延迟，可横向滚动` : undefined}
+        className="min-w-0 overflow-x-auto overscroll-x-contain rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
         <span className="relative flex w-full min-w-max items-center">
           {/* 流光沿每根协议线从左到右穿过整条线路，站点标签盖在它上面 */}
           <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2">
@@ -201,7 +220,7 @@ function PathSummary({ name, nodes, lines, status, order }: SummaryProps) {
                   </Lanes>
                 </span>
               )}
-              <span className="relative z-20 max-w-32 shrink-0 truncate rounded-lg border bg-card px-2.5 py-1.5 text-compact font-semibold leading-4 text-foreground @max-[23rem]:px-1.5 @max-[23rem]:text-xs">
+              <span className="relative z-20 max-w-32 shrink-0 wrap-anywhere rounded-md border bg-card px-2.5 py-1.5 text-center text-compact font-semibold leading-4 text-foreground @max-[23rem]:px-1.5 @max-[23rem]:text-xs">
                 {node}
               </span>
             </Fragment>
@@ -236,11 +255,11 @@ function RouteGroup({
     const complete = legs.every(leg => leg.state === 'ok')
     return { route, stack, legs, total: complete ? legs.reduce((sum, leg) => sum + (leg.latency ?? 0), 0) : null }
   })
-  const status = loading && !records ? '加载中' : error ? '刷新失败' : '线路数据不完整'
+  const status = loading && !records ? '加载中' : error ? '刷新失败' : '数据不全'
   const summaryTitle = lines
     .map(
       line =>
-        `${line.route.name}：${nodes.join(' → ')}，${line.total === null ? status : `分段合计 ${line.total.toFixed(1)} ms`}`,
+        `${line.route.name}：${nodes.join(' → ')}，${line.legs.some(leg => leg.state === 'lost') ? '中断' : line.total === null ? status : `分段合计 ${line.total.toFixed(1)} ms`}`,
     )
     .join('\n')
   return (
