@@ -114,25 +114,20 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
             <NodePingSummary node={node} onClick={onPingClick} />
           </div>
 
-          {/* 标签：没有也占位，卡片底部对齐 */}
-          <div className="mt-auto flex min-h-[22px] flex-wrap items-center gap-1">
-            {customTags.map((tag, index) => (
-              <Badge
-                key={index}
-                variant="outline"
-                className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
-              >
-                {tag}
-              </Badge>
-            ))}
-            {/* 没有自定义标签时用地区和系统填充占位行，避免一块空白 */}
-            {!customTags.length && (
-              <span className="flex min-w-0 items-center gap-2 text-2xs text-muted-foreground">
-                {hasRegion(node.region) && <span className="truncate">{getRegionDisplayName(node.region)}</span>}
-                <span className="truncate">{getOSName(node.os)}</span>
-              </span>
-            )}
-          </div>
+          {/* 底部只放自定义标签，没有就不渲染 */}
+          {customTags.length > 0 && (
+            <div className="mt-auto flex flex-wrap items-center gap-1">
+              {customTags.map((tag, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </CardX>

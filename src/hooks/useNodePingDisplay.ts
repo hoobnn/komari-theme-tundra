@@ -201,16 +201,21 @@ function buildPingTable(
     const avgLatency = part ? part.avgLatency : stats.avgLatency
     const avgLoss = part ? part.avgLoss : stats.avgLoss
     const label = pingStackLabel(stack)
-    const hasLatency = hasData && avgLatency >= 0
+    const rowHasData = part ? part.hasData : hasData
+    const hasLatency = rowHasData && avgLatency >= 0
+    const rowBars = (metric: NodePingMetric) => {
+      if (!part) return overallBars(metric)
+      return part.hasData ? buildBars(metric, part.history, label) : buildPlaceholderBars(metric, `${label} 无数据`)
+    }
     return {
       stack,
       cells,
       latency: hasLatency ? `${Math.round(avgLatency)}` : '--',
       latencyTone: hasLatency ? latencyTextTone(avgLatency) : MUTED_TONE,
-      loss: hasData ? `${avgLoss.toFixed(1)}%` : '--',
-      lossTone: hasData ? lossTextTone(avgLoss) : MUTED_TONE,
-      latencyBars: part ? buildBars('latency', part.history, label) : overallBars('latency'),
-      lossBars: part ? buildBars('loss', part.history, label) : overallBars('loss'),
+      loss: rowHasData ? `${avgLoss.toFixed(1)}%` : '--',
+      lossTone: rowHasData ? lossTextTone(avgLoss) : MUTED_TONE,
+      latencyBars: rowBars('latency'),
+      lossBars: rowBars('loss'),
     }
   })
 

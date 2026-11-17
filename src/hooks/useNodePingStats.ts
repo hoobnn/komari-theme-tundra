@@ -11,13 +11,14 @@ export interface NodePingHistoryPoint {
 }
 
 interface NodePingStackStats {
+  hasData: boolean
   avgLatency: number
   avgLoss: number
   history: NodePingHistoryPoint[]
 }
 
 export interface NodePingStatsState {
-  /** 节点同时有 v4 与 v6 数据时按协议栈拆分（无后缀任务归入 v4），否则为 null */
+  /** 节点有 v6 任务时按协议栈拆分（无后缀任务归入 v4，某一栈没有可用样本时其 hasData 为 false），否则为 null */
   byStack: { v4: NodePingStackStats; v6: NodePingStackStats } | null
   avgLatency: number
   avgLoss: number
@@ -75,7 +76,7 @@ export function useSharedPingRecords(hours: number, enabled: boolean) {
   }, [entry, hours, enabled])
   return snapshot
 }
-const CACHE_VERSION = 8
+const CACHE_VERSION = 9
 const CACHE_KEY_PREFIX = 'komari-theme-tundra:node-ping-stats'
 const FULL_LOSS_EPSILON = 1e-6
 const PING_RECORD_REFRESH_INTERVAL_MS = 60_000
@@ -437,8 +438,10 @@ function buildStats(records: PingRecord[], tasks: PingTaskInfo[], splitStacks = 
     const v6TaskIds = new Set(
       perTaskStats.filter(stat => parsePingTaskName(stat.name).stack === 'v6').map(stat => stat.taskId),
     )
-    if (v6TaskIds.size && v6TaskIds.size < perTaskStats.length) {
+    // v4 全部没有可用样本时也要拆分，否则 v4 行会套用 v6 的均值和柱条
+    if (v6TaskIds.size) {
       const pick = (state: NodePingStatsState): NodePingStackStats => ({
+        hasData: state.hasData,
         avgLatency: state.avgLatency,
         avgLoss: state.avgLoss,
         history: state.history,
