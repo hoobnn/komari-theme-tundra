@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.3.4] - 2026-11-17
+
 ### 改进
 
 - 首页线路流光以小箭头沿站点顺序前进，减弱动画时仍用静止箭头标出下一站方向
@@ -170,7 +172,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.3...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.0...v0.3.1
