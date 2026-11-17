@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.3.6] - 2026-11-17
+
 ### 修复
 
 - 节点卡片和列表会将近期探测全部失败的线路标为「超时」并计入丢包率，只有缺少样本时才显示无数据
@@ -182,7 +184,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.5...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.2...v0.3.3
