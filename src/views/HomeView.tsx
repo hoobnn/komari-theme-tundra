@@ -60,6 +60,7 @@ export default function HomeView() {
           <NodeToolbar
             groupNames={home.groupNames}
             selectedGroup={home.selectedGroup}
+            totalCount={home.totalNodeCount}
             resultCount={home.visibleNodes.length}
             searchText={home.searchText}
             searchRef={searchRef}

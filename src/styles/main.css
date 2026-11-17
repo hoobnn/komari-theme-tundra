@@ -153,6 +153,7 @@
   html {
     font-family: var(--font-sans);
     scroll-padding-block: 4.25rem calc(3rem + env(safe-area-inset-bottom, 0px));
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -162,6 +163,19 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+
+  @supports (scrollbar-gutter: stable) {
+    /* 根元素已留出滚动条宽度，Radix 锁定页面时无需再给 body 加右边距。 */
+    body[data-scroll-locked] {
+      margin-right: 0 !important;
+    }
+  }
+
+  @supports not (scrollbar-gutter: stable) {
+    body {
+      overflow-y: scroll;
+    }
   }
 }
 

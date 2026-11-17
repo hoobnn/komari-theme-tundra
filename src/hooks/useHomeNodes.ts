@@ -34,6 +34,7 @@ export function useHomeNodes() {
   }
 
   return {
+    totalNodeCount: nodes.length,
     groupNames,
     selectedGroup,
     setSelectedGroup,

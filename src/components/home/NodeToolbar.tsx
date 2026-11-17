@@ -11,6 +11,7 @@ import { segmentClass } from '@/utils/uiClasses'
 interface NodeToolbarProps {
   groupNames: string[]
   selectedGroup: string
+  totalCount: number
   resultCount: number
   searchText: string
   searchRef: RefObject<HTMLInputElement | null>
@@ -29,6 +30,7 @@ const viewModes = [
 export default function NodeToolbar({
   groupNames,
   selectedGroup,
+  totalCount,
   resultCount,
   searchText,
   searchRef,
@@ -54,7 +56,11 @@ export default function NodeToolbar({
     <div className="pointer-events-none grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 sm:gap-x-3 lg:grid-cols-[auto_minmax(0,1fr)_12rem_auto]">
       <div className="flex items-baseline gap-1.5 border-r pr-2 sm:gap-2 sm:pr-4">
         <h2 className="text-value font-semibold tracking-tight">节点</h2>
-        <span role="status" className="num text-xs font-medium text-muted-foreground">
+        <span
+          role="status"
+          className="num text-end text-xs font-medium text-muted-foreground"
+          style={{ minInlineSize: `${String(totalCount).length}ch` }}
+        >
           {resultCount}
           <span className="sr-only"> 个节点</span>
         </span>
@@ -69,7 +75,7 @@ export default function NodeToolbar({
           <TabsTrigger
             key={group.name}
             value={group.name}
-            className="h-8 flex-none rounded-md px-2.5 text-xs data-[state=active]:border-border data-[state=active]:bg-card dark:data-[state=active]:border-border dark:data-[state=active]:bg-muted"
+            className="h-8 flex-none rounded-md px-2.5 text-xs max-[22rem]:px-1.5 data-[state=active]:border-border data-[state=active]:bg-card dark:data-[state=active]:border-border dark:data-[state=active]:bg-muted"
           >
             {group.label}
           </TabsTrigger>
