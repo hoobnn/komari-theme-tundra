@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.3.1] - 2026-11-17
+
 ### 修复
 
 - 节点卡片和列表里某一协议（如 IPv4）没有延迟数据时，该行的均值、丢包和趋势条显示为空，不再借用另一协议的数据
@@ -136,7 +138,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.0...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.1...v0.2.2
