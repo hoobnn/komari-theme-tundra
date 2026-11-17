@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.3.0] - 2026-11-17
+
 ### 改进
 
 - 首页顶部重新布局：桌面端地球移到右侧，左侧是概览面板，线路卡放在概览下方；概览六项合成一块面板，每项带彩色图标，内存和硬盘附占用条，累计流量拆出上行和下行
@@ -125,7 +127,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.3...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.0...v0.2.1
