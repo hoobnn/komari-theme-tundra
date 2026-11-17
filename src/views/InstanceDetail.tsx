@@ -1,6 +1,7 @@
 import type { CurrencyCode } from '@/utils/financeHelper'
 import ChartPlaceholder from '@/components/charts/ChartPlaceholder'
 import { Icon } from '@iconify/react'
+import type { ReactNode } from 'react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -22,7 +23,7 @@ import {
 } from '@/utils/financeHelper'
 import { formatDateTime } from '@/utils/helper'
 import { getTrafficUsed, hasRegion } from '@/utils/nodeHelpers'
-import { getOSImage, getOSName } from '@/utils/osImageHelper'
+import { getOSImage } from '@/utils/osImageHelper'
 import { getFlagSrc, getRegionDisplayName } from '@/utils/regionHelper'
 import { getBillingCycleText, getExpireText, getExpireTextClass } from '@/utils/tagHelper'
 
@@ -32,7 +33,6 @@ const PingChart = lazy(() => import('@/components/PingChart'))
 interface InfoItem {
   label: string
   value: string | undefined
-  icon?: string
 }
 
 interface MetricCard {
@@ -52,6 +52,30 @@ const EXPIRES_IN_SUFFIX_REGEX = /^(\d+)\s*(天|days?)$/i
 
 const SURFACE_DEFAULT = 'bg-card shadow-xs'
 const SURFACE_CUSTOM = 'bg-card/60 backdrop-blur-xs'
+
+function SpecSection({
+  title,
+  items,
+  renderValue,
+}: {
+  title: string
+  items: InfoItem[]
+  renderValue?: (item: InfoItem) => ReactNode | undefined
+}) {
+  return (
+    <section className="min-w-0 p-4">
+      <h2 className="mb-2.5 text-xs font-semibold text-foreground/80">{title}</h2>
+      <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-compact">
+        {items.map(item => (
+          <div key={item.label} className="contents">
+            <dt className="text-muted-foreground">{item.label}</dt>
+            <dd className="min-w-0 break-words font-medium">{renderValue?.(item) ?? item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
 
 function InstanceDetail() {
   const { id = '' } = useParams()
@@ -153,25 +177,22 @@ function InstanceDetail() {
     {
       label: 'CPU',
       value: data ? `${data.cpu_name} (x${data.cpu_cores})` : '-',
-      icon: 'icon-park-outline:cpu',
     },
-    { label: '架构', value: data?.arch ?? '-', icon: 'icon-park-outline:application-two' },
-    { label: '虚拟化', value: data?.virtualization ?? '-', icon: 'icon-park-outline:server' },
-    { label: 'GPU', value: gpuDisplayName, icon: 'icon-park-outline:video-one' },
+    { label: '架构', value: data?.arch ?? '-' },
+    { label: '虚拟化', value: data?.virtualization ?? '-' },
+    { label: 'GPU', value: gpuDisplayName },
   ]
 
   const systemInfo: InfoItem[] = [
-    { label: '操作系统', value: data?.os ?? '-', icon: 'icon-park-outline:computer' },
-    { label: '内核版本', value: data?.kernel_version ?? '-', icon: 'icon-park-outline:code' },
+    { label: '操作系统', value: data?.os ?? '-' },
+    { label: '内核版本', value: data?.kernel_version ?? '-' },
     {
       label: '运行时间',
       value: formatUptime(data?.uptime ?? 0, 'minute'),
-      icon: 'icon-park-outline:timer',
     },
     {
       label: '最后上报',
       value: formatDateTime(data?.time),
-      icon: 'icon-park-outline:time',
     },
   ]
 
@@ -179,17 +200,14 @@ function InstanceDetail() {
     {
       label: '内存',
       value: formatBytes(data?.mem_total ?? 0),
-      icon: 'icon-park-outline:memory',
     },
     {
       label: 'Swap',
       value: formatBytes(data?.swap_total ?? 0),
-      icon: 'icon-park-outline:switch',
     },
     {
       label: '硬盘',
       value: formatBytes(data?.disk_total ?? 0),
-      icon: 'icon-park-outline:hard-disk',
     },
   ]
 
@@ -228,7 +246,7 @@ function InstanceDetail() {
         >
           <Icon icon="tabler:arrow-left" width={16} height={16} />
         </Button>
-        <div className="flex min-w-0 flex-1 items-start gap-2 text-lg font-semibold">
+        <div className="flex min-w-0 flex-1 items-start gap-2 text-value font-semibold">
           {hasRegion(data.region) && (
             <img
               src={getFlagSrc(data.region)}
@@ -250,14 +268,16 @@ function InstanceDetail() {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 px-4 lg:grid-cols-4">
+      {/* 与首页概览一致：四项费用合成一块面板，格子之间用实线分隔 */}
+      <div
+        className={cn(
+          'mx-4 grid grid-cols-2 overflow-hidden rounded-xl border lg:grid-cols-4',
+          cardClass,
+          '[&>*]:border-border/70 [&>*:nth-child(odd)]:border-r [&>*:nth-child(-n+2)]:border-b lg:[&>*:nth-child(-n+2)]:border-b-0 lg:[&>*:not(:last-child)]:border-r',
+        )}
+      >
         {metricCards.map(item => (
-          <CardX
-            key={item.label}
-            size="small"
-            className={cn('h-full rounded-xl border', cardClass)}
-            contentClass="h-full !p-3"
-          >
+          <div key={item.label} className="min-w-0 p-3 md:p-4">
             <div className="flex h-full flex-col justify-between gap-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
@@ -270,82 +290,52 @@ function InstanceDetail() {
                     item.empty ? 'text-muted-foreground/60' : item.valueClass,
                   )}
                 >
-                  <span className="num truncate text-lg tracking-tight sm:text-[22px]">{item.value}</span>
+                  <span className="num truncate text-value tracking-tight sm:text-stat">{item.value}</span>
                   {item.unit && (
-                    <span className="shrink-0 text-[11px] font-medium text-muted-foreground sm:text-xs">
-                      {item.unit}
-                    </span>
+                    <span className="shrink-0 text-2xs font-medium text-muted-foreground sm:text-xs">{item.unit}</span>
                   )}
                 </div>
                 {/* 没有计费周期时也占位，保证四张卡数值基线对齐 */}
-                <div className={cn('text-[11px] text-muted-foreground', !item.cycle && 'invisible')}>
+                <div className={cn('text-2xs text-muted-foreground', !item.cycle && 'invisible')}>
                   {item.cycle || '-'}
                 </div>
               </div>
             </div>
-          </CardX>
+          </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 px-4 lg:grid-cols-2">
-        <CardX title="硬件信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
-          <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-            {hardwareInfo.map((item, index) => (
-              <div key={item.label} className={cn('flex min-w-0 flex-col gap-1', !index && 'col-span-3')}>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {item.icon && <Icon icon={item.icon} width={13} height={13} className="opacity-70" />}
-                  <span>{item.label}</span>
-                </div>
-                <span className="break-words text-[13px] font-medium">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </CardX>
-
-        <CardX title="系统信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
-          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-            {systemInfo.map(item => (
-              <div key={item.label} className="flex min-w-0 flex-col gap-1">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {item.icon && <Icon icon={item.icon} width={13} height={13} className="opacity-70" />}
-                  <span>{item.label}</span>
-                </div>
-                <div className="flex min-w-0 gap-2 items-center">
-                  {item.label === '操作系统' && (
-                    <img src={getOSImage(data.os)} alt={getOSName(data.os)} className="size-4 shrink-0" />
-                  )}
-                  <span className="break-words text-[13px] font-medium">{item.value}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardX>
-
-        <CardX title="存储信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
-          <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-            {storageInfo.map(item => (
-              <div key={item.label} className="flex min-w-0 flex-col gap-1">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {item.icon && <Icon icon={item.icon} width={13} height={13} className="opacity-70" />}
-                  <span>{item.label}</span>
-                </div>
-                <span className="break-words text-[13px] font-medium">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </CardX>
-
-        <CardX title="网络信息" size="small" className={cn('h-full rounded-xl border', cardClass)}>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <div className="flex min-w-0 flex-col gap-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Icon icon="icon-park-outline:transfer-data" width={13} height={13} className="opacity-70" />
-                <span>总流量</span>
-              </div>
-              <div className="num flex items-baseline justify-between gap-2">
-                <span className="text-[13px] font-medium">{formatBytes(trafficUsed)}</span>
-                <span className="text-[11px] text-muted-foreground">{trafficLimitText}</span>
-              </div>
+      {/* 规格表：硬件、系统、存储、网络合成一张卡，标签与数值两列对齐，分区之间用细线隔开 */}
+      <div
+        className={cn(
+          'mx-4 grid overflow-hidden rounded-xl border md:grid-cols-2 xl:grid-cols-4',
+          cardClass,
+          '[&>*]:border-border/70 max-md:[&>*+*]:border-t md:[&>*:nth-child(odd)]:border-r md:max-xl:[&>*:nth-child(-n+2)]:border-b xl:[&>*:not(:last-child)]:border-r',
+        )}
+      >
+        <SpecSection title="硬件" items={hardwareInfo} />
+        <SpecSection
+          title="系统"
+          items={systemInfo}
+          renderValue={item =>
+            item.label === '操作系统' ? (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <img src={getOSImage(data.os)} alt="" className="size-3.5 shrink-0" />
+                <span className="min-w-0 break-words">{item.value}</span>
+              </span>
+            ) : undefined
+          }
+        />
+        <SpecSection title="存储" items={storageInfo} />
+        <section className="min-w-0 p-4">
+          <h2 className="mb-2.5 text-xs font-semibold text-foreground/80">网络</h2>
+          <dl className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-compact">
+            <dt className="text-muted-foreground">总流量</dt>
+            <dd className="num flex min-w-0 flex-col gap-1.5">
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="font-medium">{formatBytes(trafficUsed)}</span>
+                <span className="text-2xs text-muted-foreground">{trafficLimitText}</span>
+              </span>
               {hasTrafficLimit && (
                 <ProgressThin
                   percentage={trafficUsedPercentage}
@@ -353,55 +343,48 @@ function InstanceDetail() {
                   className="[&>div]:bg-violet-600 dark:[&>div]:bg-violet-400"
                 />
               )}
-              <div className="num flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-0.5">
-                  <Icon
-                    icon="tabler:arrow-up"
-                    width="11"
-                    height="11"
-                    className="text-emerald-600 dark:text-emerald-400"
-                  />
-                  {formatBytes(data.net_total_up ?? 0)}
-                </span>
-                <span className="flex items-center gap-0.5">
-                  <Icon icon="tabler:arrow-down" width="11" height="11" className="text-sky-600 dark:text-sky-400" />
-                  {formatBytes(data.net_total_down ?? 0)}
-                </span>
+            </dd>
+            {[
+              {
+                label: '上行',
+                icon: 'tabler:arrow-up',
+                tone: 'text-emerald-600 dark:text-emerald-400',
+                rate: formatBytesPerSecond(data.net_out ?? 0),
+                total: formatBytes(data.net_total_up ?? 0),
+              },
+              {
+                label: '下行',
+                icon: 'tabler:arrow-down',
+                tone: 'text-sky-600 dark:text-sky-400',
+                rate: formatBytesPerSecond(data.net_in ?? 0),
+                total: formatBytes(data.net_total_down ?? 0),
+              },
+            ].map(row => (
+              <div key={row.label} className="contents">
+                <dt className="flex items-center gap-1 text-muted-foreground">
+                  <Icon icon={row.icon} width={12} height={12} className={row.tone} />
+                  {row.label}
+                </dt>
+                <dd className="num flex items-baseline justify-between gap-2">
+                  <span className="font-medium">{row.rate}</span>
+                  <span className="text-2xs text-muted-foreground">
+                    累计 <span className="text-foreground/80">{row.total}</span>
+                  </span>
+                </dd>
               </div>
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Icon icon="icon-park-outline:dashboard-one" width={13} height={13} className="opacity-70" />
-                <span>网络速率</span>
-              </div>
-              <span className="num flex flex-col gap-0.5 text-[13px] font-medium">
-                <span className="flex items-center gap-1">
-                  <Icon
-                    icon="tabler:arrow-up"
-                    width="12"
-                    height="12"
-                    className="text-emerald-600 dark:text-emerald-400"
-                  />
-                  {formatBytesPerSecond(data.net_out ?? 0)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Icon icon="tabler:arrow-down" width="12" height="12" className="text-sky-600 dark:text-sky-400" />
-                  {formatBytesPerSecond(data.net_in ?? 0)}
-                </span>
-              </span>
-            </div>
-          </div>
-        </CardX>
+            ))}
+          </dl>
+        </section>
       </div>
 
       <section className="space-y-3">
-        <h2 className="px-4 text-sm font-semibold">负载</h2>
+        <h2 className="px-4 text-value font-semibold tracking-tight">负载</h2>
         <Suspense fallback={<ChartPlaceholder />}>
           <LoadChart uuid={data.uuid} className="px-4" />
         </Suspense>
       </section>
       <section className="space-y-3">
-        <h2 className="px-4 text-sm font-semibold">延迟与丢包</h2>
+        <h2 className="px-4 text-value font-semibold tracking-tight">延迟与丢包</h2>
         <Suspense fallback={<ChartPlaceholder />}>
           <PingChart uuid={data.uuid} className="px-4" />
         </Suspense>

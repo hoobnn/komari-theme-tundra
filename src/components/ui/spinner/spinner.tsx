@@ -46,7 +46,7 @@ function Spinner({
             }}
           />
           {description != null && description !== false && description !== '' && (
-            <span className="text-sm text-muted-foreground">{description}</span>
+            <span className="text-compact text-muted-foreground">{description}</span>
           )}
         </div>
       )}

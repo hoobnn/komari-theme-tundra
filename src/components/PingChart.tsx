@@ -560,15 +560,15 @@ function PingChart({ uuid, className }: PingChartProps) {
                         className="h-4 w-1 shrink-0 rounded"
                         style={{ backgroundColor: group.items[0]?.item.color }}
                       />
-                      <span className="truncate text-sm font-semibold">{group.base}</span>
+                      <span className="truncate text-compact font-semibold">{group.base}</span>
                     </div>
                     {/* 表头与数据行共用同一套列宽，数值列不会被均分撑开 */}
                     <div className="grid grid-cols-[2rem_3.75rem_3.5rem_3rem_1.5rem] items-center justify-between gap-x-2">
                       <span />
-                      <span className="text-right text-[11px] text-muted-foreground">延迟</span>
-                      <span className="text-right text-[11px] text-muted-foreground">丢包</span>
+                      <span className="text-right text-2xs text-muted-foreground">延迟</span>
+                      <span className="text-right text-2xs text-muted-foreground">丢包</span>
                       <span
-                        className="text-right text-[11px] text-muted-foreground"
+                        className="text-right text-2xs text-muted-foreground"
                         title="P99 与 P50 的比值，越大越不稳定"
                       >
                         波动
@@ -587,7 +587,7 @@ function PingChart({ uuid, className }: PingChartProps) {
                         {stack ? (
                           <span
                             className={cn(
-                              'w-8 shrink-0 rounded-sm border px-1 text-center text-[10px] leading-4',
+                              'w-8 shrink-0 rounded-sm border px-1 text-center text-3xs leading-4',
                               stack === 'v6' && 'border-dashed',
                             )}
                             style={{ borderColor: task.color, color: task.color }}

@@ -59,7 +59,7 @@ function CardX({
       {showHeader && (
         <div className={cn('flex items-center gap-2', headerPaddingClass, segmentedContent && 'border-b', headerClass)}>
           <div className="flex-1 min-w-0">
-            {has(header) ? header : <span className="text-sm font-semibold">{title}</span>}
+            {has(header) ? header : <span className="text-compact font-semibold">{title}</span>}
           </div>
           {has(headerExtra) && <div className="shrink-0">{headerExtra}</div>}
         </div>

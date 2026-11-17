@@ -63,7 +63,7 @@ export default function Footer() {
             </DataTooltip>
           </div>
           {/* 右侧留出「回到顶部」按钮（fixed bottom-8 right-8 size-10）的位置，滚到底时不压字 */}
-          <div className="flex items-center gap-1 whitespace-nowrap sm:pr-16 min-[1440px]:pr-0">
+          <div className="flex items-center gap-1 whitespace-nowrap sm:max-[88rem]:pr-16">
             Theme by
             <DataTooltip as="span" placement="top" content={buildGitHash} contentClass="whitespace-pre w-max">
               <a

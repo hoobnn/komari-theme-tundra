@@ -32,7 +32,7 @@ export default function NodePingListCell({ uuid, online: _online, className, ...
     return (
       <div
         {...rest}
-        className={className ? `text-[11px] text-muted-foreground ${className}` : 'text-[11px] text-muted-foreground'}
+        className={className ? `text-2xs text-muted-foreground ${className}` : 'text-2xs text-muted-foreground'}
       >
         未配置延迟监测
       </div>
@@ -50,14 +50,14 @@ export default function NodePingListCell({ uuid, online: _online, className, ...
           className="grid items-center gap-x-1.5"
           style={{ gridTemplateColumns: '1.1rem repeat(3, 1.75rem) 2.5rem minmax(0, 1fr)' }}
         >
-          <span className="font-sans text-[10px] text-muted-foreground">{row.stack ?? ''}</span>
+          <span className="font-sans text-3xs text-muted-foreground">{row.stack ?? ''}</span>
           {row.cells.map(cell => (
             <DataTooltip key={cell.key} placement="top" content={cell.tooltip} contentClass="whitespace-pre-wrap w-max">
-              <span className={`block text-right text-[11px] ${cell.toneClass}`}>{cell.latency}</span>
+              <span className={`block text-right text-2xs ${cell.toneClass}`}>{cell.latency}</span>
             </DataTooltip>
           ))}
           <DataTooltip placement="top" content={`平均丢包 ${row.loss}`} contentClass="whitespace-nowrap">
-            <span className={`block text-right text-[11px] ${row.lossTone}`}>{row.loss}</span>
+            <span className={`block text-right text-2xs ${row.lossTone}`}>{row.loss}</span>
           </DataTooltip>
           <div
             className="ml-1 grid h-1.5 gap-[1px]"

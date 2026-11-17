@@ -1,51 +1,11 @@
 import type { PingRecord } from '@/utils/rpc'
 import type { RelayRouteConfig } from '@/utils/relayRoutes'
-import { Fragment, useState } from 'react'
-import { Icon } from '@iconify/react'
-import { Link } from 'react-router'
+import type { ReactNode } from 'react'
+import { Fragment } from 'react'
 import { useSharedPingRecords } from '@/hooks/useNodePingStats'
 import { useThemeSettings } from '@/stores/app'
 import { cn } from '@/lib/utils'
-import { formatDateTime } from '@/utils/helper'
 import { relayLatencyTone, relayStateLabel, summarizeRelayLeg } from '@/utils/relayRoutes'
-
-/** 断开失败采样；不跨丢包点画出一条看似正常的曲线。 */
-function HistoryLine({ records }: { records: PingRecord[] }) {
-  const max = Math.max(1, ...records.map(record => record.value))
-  const start = Date.parse(records[0]?.time ?? '')
-  const duration = Math.max(1, Date.parse(records.at(-1)?.time ?? '') - start)
-  const path = records
-    .map((record, index) => {
-      if (record.value < 0) return ''
-      const x = 4 + ((Date.parse(record.time) - start) / duration) * 592
-      const y = 56 - (record.value / max) * 48
-      return `${index > 0 && records[index - 1].value >= 0 ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`
-    })
-    .join(' ')
-  const hasValues = records.some(record => record.value >= 0)
-  if (!hasValues) return <p className="py-4 text-xs text-muted-foreground">暂无成功采样</p>
-  return (
-    <svg
-      viewBox="0 0 600 64"
-      role="img"
-      aria-label={`近期延迟曲线，最高 ${max.toFixed(1)} ms`}
-      className="h-16 w-full text-emerald-600 dark:text-emerald-400"
-    >
-      <path d={path} fill="none" stroke="currentColor" strokeWidth="1.5" />
-      {records
-        .filter(record => record.value >= 0)
-        .map((record, index) => (
-          <circle
-            key={`${record.time}-${index}`}
-            cx={4 + ((Date.parse(record.time) - start) / duration) * 592}
-            cy={56 - (record.value / max) * 48}
-            r="1.8"
-            fill="currentColor"
-          />
-        ))}
-    </svg>
-  )
-}
 
 type RelayLeg = ReturnType<typeof summarizeRelayLeg>
 type Stack = 'v4' | 'v6' | null
@@ -81,37 +41,173 @@ function groupRoutes(routes: RelayRouteConfig[]) {
   }))
 }
 
-/** 轨道颜色与延迟文字共用阈值：常规延迟保持中性，只有快、慢、差才上色。 */
-function trackTone(leg: RelayLeg): string {
-  if (leg.state === 'lost') return 'border-red-500/60'
-  if (leg.latency === null) return 'border-foreground/12'
-  if (leg.latency <= 80) return 'border-emerald-500/70'
-  if (leg.latency <= 180) return 'border-foreground/25'
-  if (leg.latency <= 240) return 'border-amber-500/70'
-  return 'border-red-500/70'
+interface SummaryProps {
+  name: string
+  nodes: string[]
+  lines: RouteLine[]
+  status: string
+  order: number
 }
 
-/** 名称 | 站点 段 站点 … | 协议 | 合计 | 展开 */
-const relayColumns = (maxNodes: number) =>
-  [
-    'auto',
-    ...Array.from({ length: maxNodes * 2 - 1 }, (_, index) => (index % 2 ? 'minmax(0, 1fr)' : 'auto')),
-    'auto',
-    'auto',
-    'auto',
-  ].join(' ')
+const stackLabel = (stack: Stack) => (stack === 'v4' ? 'IPv4' : stack === 'v6' ? 'IPv6' : 'Ping')
 
-function StackBadge({ stack }: { stack: Stack }) {
+function FlowStreak({ delay }: { delay: number }) {
+  return (
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-x-clip">
+      <span className="relay-routes-flow absolute inset-0" style={{ animationDelay: `${-delay}s` }}>
+        <span className="relay-routes-comet absolute top-1/2 -left-16 h-[2px] w-16 -translate-y-1/2 rounded-full" />
+      </span>
+    </span>
+  )
+}
+
+/** 每段线的颜色与卡片延迟同一阈值：快绿、常规天蓝、慢琥珀、差或失败红。 */
+function legBorder(leg: RelayLeg): string {
+  if (leg.state === 'lost') return 'border-red-500/80'
+  if (leg.latency === null) return 'border-foreground/15'
+  if (leg.latency <= 80) return 'border-emerald-500/80'
+  if (leg.latency <= 180) return 'border-sky-500/70 dark:border-sky-400/70'
+  if (leg.latency <= 240) return 'border-amber-500/80'
+  return 'border-red-500/80'
+}
+
+function StackSwatch({ stack }: { stack: Stack }) {
   if (!stack) return null
   return (
     <span
+      aria-hidden="true"
+      className={cn('w-3 border-t-2 border-muted-foreground/60', stack === 'v6' && 'border-dashed')}
+    />
+  )
+}
+
+/** 合计：有完整数据显示毫秒数；有段探测失败显示「中断」，其余显示加载 / 刷新状态。 */
+function LineTotal({ line, status }: { line: RouteLine; status: string }) {
+  if (line.total !== null) {
+    return (
+      <span
+        className={cn('num whitespace-nowrap text-compact font-semibold leading-none', relayLatencyTone(line.total))}
+      >
+        {line.total.toFixed(1)}
+        <span className="ml-0.5 text-3xs font-normal text-muted-foreground">ms</span>
+      </span>
+    )
+  }
+  const broken = line.legs.some(leg => leg.state === 'lost')
+  return (
+    <span
       className={cn(
-        // v4 实线描边，v6 虚线描边，与轨道线型对应
-        'inline-flex h-4 items-center rounded border px-1 text-[10px] leading-none text-muted-foreground',
-        stack === 'v6' ? 'border-dashed border-foreground/30' : 'border-border',
+        'whitespace-nowrap text-xs font-medium leading-none',
+        broken ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
       )}
     >
-      {stack}
+      {broken ? '中断' : status}
+    </span>
+  )
+}
+
+const VALUE_ROW = 'h-4'
+const LINE_ROW = 'h-2'
+
+/**
+ * 每个协议一条轨道：v4 数值在线上方，v6 数值在线下方，两根线居中夹在站点标签的中线两侧。
+ * 只有一个协议时下方补一行同高的空位，保持线在标签中线上。
+ */
+function Lanes({
+  lines,
+  children,
+}: {
+  lines: RouteLine[]
+  children: (line: RouteLine, row: number) => { value?: ReactNode; track: ReactNode }
+}) {
+  return (
+    <span className="flex flex-col gap-1">
+      {lines.map((line, row) => {
+        const { value, track } = children(line, row)
+        const below = row > 0
+        return (
+          <span key={line.route.name} className="flex flex-col">
+            {!below && <span className={cn('flex items-end justify-center', VALUE_ROW)}>{value}</span>}
+            <span className={cn('relative', LINE_ROW)}>{track}</span>
+            {below && <span className={cn('flex items-start justify-center', VALUE_ROW)}>{value}</span>}
+          </span>
+        )
+      })}
+      {lines.length === 1 && <span aria-hidden="true" className={VALUE_ROW} />}
+    </span>
+  )
+}
+
+function PathSummary({ name, nodes, lines, status, order }: SummaryProps) {
+  return (
+    <span className="flex flex-col gap-3">
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="min-w-0 truncate text-compact font-semibold">{name}</span>
+        <span className="ml-auto flex shrink-0 items-center gap-4">
+          {lines.map(line => (
+            <span key={line.route.name} className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1 text-3xs text-muted-foreground">
+                <StackSwatch stack={line.stack} />
+                {line.stack ?? '合计'}
+              </span>
+              <LineTotal line={line} status={status} />
+            </span>
+          ))}
+        </span>
+      </span>
+      <span className="min-w-0 overflow-x-auto">
+        <span className="relative flex w-full min-w-max items-center">
+          {/* 流光沿每根协议线从左到右穿过整条线路，站点标签盖在它上面 */}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2">
+            <Lanes lines={lines}>
+              {(line, row) => ({ track: line.total !== null && <FlowStreak delay={order * 1.1 + row * 0.8} /> })}
+            </Lanes>
+          </span>
+          {nodes.map((node, index) => (
+            <Fragment key={index}>
+              {index > 0 && (
+                <span className="min-w-16 flex-1 @max-[23rem]:min-w-12">
+                  <Lanes lines={lines}>
+                    {line => {
+                      const leg = line.legs[index - 1]
+                      return {
+                        value: (
+                          <span
+                            title={`${stackLabel(line.stack)} ${nodes[index - 1]} → ${node}`}
+                            className={cn(
+                              'num px-1 text-xs font-medium leading-none',
+                              leg.state === 'lost' ? 'text-red-600 dark:text-red-400' : relayLatencyTone(leg.latency),
+                            )}
+                          >
+                            {leg.latency === null ? (
+                              <span className="text-3xs">{relayStateLabel[leg.state]}</span>
+                            ) : (
+                              leg.latency.toFixed(1)
+                            )}
+                          </span>
+                        ),
+                        track: (
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2',
+                              line.stack === 'v6' && 'border-dashed',
+                              legBorder(leg),
+                            )}
+                          />
+                        ),
+                      }
+                    }}
+                  </Lanes>
+                </span>
+              )}
+              <span className="relative z-20 max-w-32 shrink-0 truncate rounded-lg border bg-card px-2.5 py-1.5 text-compact font-semibold leading-4 text-foreground @max-[23rem]:px-1.5 @max-[23rem]:text-xs">
+                {node}
+              </span>
+            </Fragment>
+          ))}
+        </span>
+      </span>
     </span>
   )
 }
@@ -125,9 +221,6 @@ function RouteGroup({
   error,
   now,
   order,
-  paused,
-  onTogglePaused,
-  maxNodes,
 }: {
   name: string
   nodes: string[]
@@ -137,18 +230,12 @@ function RouteGroup({
   error: string | null
   now: number
   order: number
-  paused: boolean
-  onTogglePaused: () => void
-  maxNodes: number
 }) {
-  // 所有线路共用父级列：站点列按最长名称对齐，各段等宽，协议标与合计固定在右侧
-  const stackColumn = maxNodes * 2 + 1
   const lines: RouteLine[] = routes.map(({ route, stack }) => {
     const legs = route.legs.map(leg => summarizeRelayLeg(leg, records?.get(leg.client) ?? [], now))
     const complete = legs.every(leg => leg.state === 'ok')
     return { route, stack, legs, total: complete ? legs.reduce((sum, leg) => sum + (leg.latency ?? 0), 0) : null }
   })
-  const span = `1 / span ${lines.length}`
   const status = loading && !records ? '加载中' : error ? '刷新失败' : '线路数据不完整'
   const summaryTitle = lines
     .map(
@@ -157,174 +244,30 @@ function RouteGroup({
     )
     .join('\n')
   return (
-    <details className="relay-route group col-span-full grid grid-cols-subgrid border-t border-border/60 first-of-type:border-t-0">
-      <summary
-        title={summaryTitle}
-        className="col-span-full grid cursor-pointer list-none grid-cols-subgrid items-center px-3 py-2 text-[11px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-foreground/40 sm:px-4 [&::-webkit-details-marker]:hidden"
-      >
-        <span
-          className="max-w-16 min-w-0 truncate text-xs font-semibold text-foreground sm:max-w-32 sm:min-w-20"
-          style={{ gridRow: span, gridColumn: 1 }}
-        >
-          {name}
-        </span>
-        {nodes.map((node, index) => (
-          <span
-            key={`node-${index}`}
-            className="relative z-20 flex h-full items-center justify-center self-stretch"
-            style={{ gridRow: span, gridColumn: 2 + index * 2 }}
-          >
-            {/* 窄屏只保留站点竖条，宽屏显示站点名称 */}
-            <span aria-hidden="true" className="h-full min-h-3 w-[3px] rounded-full bg-foreground/20 sm:hidden" />
-            <span className="hidden max-w-24 truncate text-muted-foreground transition-colors group-hover:text-foreground/80 sm:block">
-              {node}
-            </span>
-          </span>
-        ))}
-        {lines.map((line, row) => (
-          <Fragment key={line.route.name}>
-            {line.total !== null && (
-              <span
-                aria-hidden="true"
-                className="pointer-events-none relative h-full self-stretch overflow-hidden"
-                style={{ gridRow: row + 1, gridColumn: `3 / ${nodes.length * 2}` }}
-              >
-                <span
-                  className="relay-routes-flow absolute inset-y-0 left-[-72px] w-full"
-                  style={{ animationDelay: `${order * 0.9 + row * 0.4}s` }}
-                >
-                  <span className="absolute top-1/2 left-0 block h-[2px] w-[72px] -translate-y-1/2 rounded-full bg-linear-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_6px_1px] shadow-emerald-400/40 dark:via-emerald-300" />
-                </span>
-              </span>
-            )}
-            {line.legs.map((leg, index) => (
-              <span
-                key={index}
-                title={`${line.stack ?? ''} ${nodes[index]} → ${nodes[index + 1]}：${leg.latency === null ? relayStateLabel[leg.state] : `${leg.latency.toFixed(1)} ms`}`}
-                className="relative flex h-[22px] min-w-0 items-center justify-center"
-                style={{ gridRow: row + 1, gridColumn: 3 + index * 2 }}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'absolute inset-x-0 top-1/2 border-t-[1.5px]',
-                    line.stack === 'v6' && 'border-dashed',
-                    trackTone(leg),
-                  )}
-                />
-                <span
-                  className={cn(
-                    'num relative z-20 min-w-0 truncate bg-card px-0.5 leading-4 sm:px-1',
-                    relayLatencyTone(leg.latency),
-                    leg.state === 'lost' && 'text-red-600 dark:text-red-400',
-                  )}
-                >
-                  {leg.latency === null ? relayStateLabel[leg.state] : leg.latency.toFixed(1)}
-                </span>
-              </span>
-            ))}
-            <span className="flex justify-center" style={{ gridRow: row + 1, gridColumn: stackColumn }}>
-              <StackBadge stack={line.stack} />
-            </span>
-            <span
-              className={cn(
-                'num min-w-[3.25rem] text-right text-xs font-semibold tracking-tight sm:min-w-[4.25rem]',
-                relayLatencyTone(line.total),
-              )}
-              style={{ gridRow: row + 1, gridColumn: stackColumn + 1 }}
-            >
-              {line.total === null ? (
-                <span className="font-normal text-muted-foreground" aria-label={status}>
-                  --
-                </span>
-              ) : (
-                <>
-                  {line.total.toFixed(1)}
-                  <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">ms</span>
-                </>
-              )}
-            </span>
-          </Fragment>
-        ))}
-        <Icon
-          icon="lucide:chevron-down"
-          aria-hidden="true"
-          className="size-3 text-muted-foreground/60 transition-[rotate,color] group-open:rotate-180 group-hover:text-foreground"
-          style={{ gridRow: span, gridColumn: stackColumn + 2 }}
-        />
-      </summary>
-      <div className="col-span-full space-y-3 border-t border-border/60 px-3 py-3 sm:px-4">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            各段独立探测，合计不代表经过中转的端到端延迟。曲线展示近期可用样本；丢包率按最近 10 分钟样本计算。
-          </p>
-          <button
-            type="button"
-            onClick={onTogglePaused}
-            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-foreground/40"
-          >
-            <Icon icon={paused ? 'lucide:play' : 'lucide:pause'} aria-hidden="true" className="size-3" />
-            {paused ? '播放流光' : '暂停流光'}
-          </button>
-        </div>
-        {error && (
-          <p role="status" className="text-xs text-amber-700 dark:text-amber-400">
-            刷新失败，保留的记录可能已过期，请稍后重试。
-          </p>
-        )}
-        <div className="grid gap-2 sm:grid-cols-2">
-          {lines.flatMap(line =>
-            line.legs.map((leg, index) => (
-              <div key={`${line.route.name}-${index}`} className="rounded-lg border p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <span className="flex min-w-0 items-center gap-1.5 font-medium wrap-anywhere">
-                    <StackBadge stack={line.stack} />
-                    {nodes[index]} → {nodes[index + 1]}
-                  </span>
-                  <span className="num text-muted-foreground">
-                    {relayStateLabel[leg.state]}，丢包 {leg.loss === null ? '--' : `${leg.loss.toFixed(1)}%`}
-                  </span>
-                </div>
-                <HistoryLine records={leg.samples} />
-                <div className="flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground">
-                  <span className="num">
-                    {leg.updated
-                      ? `${formatDateTime(leg.samples[0].time, 'HH:mm')}–${formatDateTime(leg.updated, 'HH:mm')}，${leg.samples.length} 个样本`
-                      : '等待探测数据'}
-                  </span>
-                  <Link to={`/instance/${encodeURIComponent(leg.client)}`} className="underline underline-offset-2">
-                    探测节点任务 #{leg.taskId}
-                  </Link>
-                </div>
-              </div>
-            )),
-          )}
-        </div>
-      </div>
-    </details>
+    <div title={summaryTitle} className="relay-route @container min-w-0 rounded-xl border bg-card px-4 py-3 shadow-xs">
+      <PathSummary name={name} nodes={nodes} lines={lines} status={status} order={order} />
+    </div>
   )
 }
 
 export default function RelayRoutes() {
   const settings = useThemeSettings()
   const config = settings.relayRoutes
-  const [paused, setPaused] = useState(false)
   const snapshot = useSharedPingRecords(1, settings.relayRoutesEnabled && config.routes.length > 0)
   if (!settings.relayRoutesEnabled) return null
-  const maxNodes = Math.max(2, ...config.routes.map(route => route.nodes.length))
   return (
     <section
       aria-label="线路延迟"
-      className="relative z-10 px-4"
-      data-relay-motion={!paused && !settings.disablePageAnimation ? 'on' : 'off'}
+      className="@container relative z-10 min-w-0"
+      data-relay-motion={settings.disablePageAnimation ? 'off' : 'on'}
     >
-      <div
-        className="relative grid gap-x-1 overflow-hidden rounded-xl border bg-card py-1 shadow-xs sm:gap-x-2"
-        style={{ gridTemplateColumns: relayColumns(maxNodes) }}
-      >
+      <div className="grid min-w-0 items-start gap-3 @min-[36rem]:grid-cols-2">
         <h2 className="sr-only">线路延迟</h2>
         {config.error || !config.routes.length ? (
-          <p role="status" className="col-span-full px-4 py-3 text-sm text-muted-foreground">
+          <p
+            role="status"
+            className="col-span-full rounded-xl border bg-card px-4 py-3 text-compact text-muted-foreground shadow-xs"
+          >
             {config.error ?? '请在主题设置中配置线路节点和 Ping 任务。'}
           </p>
         ) : (
@@ -333,9 +276,6 @@ export default function RelayRoutes() {
               key={group.routes[0].route.name}
               {...group}
               order={index}
-              maxNodes={maxNodes}
-              paused={paused}
-              onTogglePaused={() => setPaused(value => !value)}
               records={snapshot.data?.recordsByClient}
               loading={snapshot.loading}
               error={snapshot.error}

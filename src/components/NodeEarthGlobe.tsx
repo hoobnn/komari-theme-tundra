@@ -582,35 +582,38 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
         )
       })}
 
-      {earthViewMode !== 'earth-stop' && !reducedMotion && (
-        <button
-          type="button"
-          aria-label={rotationPaused ? '继续地球自转' : '暂停地球自转'}
-          title={rotationPaused ? '继续地球自转' : '暂停地球自转'}
-          className="absolute top-0 right-0 md:top-12 z-10 flex size-7 items-center justify-center rounded-md bg-background/80 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground/50"
-          onClick={() => setRotationPaused(paused => !paused)}
-        >
-          <Icon icon={rotationPaused ? 'tabler:player-play' : 'tabler:player-pause'} width={12} height={12} />
-        </button>
-      )}
-      {totalServers > 0 && (
-        <div className="absolute top-0 md:top-12 left-0 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
-          {onlineServers > 0 && (
-            <div className="flex items-center gap-1">
-              <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>在线</span>
-              <span className="num font-medium text-emerald-700 dark:text-emerald-300">{onlineServers}</span>
-            </div>
-          )}
-          {offlineServers > 0 && (
-            <div className="flex items-center gap-1">
-              <span className="inline-block size-1.5 rounded-full bg-red-500" />
-              <span>离线</span>
-              <span className="num font-medium text-red-600 dark:text-red-400">{offlineServers}</span>
-            </div>
-          )}
-        </div>
-      )}
+      {/* 在线统计与自转开关并排，固定在地球左上角，不再各自漂在两端 */}
+      <div className="absolute top-0 left-0 z-10 flex items-center gap-1.5 md:top-12">
+        {totalServers > 0 && (
+          <div className="pointer-events-none flex items-center gap-2 rounded-md bg-background/70 px-2 py-0.5 text-2xs text-muted-foreground backdrop-blur-lg">
+            {onlineServers > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>在线</span>
+                <span className="num font-medium text-foreground">{onlineServers}</span>
+              </div>
+            )}
+            {offlineServers > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="inline-block size-1.5 rounded-full bg-red-500" />
+                <span>离线</span>
+                <span className="num font-medium text-red-600 dark:text-red-400">{offlineServers}</span>
+              </div>
+            )}
+          </div>
+        )}
+        {earthViewMode !== 'earth-stop' && !reducedMotion && (
+          <button
+            type="button"
+            aria-label={rotationPaused ? '继续地球自转' : '暂停地球自转'}
+            title={rotationPaused ? '继续地球自转' : '暂停地球自转'}
+            className="flex size-6 items-center justify-center rounded-md bg-background/70 text-muted-foreground backdrop-blur-lg hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            onClick={() => setRotationPaused(paused => !paused)}
+          >
+            <Icon icon={rotationPaused ? 'tabler:player-play' : 'tabler:player-pause'} width={11} height={11} />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

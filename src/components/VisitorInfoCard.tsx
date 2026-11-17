@@ -441,10 +441,10 @@ export default function VisitorInfoCard() {
           inert={!expand}
         >
           <div className="min-h-0 overflow-hidden">
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t px-3 py-3 text-[11px]">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t px-3 py-3 text-2xs">
               {detailRows.map(item => (
                 <div key={item.icon} className={cn('min-w-0', item.fullWidth && 'col-span-2')}>
-                  <dt className="mb-0.5 text-[10px] text-muted-foreground">{item.label}</dt>
+                  <dt className="mb-0.5 text-3xs text-muted-foreground">{item.label}</dt>
                   <dd className={cn('break-words text-foreground/85', item.label === 'IP 地址' && 'num break-all')}>
                     {item.label === 'IP 地址' ? ip : item.value}
                   </dd>

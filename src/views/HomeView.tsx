@@ -33,17 +33,22 @@ export default function HomeView() {
   return (
     <div className="home-view space-y-4">
       <HomeNotices />
-      {earthViewMode !== 'hide' && (
+      {earthViewMode !== 'hide' ? (
         <Suspense fallback={null}>
           <NodeGeneralCards
             nodes={home.groupNodes}
             globeNodes={home.globeNodes}
             transitionKey={home.selectedGroup}
             suspendMotion={pingDialog !== null && pingNode !== null}
-          />
+          >
+            <RelayRoutes />
+          </NodeGeneralCards>
         </Suspense>
+      ) : (
+        <div className="px-4">
+          <RelayRoutes />
+        </div>
       )}
-      <RelayRoutes />
       <section aria-label="节点" className="relative z-10 px-4">
         <Tabs value={home.selectedGroup} onValueChange={home.setSelectedGroup} className="flex-col gap-3">
           <NodeToolbar

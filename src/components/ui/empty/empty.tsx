@@ -30,7 +30,7 @@ function Empty({ description, extra, className, children, ...props }: EmptyProps
         <rect width="18" height="14" x="3" y="3" rx="2" />
         <path d="M3 14h18M8 18h.01M12 18h.01M16 18h.01" />
       </svg>
-      {children ?? <span className="text-sm">{description ?? '暂无数据'}</span>}
+      {children ?? <span className="text-compact">{description ?? '暂无数据'}</span>}
       {extra}
     </div>
   )

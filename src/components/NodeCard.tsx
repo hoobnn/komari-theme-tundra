@@ -38,7 +38,7 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
   return (
     <CardX
       contentClass="flex flex-1 flex-col"
-      headerClass="pb-2"
+      headerClass="pb-1.5 pt-2.5"
       className={cn(
         'node-card group/card h-full w-full cursor-pointer rounded-xl border bg-card shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-foreground/15 hover:shadow-lg',
         pickSurfaceClass('', 'backdrop-blur-sm'),
@@ -57,7 +57,7 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
           />
           <button
             type="button"
-            className="min-w-0 flex-1 truncate rounded-sm text-left text-[15px] font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-w-0 flex-1 truncate rounded-sm text-left text-value font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title={node.name}
           >
             {node.name}
@@ -80,17 +80,15 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
       <div className="relative flex flex-1 flex-col">
         {!node.online && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground">
-            <span className="text-sm font-medium text-red-600 dark:text-red-400">离线</span>
+            <span className="text-xs font-medium text-red-600 dark:text-red-400">离线</span>
             <span className="num">{offlineTime}</span>
           </div>
         )}
 
-        <div
-          className={cn('flex flex-1 flex-col gap-2.5', !node.online && 'pointer-events-none opacity-35 blur-[1.5px]')}
-        >
+        <div className={cn('flex flex-1 flex-col gap-2', !node.online && 'pointer-events-none opacity-25 blur-[2px]')}>
           {/* 在线时长与费用 */}
           {/* 元信息不加底色块，靠留白和图标分组，减少卡中卡 */}
-          <div className="-mt-1 flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <div className="-mt-1 flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Icon icon="lucide:clock-3" width="12" height="12" className="opacity-70" />
               <span>
@@ -112,7 +110,9 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
 
           <NodeResourceMetrics node={node} />
           <NodeNetworkMetrics node={node} />
-          <NodePingSummary node={node} onClick={onPingClick} />
+          <div className="border-t border-border/70 pt-1">
+            <NodePingSummary node={node} onClick={onPingClick} />
+          </div>
 
           {/* 标签：没有也占位，卡片底部对齐 */}
           <div className="mt-auto flex min-h-[22px] flex-wrap items-center gap-1">
@@ -120,14 +120,14 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
               <Badge
                 key={index}
                 variant="outline"
-                className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-[11px] font-normal text-muted-foreground"
+                className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
               >
                 {tag}
               </Badge>
             ))}
             {/* 没有自定义标签时用地区和系统填充占位行，避免一块空白 */}
             {!customTags.length && (
-              <span className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="flex min-w-0 items-center gap-2 text-2xs text-muted-foreground">
                 {hasRegion(node.region) && <span className="truncate">{getRegionDisplayName(node.region)}</span>}
                 <span className="truncate">{getOSName(node.os)}</span>
               </span>

@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/react'
-import { Fragment, memo, useState } from 'react'
+import { memo, useState } from 'react'
 import NodePingListCell from '@/components/NodePingListCell'
 import TrafficProgress from '@/components/TrafficProgress'
 import { Badge } from '@/components/ui/badge'
@@ -133,7 +133,6 @@ interface NodeRowProps {
 
 const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowProps) => {
   const lang = useAppStore(state => state.lang)
-  const { pickSurfaceClass } = useBackgroundSurface()
   const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
 
   // 每行只算一次，避免模板里重复调用
@@ -175,7 +174,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
       case 'name':
         return (
           <div className={cn('space-y-0.5', !node.online && 'blur-sm opacity-30')}>
-            <div className="flex items-center gap-1.5 text-[13px] font-semibold">
+            <div className="flex items-center gap-1.5 text-compact font-semibold">
               {hasRegion(node.region) && (
                 <img
                   src={getFlagSrc(node.region)}
@@ -191,7 +190,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 {node.name}
               </button>
             </div>
-            <div className="flex flex-row text-[11px] text-muted-foreground/70">
+            <div className="flex flex-row gap-x-2 text-2xs text-muted-foreground/70">
               {node.online && (
                 <DataTooltip
                   content={formatUptime(node.uptime ?? 0)}
@@ -208,12 +207,11 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                   content={formatDateTime(node.expired_at, 'YYYY-MM-DD')}
                   contentClass="whitespace-nowrap right-0 mr-0"
                 >
-                  <div className="truncate">
+                  <div className="flex gap-x-1.5 truncate">
                     {priceTags.map((tag, tagIndex) => (
-                      <Fragment key={tagIndex}>
-                        <span className="mx-1">·</span>
-                        <span className={tag.highlight ? getRemainingTimeTagClass(node) : ''}>{tag.text}</span>
-                      </Fragment>
+                      <span key={tagIndex} className={tag.highlight ? getRemainingTimeTagClass(node) : ''}>
+                        {tag.text}
+                      </span>
                     ))}
                   </div>
                 </DataTooltip>
@@ -235,7 +233,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 <Badge
                   key={tagIndex}
                   variant="outline"
-                  className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-[11px] font-normal text-muted-foreground"
+                  className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
                 >
                   {tag}
                 </Badge>
@@ -292,7 +290,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
               }
             >
               <div className="space-y-1">
-                <div className="num truncate text-[11px] text-muted-foreground">{(node.cpu ?? 0).toFixed(1)}%</div>
+                <div className="num truncate text-xs text-foreground">{(node.cpu ?? 0).toFixed(1)}%</div>
                 <ProgressThin percentage={node.cpu ?? 0} status={getStatus(node.cpu ?? 0)} height={4} />
               </div>
             </DataTooltip>
@@ -323,7 +321,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
               }
             >
               <div className="space-y-1">
-                <div className="num truncate text-[11px] text-muted-foreground">{memPercentage.toFixed(1)}%</div>
+                <div className="num truncate text-xs text-foreground">{memPercentage.toFixed(1)}%</div>
                 <ProgressThin percentage={memPercentage} status={getStatus(memPercentage)} height={4} />
               </div>
             </DataTooltip>
@@ -348,7 +346,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
               }
             >
               <div className="space-y-1">
-                <div className="num truncate text-[11px] text-muted-foreground">{diskPercentage.toFixed(1)}%</div>
+                <div className="num truncate text-xs text-foreground">{diskPercentage.toFixed(1)}%</div>
                 <ProgressThin percentage={diskPercentage} status={getStatus(diskPercentage)} height={4} />
               </div>
             </DataTooltip>
@@ -377,7 +375,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
               }
             >
               <div className="space-y-1 w-full">
-                <div className="num truncate text-[11px] text-muted-foreground">
+                <div className="num truncate text-xs text-foreground">
                   {showTrafficProgress(node)
                     ? `${getTrafficUsedPercentage(node).toFixed(1)}%`
                     : formatBytes(getTrafficUsed(node))}
@@ -398,7 +396,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
       case 'rate':
         return (
           <div>
-            <div className="num flex flex-col text-[11px]">
+            <div className="num flex flex-col text-2xs">
               <span className="flex flex-row items-center gap-1">
                 <Icon
                   icon="tabler:arrow-up"
@@ -424,9 +422,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
   return (
     <div
       className={cn(
-        'relative flex h-16 cursor-pointer flex-col justify-center rounded-xl border bg-card shadow-xs px-2 transition-colors duration-150 hover:border-foreground/20',
-        pickSurfaceClass('', 'backdrop-blur-sm'),
-        !node.online && 'border-red-600/25 dark:border-red-400/25',
+        'relative flex h-16 cursor-pointer flex-col justify-center border-t border-border/70 px-2 transition-colors duration-150 hover:bg-foreground/[0.025]',
         animate && 'node-enter',
       )}
       role="row"
@@ -448,7 +444,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
         <div className="absolute inset-0 z-2 p-2 bg-background/10 rounded-lg flex items-center" aria-hidden="true">
           <div className="grid gap-2 items-center justify-center" style={gridStyle}>
             <div className="h-full space-y-1" style={offlineOverlayContentStyle}>
-              <div className="text-sm font-semibold truncate">
+              <div className="text-compact font-semibold truncate">
                 <span className="text-red-600 dark:text-red-400">离线</span> {node.name}
               </div>
               <div className="text-xs text-muted-foreground">{formatOfflineTime(node)}</div>
@@ -482,13 +478,16 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
 
   return (
     <div className="overflow-x-auto overflow-y-hidden min-w-0 p-1 -m-1">
-      <div role="table" aria-label="节点列表" className="min-w-fit w-full flex flex-col gap-1">
+      <div
+        role="table"
+        aria-label="节点列表"
+        className={cn(
+          'flex w-full min-w-fit flex-col overflow-hidden rounded-xl border',
+          pickSurfaceClass('bg-card shadow-xs', 'bg-card/80 backdrop-blur-sm'),
+        )}
+      >
         {/* 表头 */}
-        <div
-          role="row"
-          className={cn('grid gap-2 rounded-xl border bg-card p-2', pickSurfaceClass('', 'backdrop-blur-sm'))}
-          style={gridStyle}
-        >
+        <div role="row" className="grid gap-2 px-2 py-2.5" style={gridStyle}>
           {columns.map(col => (
             <div
               key={col.key}
@@ -531,7 +530,7 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
           ))}
         </div>
 
-        <div role="rowgroup" className="flex flex-col gap-1">
+        <div role="rowgroup" className="flex flex-col">
           {sortedNodes.map((node, index) => (
             <NodeRow
               key={node.uuid}

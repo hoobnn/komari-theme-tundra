@@ -22,36 +22,37 @@ views（页面组合）→ components（独立界面区域）→ components/ui�
 
 ## 常见调整入口
 
-| 要调整的内容                   | 入口                                                               |
-| ------------------------------ | ------------------------------------------------------------------ |
-| 首页区域顺序                   | `src/views/HomeView.tsx`                                           |
-| 首页线路流光、分段配置与状态   | `src/components/home/RelayRoutes.tsx`、`src/utils/relayRoutes.ts`  |
-| 分组、搜索、视图按钮及窄屏布局 | `src/components/home/NodeToolbar.tsx`                              |
-| 搜索字段、匹配规则             | `src/utils/nodeSearch.ts`                                          |
-| 分组过滤、离线置后、视图断点   | `src/hooks/useHomeNodes.ts`                                        |
-| 首页滚动恢复                   | `src/hooks/useHomeScrollRestoration.ts`                            |
-| 卡片网格、空结果、入场动画     | `src/components/home/NodeResults.tsx`                              |
-| 延迟弹窗布局                   | `src/components/home/NodePingDialog.tsx`                           |
-| 节点标题、在线时长、费用、标签 | `src/components/NodeCard.tsx`                                      |
-| CPU / 内存 / 硬盘 / 流量       | `src/components/nodes/NodeResourceMetrics.tsx`                     |
-| 实时与累计上下行               | `src/components/nodes/NodeNetworkMetrics.tsx`                      |
-| 卡片延迟、丢包展示             | `src/components/nodes/NodePingSummary.tsx`                         |
-| 延迟统计、线路归组、阈值       | `src/hooks/useNodePingStats.ts`、`src/hooks/useNodePingDisplay.ts` |
-| 列表排序                       | `src/utils/nodeSort.ts`                                            |
-| 地球连线几何与退化端点过滤     | `src/utils/globeGeometry.ts`                                       |
-| 地球按帧时间积分、惯性与阻尼   | `src/utils/globeMotion.ts`                                         |
-| 概览布局、地球 / 地图占位      | `src/components/NodeGeneralCards.tsx`                              |
-| 概览统计和单位                 | `src/hooks/useNodeOverview.ts`                                     |
-| 概览卡统一外观                 | `src/components/overview/OverviewMetricCard.tsx`                   |
-| 费用 / 汇率弹层                | `src/components/overview/OverviewFinanceCard.tsx`                  |
-| 负载请求、轮询、GPU 温度       | `src/hooks/useLoadRecords.ts`                                      |
-| 负载图曲线、坐标轴、提示内容   | `src/utils/charts/loadChartOptions.ts`                             |
-| 负载图卡片布局                 | `src/components/LoadChart.tsx`                                     |
-| 延迟图请求与任务选择生命周期   | `src/hooks/usePingChartData.ts`                                    |
-| 延迟图曲线和任务筛选 UI        | `src/components/PingChart.tsx`                                     |
-| 可滚动标签与选中项自动显露     | `src/components/ui/tabs/scrollable-tabs-list.tsx`                  |
-| 页面顶栏、底部浮层             | `src/components/Header.tsx`、`Footer.tsx`、`VisitorInfoCard.tsx`   |
-| 主题色与全局排版               | `src/styles/main.css`                                              |
+| 要调整的内容                                     | 入口                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 首页区域顺序                                     | `src/views/HomeView.tsx`                                                      |
+| 首页线路流光、分段配置与状态                     | `src/components/home/RelayRoutes.tsx`、`src/utils/relayRoutes.ts`             |
+| 分组、搜索、视图按钮及窄屏布局                   | `src/components/home/NodeToolbar.tsx`                                         |
+| 搜索字段、匹配规则                               | `src/utils/nodeSearch.ts`                                                     |
+| 分组过滤、离线置后、视图断点                     | `src/hooks/useHomeNodes.ts`                                                   |
+| 首页滚动恢复                                     | `src/hooks/useHomeScrollRestoration.ts`                                       |
+| 卡片网格、空结果、入场动画                       | `src/components/home/NodeResults.tsx`                                         |
+| 延迟弹窗布局                                     | `src/components/home/NodePingDialog.tsx`                                      |
+| 节点标题、在线时长、费用、标签                   | `src/components/NodeCard.tsx`                                                 |
+| 资源表（CPU / 内存 / 硬盘 / 流量，列与容器查询） | `src/components/nodes/NodeResourceMetrics.tsx`                                |
+| 实时与累计上下行                                 | `src/components/nodes/NodeNetworkMetrics.tsx`                                 |
+| 卡片延迟表与合并趋势条                           | `src/components/nodes/NodePingSummary.tsx`、`src/hooks/useNodePingDisplay.ts` |
+| 延迟统计、线路归组、阈值                         | `src/hooks/useNodePingStats.ts`、`src/hooks/useNodePingDisplay.ts`            |
+| 列表排序                                         | `src/utils/nodeSort.ts`                                                       |
+| 地球连线几何与退化端点过滤                       | `src/utils/globeGeometry.ts`                                                  |
+| 地球按帧时间积分、惯性与阻尼                     | `src/utils/globeMotion.ts`                                                    |
+| 概览布局、地球 / 地图占位                        | `src/components/NodeGeneralCards.tsx`                                         |
+| 概览统计和单位                                   | `src/hooks/useNodeOverview.ts`                                                |
+| 概览面板与格子外观                               | `src/components/NodeGeneralCards.tsx`、`src/utils/uiClasses.ts`               |
+| 费用 / 汇率弹层                                  | `src/components/overview/OverviewFinanceCard.tsx`                             |
+| 详情页费用面板与规格表                           | `src/views/InstanceDetail.tsx`                                                |
+| 负载请求、轮询、GPU 温度                         | `src/hooks/useLoadRecords.ts`                                                 |
+| 负载图曲线、坐标轴、提示内容                     | `src/utils/charts/loadChartOptions.ts`                                        |
+| 负载图卡片布局                                   | `src/components/LoadChart.tsx`                                                |
+| 延迟图请求与任务选择生命周期                     | `src/hooks/usePingChartData.ts`                                               |
+| 延迟图曲线和任务筛选 UI                          | `src/components/PingChart.tsx`                                                |
+| 可滚动标签与选中项自动显露                       | `src/components/ui/tabs/scrollable-tabs-list.tsx`                             |
+| 页面顶栏、底部浮层                               | `src/components/Header.tsx`、`Footer.tsx`、`VisitorInfoCard.tsx`              |
+| 主题色与全局排版                                 | `src/styles/main.css`                                                         |
 
 ## 必须保留的边界
 

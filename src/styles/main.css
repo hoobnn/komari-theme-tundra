@@ -123,6 +123,19 @@
   --color-chart-5: var(--chart-5);
   --font-sans: var(--font-sans);
   --font-num: var(--font-num);
+  /* 字号阶梯（rem，跟随浏览器字号设置）：3xs/2xs 用于标注与单位，value 用于卡片主数值，display 用于概览大数 */
+  --text-3xs: 0.625rem;
+  --text-3xs--line-height: 0.875rem;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-compact: 0.8125rem;
+  --text-compact--line-height: 1.25rem;
+  --text-value: 0.9375rem;
+  --text-value--line-height: 1.25rem;
+  --text-stat: 1.375rem;
+  --text-stat--line-height: 1.75rem;
+  --text-display: 1.75rem;
+  --text-display--line-height: 1;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -291,19 +304,46 @@
   }
 }
 
-/* ---- RelayRoutes: 每条轨道一道细亮线穿过站点，站点与延迟标签遮住它 ---- */
+/* Relay flow travels across the whole lane, including intermediate stops.
+   The full-width carrier makes transform percentages follow the lane width. */
 @keyframes relay-routes-sweep {
-  from {
+  0% {
     transform: translateX(0);
+    opacity: 0;
   }
-  64%,
-  to {
+  6% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  84%,
+  100% {
     transform: translateX(calc(100% + 72px));
+    opacity: 0;
   }
 }
-
 .relay-routes-flow {
   display: none;
+}
+/* A short bright streak runs along the segment bar's bottom edge, with a faint glow
+   that passes softly over the values. */
+.relay-routes-flow {
+  --relay-flow-color: var(--color-emerald-400);
+}
+.relay-routes-comet {
+  background: linear-gradient(to right, transparent, var(--relay-flow-color));
+}
+.relay-routes-comet::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: -1px;
+  inset-block-start: -1px;
+  inline-size: 4px;
+  block-size: 4px;
+  border-radius: 50%;
+  background: oklch(1 0 0);
+  box-shadow: 0 0 8px 2px var(--relay-flow-color);
 }
 @media (prefers-reduced-motion: no-preference) {
   [data-relay-motion='on'] .relay-routes-flow {

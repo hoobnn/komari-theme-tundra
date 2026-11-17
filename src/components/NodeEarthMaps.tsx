@@ -251,7 +251,7 @@ export default function NodeEarthMaps({ nodes, className }: NodeEarthMapsProps) 
       </div>
       <div className="relative flex h-full min-h-0 flex-col items-center">
         {totalServers > 0 && (
-          <div className="absolute top-0 right-0 z-2 text-[11px] text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
+          <div className="absolute top-0 right-0 z-2 text-2xs text-muted-foreground pointer-events-none flex gap-2 items-center backdrop-blur-lg bg-background/60 rounded px-2 py-0.5">
             {onlineServers > 0 && (
               <div className="flex items-center gap-1">
                 <span className="inline-block size-1.5 rounded-full bg-green-600 animate-pulse" />

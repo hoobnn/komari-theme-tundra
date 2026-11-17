@@ -11,7 +11,7 @@ export default function LoadingCover() {
           className="inline-block size-7 animate-spin rounded-full border-2"
           style={{ borderColor: 'color-mix(in srgb, currentColor 18%, transparent)', borderTopColor: 'currentColor' }}
         />
-        <span className="text-sm text-muted-foreground">加载中…</span>
+        <span className="text-compact text-muted-foreground">加载中…</span>
       </div>
     </div>
   )

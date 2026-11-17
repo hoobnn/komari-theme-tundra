@@ -23,13 +23,25 @@ export function useNodeOverview(nodes: NodeData[]) {
     const part = bytes(value)
     return `${part.value} ${part.unit}`
   }
+  const ratio = (used: number, total: number) => (total > 0 ? Math.min(100, (used / total) * 100) : null)
   return {
-    memory: { label: '内存用量', ...bytes(totals.memory), total: `共 ${full(totals.memoryTotal)}` },
-    disk: { label: '硬盘用量', ...bytes(totals.disk), total: `共 ${full(totals.diskTotal)}` },
+    memory: {
+      label: '内存',
+      ...bytes(totals.memory),
+      total: `共 ${full(totals.memoryTotal)}`,
+      ratio: ratio(totals.memory, totals.memoryTotal),
+    },
+    disk: {
+      label: '硬盘',
+      ...bytes(totals.disk),
+      total: `共 ${full(totals.diskTotal)}`,
+      ratio: ratio(totals.disk, totals.diskTotal),
+    },
     traffic: {
       label: '累计流量',
       ...bytes(totals.trafficUp + totals.trafficDown),
-      tooltip: `↑ ${full(totals.trafficUp)}\n↓ ${full(totals.trafficDown)}`,
+      up: full(totals.trafficUp),
+      down: full(totals.trafficDown),
     },
     speedUp: { label: '实时上行', ...formatBytesPerSecondSplit(totals.speedUp, decimals) },
     speedDown: { label: '实时下行', ...formatBytesPerSecondSplit(totals.speedDown, decimals) },

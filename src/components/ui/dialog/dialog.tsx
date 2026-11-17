@@ -63,14 +63,14 @@ function DialogFooter({ className, ...props }: ComponentProps<'div'>) {
 function DialogTitle({ className, ...props }: ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn('text-base font-semibold leading-none tracking-normal text-foreground', className)}
+      className={cn('text-value font-semibold leading-none tracking-normal text-foreground', className)}
       {...props}
     />
   )
 }
 
 function DialogDescription({ className, ...props }: ComponentProps<typeof DialogPrimitive.Description>) {
-  return <DialogPrimitive.Description className={cn('text-sm text-muted-foreground', className)} {...props} />
+  return <DialogPrimitive.Description className={cn('text-compact text-muted-foreground', className)} {...props} />
 }
 
 export { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger }

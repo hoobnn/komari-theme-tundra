@@ -41,7 +41,7 @@ export default function Header() {
             <AvatarImage src="/favicon.ico" alt="" />
             <AvatarFallback>{sitename.slice(0, 1)}</AvatarFallback>
           </Avatar>
-          <span className="truncate text-lg font-semibold" title={sitename}>
+          <span className="truncate text-value font-semibold" title={sitename}>
             {sitename}
           </span>
         </Link>

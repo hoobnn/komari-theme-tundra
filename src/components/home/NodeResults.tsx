@@ -50,7 +50,7 @@ export default function NodeResults({
       ) : nodes.length !== 0 && viewMode === 'list' ? (
         <NodeList nodes={nodes} onClick={onNodeClick} onPingClick={onPingClick} />
       ) : query.length > 0 ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-sm text-muted-foreground">
+        <div className="flex flex-col items-center gap-3 py-10 text-compact text-muted-foreground">
           <span>
             没有匹配「
             {query.trim()}

@@ -147,7 +147,7 @@ function DataTooltip({
         <span
           role="tooltip"
           className={cn(
-            'pointer-events-none absolute z-20 hidden rounded-md border bg-popover px-2 py-1 text-[11px] leading-snug text-popover-foreground shadow-md group-hover/data-tooltip:block group-focus-within/data-tooltip:block whitespace-normal break-words',
+            'pointer-events-none absolute z-20 hidden rounded-md border bg-popover px-2 py-1 text-2xs leading-snug text-popover-foreground shadow-md group-hover/data-tooltip:block group-focus-within/data-tooltip:block whitespace-normal break-words',
             open && 'block',
             placementClass[placement],
             contentClass,

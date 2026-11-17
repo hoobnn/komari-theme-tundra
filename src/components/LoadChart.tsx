@@ -127,7 +127,7 @@ export default function LoadChart({ uuid, className }: LoadChartProps) {
               className={cardClass}
               header={
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">CPU</span>
+                  <span className="text-compact font-semibold">CPU</span>
                   {latestStatus?.cpu != null ? (
                     <div className="num text-xs flex gap-0.5 items-baseline">
                       <span>{latestStatus.cpu.toFixed(1)}</span>
@@ -151,7 +151,7 @@ export default function LoadChart({ uuid, className }: LoadChartProps) {
                 className={cardClass}
                 header={
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">GPU</span>
+                    <span className="text-compact font-semibold">GPU</span>
                     {latestStatus?.gpu != null ? (
                       <div className="num text-xs flex gap-0.5 items-baseline">
                         <span>{latestStatus.gpu.toFixed(1)}</span>
@@ -206,7 +206,7 @@ export default function LoadChart({ uuid, className }: LoadChartProps) {
               className={cardClass}
               header={
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">内存</span>
+                  <span className="text-compact font-semibold">内存</span>
                   <div className="num flex items-baseline gap-1 text-xs">
                     <span>{latestStatus?.ram != null ? formatBytes(latestStatus.ram) : '--'}</span>
                     {nodeInfo?.mem_total ? (
@@ -227,7 +227,7 @@ export default function LoadChart({ uuid, className }: LoadChartProps) {
               className={cardClass}
               header={
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">硬盘</span>
+                  <span className="text-compact font-semibold">硬盘</span>
                   <div className="num flex items-baseline gap-1 text-xs">
                     <span>{latestStatus?.disk != null ? formatBytes(latestStatus.disk) : '--'}</span>
                     {nodeInfo?.disk_total ? (
@@ -248,7 +248,7 @@ export default function LoadChart({ uuid, className }: LoadChartProps) {
               className={cardClass}
               header={
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">网络</span>
+                  <span className="text-compact font-semibold">网络</span>
                   <div className="num flex items-baseline gap-2 text-xs">
                     <span className="flex items-center gap-0.5">
                       <Icon
@@ -283,7 +283,7 @@ export default function LoadChart({ uuid, className }: LoadChartProps) {
               className={cardClass}
               header={
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">连接</span>
+                  <span className="text-compact font-semibold">连接</span>
                   <div className="num flex items-baseline gap-2 text-xs">
                     <span>
                       <span className="text-muted-foreground">TCP</span> {latestStatus?.connections ?? '--'}
@@ -306,7 +306,7 @@ export default function LoadChart({ uuid, className }: LoadChartProps) {
               className={cn(cardClass, hasGpu && 'md:col-span-2 xl:col-span-3')}
               header={
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">进程</span>
+                  <span className="text-compact font-semibold">进程</span>
                   <span className="num text-xs">{latestStatus?.process ?? '--'}</span>
                 </div>
               }
