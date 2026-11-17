@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.3.3] - 2026-11-17
+
 ### 改进
 
 - 首页概览标明当前分组，手机上实时上行与下行并排；桌面可直接输入搜索，各视图同步显示筛选后的节点数
@@ -158,7 +160,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.2...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.2.3...v0.3.0
