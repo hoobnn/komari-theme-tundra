@@ -353,7 +353,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
     <tr
       className={cn(
         'h-16 cursor-pointer border-t border-border/75 hover:bg-muted/45 focus-within:bg-muted/40',
-        animate && 'node-enter',
+        animate && 'node-row-enter',
       )}
       style={animate ? { animationDelay: `${Math.min(index, rowStaggerLimit) * rowStaggerMs}ms` } : undefined}
       onClick={() => onClick?.(node)}

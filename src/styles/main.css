@@ -251,12 +251,13 @@
     transform: translateY(0);
   }
 }
-.node-enter {
-  animation: node-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
-}
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: no-preference) {
   .node-enter {
-    animation: none;
+    animation: node-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  /* 表格行只淡入，避免末行位移扩大横向滚动容器的纵向范围。 */
+  .node-row-enter {
+    animation: surface-fade-in 200ms ease-out backwards;
   }
 }
 
@@ -305,8 +306,7 @@
   }
 }
 
-/* Relay flow travels across the whole lane, including intermediate stops.
-   The full-width carrier makes transform percentages follow the lane width. */
+/* The carrier spans consecutive healthy legs, including their intermediate stops. */
 @keyframes relay-routes-sweep {
   0% {
     transform: translateX(0);
@@ -320,36 +320,44 @@
   }
   84%,
   100% {
-    transform: translateX(calc(100% + 72px));
+    transform: translateX(calc(100% + 2rem));
     opacity: 0;
   }
 }
 .relay-routes-flow {
   display: none;
+  color: var(--color-emerald-600);
 }
-/* A short bright streak runs along the segment bar's bottom edge, with a faint glow
-   that passes softly over the values. */
-.relay-routes-flow {
-  --relay-flow-color: var(--color-emerald-400);
+.dark .relay-routes-flow {
+  color: var(--color-emerald-300);
 }
 .relay-routes-comet {
-  background: linear-gradient(to right, transparent, var(--relay-flow-color));
+  background: linear-gradient(to right, transparent, currentColor);
 }
-.relay-routes-comet::after {
+.relay-routes-comet::after,
+.relay-routes-track::after {
   content: '';
   position: absolute;
-  inset-inline-end: -1px;
-  inset-block-start: -1px;
-  inline-size: 4px;
-  block-size: 4px;
-  border-radius: 50%;
-  background: oklch(1 0 0);
-  box-shadow: 0 0 8px 2px var(--relay-flow-color);
+  right: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+  transform: translateY(-50%) rotate(45deg);
+}
+.relay-routes-track::after {
+  top: -1px;
+  right: 5px;
+  border-color: inherit;
 }
 @media (prefers-reduced-motion: no-preference) {
   [data-relay-motion='on'] .relay-routes-flow {
     display: block;
     animation: relay-routes-sweep 5.6s linear infinite;
+  }
+  [data-relay-motion='on'] .relay-routes-track[data-flowing]::after {
+    display: none;
   }
 }
 @keyframes surface-fade-out {

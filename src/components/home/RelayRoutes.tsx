@@ -1,6 +1,5 @@
 import type { PingRecord } from '@/utils/rpc'
 import type { RelayRouteConfig } from '@/utils/relayRoutes'
-import type { ReactNode } from 'react'
 import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import { useSharedPingRecords } from '@/hooks/useNodePingStats'
 import { useThemeSettings } from '@/stores/app'
@@ -51,16 +50,6 @@ interface SummaryProps {
 
 const stackLabel = (stack: Stack) => (stack === 'v4' ? 'IPv4' : stack === 'v6' ? 'IPv6' : 'Ping')
 
-function FlowStreak({ delay }: { delay: number }) {
-  return (
-    <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-x-clip">
-      <span className="relay-routes-flow absolute inset-0" style={{ animationDelay: `${-delay}s` }}>
-        <span className="relay-routes-comet absolute top-1/2 -left-16 h-[2px] w-16 -translate-y-1/2 rounded-full" />
-      </span>
-    </span>
-  )
-}
-
 /** 每段线的颜色与卡片延迟同一阈值：快绿、常规天蓝、慢琥珀、差或失败红。 */
 function legBorder(leg: RelayLeg): string {
   if (leg.state === 'lost') return 'border-red-500/80'
@@ -106,35 +95,81 @@ function LineTotal({ line, status }: { line: RouteLine; status: string }) {
   )
 }
 
-const VALUE_ROW = 'h-4'
-const LINE_ROW = 'h-2'
+/** 合并同一协议内相邻的正常段，每个连续区间播放一道流光。 */
+function connectedSpans(legs: RelayLeg[]) {
+  const spans: { start: number; length: number }[] = []
+  for (const [index, leg] of legs.entries()) {
+    if (leg.state !== 'ok') continue
+    const previous = spans.at(-1)
+    if (previous && previous.start + previous.length === index) previous.length += 1
+    else spans.push({ start: index, length: 1 })
+  }
+  return spans
+}
 
-/**
- * 每个协议一条轨道：v4 数值在线上方，v6 数值在线下方，两根线居中夹在站点标签的中线两侧。
- * 只有一个协议时下方补一行同高的空位，保持线在标签中线上。
- */
-function Lanes({
-  lines,
-  children,
-}: {
-  lines: RouteLine[]
-  children: (line: RouteLine, row: number) => { value?: ReactNode; track: ReactNode }
-}) {
+function RouteLane({ line, row, order }: { line: RouteLine; row: number; order: number }) {
+  const below = line.stack === 'v6' || row > 0
+  const trackRow = below ? 1 : 2
   return (
-    <span className="flex flex-col gap-1">
-      {lines.length === 1 && lines[0].stack === 'v6' && <span aria-hidden="true" className={VALUE_ROW} />}
-      {lines.map((line, row) => {
-        const { value, track } = children(line, row)
-        const below = line.stack === 'v6' || row > 0
+    <span
+      className={cn(
+        'col-span-full grid grid-cols-subgrid',
+        below ? 'grid-rows-[0.5rem_1rem]' : 'grid-rows-[1rem_0.5rem]',
+      )}
+    >
+      {line.legs.map((leg, index) => {
+        // 站点和探测段交替占列，各协议共享同一组列宽。
+        const gridColumn = index * 2 + 2
+        const label = `${stackLabel(line.stack)} ${line.route.nodes[index]} → ${line.route.nodes[index + 1]}`
         return (
-          <span key={line.route.name} className="flex flex-col">
-            {!below && <span className={cn('flex items-end justify-center', VALUE_ROW)}>{value}</span>}
-            <span className={cn('relative', LINE_ROW)}>{track}</span>
-            {below && <span className={cn('flex items-start justify-center', VALUE_ROW)}>{value}</span>}
-          </span>
+          <Fragment key={index}>
+            <span
+              title={label}
+              style={{ gridColumn, gridRow: below ? 2 : 1 }}
+              className={cn(
+                'num relative flex justify-center px-1 text-xs font-medium leading-none',
+                below ? 'items-start' : 'items-end',
+                leg.state === 'lost' ? 'text-red-600 dark:text-red-400' : relayLatencyTone(leg.latency),
+              )}
+            >
+              <span className="sr-only">{label} </span>
+              {leg.latency === null ? (
+                <span className="text-3xs">{relayStateLabel[leg.state]}</span>
+              ) : (
+                leg.latency.toFixed(1)
+              )}
+            </span>
+            <span
+              aria-hidden="true"
+              data-flowing={leg.state === 'ok' || undefined}
+              style={{ gridColumn, gridRow: trackRow }}
+              className={cn(
+                'relay-routes-track relative self-center border-t-2',
+                line.stack === 'v6' && 'border-dashed',
+                legBorder(leg),
+              )}
+            />
+          </Fragment>
         )
       })}
-      {lines.length === 1 && lines[0].stack !== 'v6' && <span aria-hidden="true" className={VALUE_ROW} />}
+      {connectedSpans(line.legs).map(({ start, length }) => (
+        <span
+          key={start}
+          aria-hidden="true"
+          className="pointer-events-none relative z-10 overflow-x-clip"
+          style={{ gridColumn: `${start * 2 + 2} / span ${length * 2 - 1}`, gridRow: trackRow }}
+        >
+          <span
+            className="relay-routes-flow absolute inset-0"
+            style={{
+              animationDelay: `${-(order * 1.1 + row * 0.8 + start * 0.4)}s`,
+              animationDuration: length === 1 ? '2.8s' : undefined,
+            }}
+          >
+            <span className="relay-routes-comet absolute top-1/2 right-full h-0.5 w-7 -translate-y-1/2 rounded-full" />
+          </span>
+        </span>
+      ))}
     </span>
   )
 }
@@ -175,56 +210,28 @@ function PathSummary({ name, nodes, lines, status, order }: SummaryProps) {
         aria-label={overflows ? `${name} 站点与分段延迟，可横向滚动` : undefined}
         className="min-w-0 overflow-x-auto overscroll-x-contain rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
       >
-        <span className="relative flex w-full min-w-max items-center">
-          {/* 流光沿每根协议线从左到右穿过整条线路，站点标签盖在它上面 */}
-          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2">
-            <Lanes lines={lines}>
-              {(line, row) => ({ track: line.total !== null && <FlowStreak delay={order * 1.1 + row * 0.8} /> })}
-            </Lanes>
-          </span>
+        <span
+          className="grid w-full min-w-max items-center [--relay-leg-min:4rem] @max-[23rem]:[--relay-leg-min:3rem]"
+          style={{
+            gridTemplateColumns: `repeat(${nodes.length - 1}, max-content minmax(var(--relay-leg-min), 1fr)) max-content`,
+          }}
+        >
           {nodes.map((node, index) => (
-            <Fragment key={index}>
-              {index > 0 && (
-                <span className="min-w-16 flex-1 @max-[23rem]:min-w-12">
-                  <Lanes lines={lines}>
-                    {line => {
-                      const leg = line.legs[index - 1]
-                      return {
-                        value: (
-                          <span
-                            title={`${stackLabel(line.stack)} ${nodes[index - 1]} → ${node}`}
-                            className={cn(
-                              'num px-1 text-xs font-medium leading-none',
-                              leg.state === 'lost' ? 'text-red-600 dark:text-red-400' : relayLatencyTone(leg.latency),
-                            )}
-                          >
-                            {leg.latency === null ? (
-                              <span className="text-3xs">{relayStateLabel[leg.state]}</span>
-                            ) : (
-                              leg.latency.toFixed(1)
-                            )}
-                          </span>
-                        ),
-                        track: (
-                          <span
-                            aria-hidden="true"
-                            className={cn(
-                              'absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2',
-                              line.stack === 'v6' && 'border-dashed',
-                              legBorder(leg),
-                            )}
-                          />
-                        ),
-                      }
-                    }}
-                  </Lanes>
-                </span>
-              )}
-              <span className="relative z-20 max-w-32 shrink-0 wrap-anywhere rounded-md border bg-card px-2.5 py-1.5 text-center text-compact font-semibold leading-4 text-foreground @max-[23rem]:px-1.5 @max-[23rem]:text-xs">
-                {node}
-              </span>
-            </Fragment>
+            <span
+              key={index}
+              style={{ gridColumn: index * 2 + 1 }}
+              className="relative z-20 row-start-1 max-w-32 wrap-anywhere rounded-md border bg-card px-2.5 py-1.5 text-center text-compact font-semibold leading-4 text-foreground @max-[23rem]:px-1.5 @max-[23rem]:text-xs"
+            >
+              {node}
+            </span>
           ))}
+          <span className="col-span-full row-start-1 grid grid-cols-subgrid gap-y-1">
+            {lines.length === 1 && lines[0].stack === 'v6' && <span aria-hidden="true" className="col-span-full h-4" />}
+            {lines.map((line, row) => (
+              <RouteLane key={line.route.name} line={line} row={row} order={order} />
+            ))}
+            {lines.length === 1 && lines[0].stack !== 'v6' && <span aria-hidden="true" className="col-span-full h-4" />}
+          </span>
         </span>
       </span>
     </span>

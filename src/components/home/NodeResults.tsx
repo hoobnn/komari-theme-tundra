@@ -1,6 +1,6 @@
 import type { NodeData } from '@/stores/nodes'
 import type { NodeViewMode } from '@/stores/app'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useDeferredValue } from 'react'
 import { Button } from '@/components/ui/button'
 import { Empty } from '@/components/ui/empty'
 import { cn } from '@/lib/utils'
@@ -29,9 +29,11 @@ export default function NodeResults({
   onPingClick,
 }: NodeResultsProps) {
   const animateItems = !useAppStore(state => state.settings.disablePageAnimation)
+  // 首次切换还要下载对应视图，加载期间保留当前内容和页面高度。
+  const visibleMode = useDeferredValue(viewMode)
   return (
     <Suspense fallback={null}>
-      {nodes.length !== 0 && viewMode === 'card' ? (
+      {nodes.length !== 0 && visibleMode === 'card' ? (
         <div className="gap-3 grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
           {nodes.map((node, index) => (
             <div
@@ -47,7 +49,7 @@ export default function NodeResults({
             </div>
           ))}
         </div>
-      ) : nodes.length !== 0 && viewMode === 'list' ? (
+      ) : nodes.length !== 0 && visibleMode === 'list' ? (
         <NodeList nodes={nodes} onClick={onNodeClick} onPingClick={onPingClick} />
       ) : query.length > 0 ? (
         <Empty

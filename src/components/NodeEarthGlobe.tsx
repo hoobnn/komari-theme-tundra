@@ -583,9 +583,9 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
       })}
 
       {/* 在线统计与自转开关并排，固定在地球左上角，不再各自漂在两端 */}
-      <div className="absolute top-7 left-1 z-10 flex items-center gap-1.5 md:top-12 md:left-0">
+      <div className="pointer-events-none absolute top-7 left-1 z-10 flex items-center gap-0.5 md:top-12 md:left-0 md:gap-1.5">
         {totalServers > 0 && (
-          <div className="pointer-events-none flex items-center gap-2 rounded-md bg-background/70 px-2 py-0.5 text-2xs text-muted-foreground backdrop-blur-lg">
+          <div className="flex items-center gap-2 px-2 py-0.5 text-2xs text-foreground/75">
             {onlineServers > 0 && (
               <div className="flex items-center gap-1">
                 <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
@@ -607,7 +607,7 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
             type="button"
             aria-label={rotationPaused ? '继续地球自转' : '暂停地球自转'}
             title={rotationPaused ? '继续地球自转' : '暂停地球自转'}
-            className="flex size-8 items-center justify-center rounded-md bg-background/80 text-muted-foreground backdrop-blur-lg hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="pointer-events-auto flex size-11 items-center justify-center rounded-md text-foreground/75 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:size-8"
             onClick={() => setRotationPaused(paused => !paused)}
           >
             <Icon icon={rotationPaused ? 'lucide:play' : 'lucide:pause'} width={14} height={14} />
