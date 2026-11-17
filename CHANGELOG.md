@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.3.8] - 2026-11-17
+
 ### 改进
 
 - 线路分段和节点卡片的延迟、均值读数旁显示 ms 单位
@@ -202,7 +204,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.7...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.8...HEAD
+[0.3.8]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.4...v0.3.5
