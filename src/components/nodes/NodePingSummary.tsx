@@ -75,9 +75,8 @@ export default function NodePingSummary({ node, onClick }: { node: NodeData; onC
             ))}
           </div>
 
-          {/* 固定为表头加两行（双栈）的高度，单栈卡片和双栈卡片底部对齐 */}
           <div
-            className="num grid min-h-13 content-start items-baseline gap-x-2 gap-y-0.5"
+            className="num grid items-baseline gap-x-2 gap-y-0.5"
             style={{
               gridTemplateColumns: `1.1rem repeat(${pingTable.headers.length}, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 1fr)`,
             }}
@@ -113,8 +112,8 @@ export default function NodePingSummary({ node, onClick }: { node: NodeData; onC
           </div>
         </>
       ) : (
-        // 与「趋势条 + 双栈表」同高（标签 11px + 4px + 趋势 14px + 6px + 表 52px），空状态居中，不留大块空白
-        <div className="flex min-h-[5.4375rem] items-center justify-center gap-1.5 text-2xs text-muted-foreground">
+        // 与「趋势条 + 单栈表」同高（标签 11px + 4px + 趋势 14px + 6px + 表 34px），空状态居中
+        <div className="flex min-h-[4.3125rem] items-center justify-center gap-1.5 text-2xs text-muted-foreground">
           <Icon icon="lucide:activity" width="12" height="12" className="opacity-70" />
           未配置延迟监测
         </div>
