@@ -349,7 +349,7 @@
   background: linear-gradient(to right, transparent, currentColor);
 }
 .relay-routes-comet::after,
-.relay-routes-track::after {
+.relay-routes-track[data-flowing]::after {
   content: '';
   position: absolute;
   right: 0;
@@ -360,7 +360,7 @@
   border-right: 2px solid;
   transform: translateY(-50%) rotate(45deg);
 }
-.relay-routes-track::after {
+.relay-routes-track[data-flowing]::after {
   top: -1px;
   right: 5px;
   border-color: inherit;

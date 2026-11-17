@@ -51,16 +51,6 @@ interface SummaryProps {
   order: number
 }
 
-function StackSwatch({ stack }: { stack: Stack }) {
-  if (!stack) return null
-  return (
-    <span
-      aria-hidden="true"
-      className={cn('w-3 border-t-2 border-muted-foreground/60', stack === 'v6' && 'border-dashed')}
-    />
-  )
-}
-
 function relayTotal(legs: PingReading[]): PingReading {
   if (legs.includes('lost')) return 'lost'
   let sum = 0
@@ -104,12 +94,12 @@ function RouteLane({ line, row, order }: { line: RouteLine; row: number; order: 
               content={`${label} · ${describePing(leg, 1)}`}
               style={{ gridColumn, gridRow: below ? 2 : 1 }}
               className={cn(
-                'num relative flex justify-center px-1 text-xs font-medium leading-none',
+                'num relative flex justify-center px-1 text-2xs leading-none',
                 below ? 'items-start' : 'items-end',
               )}
             >
               <span className="sr-only">{label} </span>
-              <PingValue value={leg} decimals={1} />
+              <PingValue value={leg} decimals={1} unit />
             </DataTooltip>
             <span
               aria-hidden="true"
@@ -163,28 +153,21 @@ function PathSummary({ name, nodes, lines, order }: SummaryProps) {
     <span className="flex flex-col gap-2">
       <span className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
         <span className="min-w-0 wrap-anywhere text-compact font-semibold tracking-tight">{name}</span>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="ms-auto flex max-w-full flex-wrap items-baseline justify-end gap-x-4 gap-y-1">
           {lines.map(line => (
-            <span
+            <DataTooltip
+              as="span"
               key={line.route.name}
-              className="inline-grid grid-cols-[auto_minmax(6.5ch,auto)] items-baseline gap-x-1 text-compact"
+              className="inline-flex items-baseline gap-1.5 whitespace-nowrap text-xs"
+              content={`${line.route.name} · 分段合计 ${describePing(line.total, 1)}`}
             >
-              <span className="flex items-center gap-1 text-3xs text-muted-foreground">
-                <StackSwatch stack={line.stack} />
-                {pingStackLabel(line.stack) || '合计'}
-              </span>
-              <DataTooltip
-                as="span"
-                className="text-end font-semibold leading-none"
-                content={`分段合计 ${describePing(line.total, 1)}`}
-              >
-                {line.total === 'loading' || line.total === 'error' ? (
-                  <span className="text-xs font-normal text-muted-foreground">{pingStatusLabel[line.total]}</span>
-                ) : (
-                  <PingValue value={line.total} decimals={1} unit />
-                )}
-              </DataTooltip>
-            </span>
+              <span className="text-3xs text-muted-foreground">{pingStackLabel(line.stack) || '合计'}</span>
+              {line.total === 'loading' || line.total === 'error' ? (
+                <span className="text-xs text-muted-foreground">{pingStatusLabel[line.total]}</span>
+              ) : (
+                <PingValue value={line.total} decimals={1} unit />
+              )}
+            </DataTooltip>
           ))}
         </span>
       </span>

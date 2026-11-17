@@ -122,7 +122,7 @@ export default function NodeResourceMetrics({ node }: { node: NodeData }) {
                 </span>
                 <span
                   className={cn(
-                    'num whitespace-nowrap text-value font-semibold leading-none tracking-tight',
+                    'num whitespace-nowrap text-xs leading-none',
                     alert === 'error'
                       ? 'text-red-600 dark:text-red-400'
                       : alert === 'warning'

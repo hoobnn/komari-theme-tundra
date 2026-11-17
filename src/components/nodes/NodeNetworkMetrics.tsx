@@ -36,7 +36,7 @@ export default function NodeNetworkMetrics({ node }: { node: NodeData }) {
               <span className="whitespace-nowrap @max-[3.25rem]:sr-only">{row.label}</span>
             </span>
             <span className="num inline-flex shrink-0 items-baseline justify-end gap-0.5 whitespace-nowrap text-end leading-none">
-              <span className="text-value font-semibold tracking-tight">{row.rate.value}</span>
+              <span className="text-xs">{row.rate.value}</span>
               <span className="text-2xs text-muted-foreground">{row.rate.unit}</span>
             </span>
           </div>
