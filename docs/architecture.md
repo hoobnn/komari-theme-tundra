@@ -36,7 +36,8 @@ views（页面组合）→ components（独立界面区域）→ components/ui�
 | 资源表（CPU / 内存 / 硬盘 / 流量，列与容器查询） | `src/components/nodes/NodeResourceMetrics.tsx`                                |
 | 实时与累计上下行                                 | `src/components/nodes/NodeNetworkMetrics.tsx`                                 |
 | 卡片延迟表与合并趋势条                           | `src/components/nodes/NodePingSummary.tsx`、`src/hooks/useNodePingDisplay.ts` |
-| 延迟统计、线路归组、阈值                         | `src/hooks/useNodePingStats.ts`、`src/hooks/useNodePingDisplay.ts`            |
+| 延迟统计、线路归组                               | `src/hooks/useNodePingStats.ts`、`src/hooks/useNodePingDisplay.ts`            |
+| 延迟状态、丢包率和配色阈值                       | `src/utils/pingDisplay.ts`、`src/components/PingValue.tsx`                    |
 | 列表排序                                         | `src/utils/nodeSort.ts`                                                       |
 | 地球连线几何与退化端点过滤                       | `src/utils/globeGeometry.ts`                                                  |
 | 地球按帧时间积分、惯性与阻尼                     | `src/utils/globeMotion.ts`                                                    |

@@ -1,20 +1,28 @@
 import { Icon } from '@iconify/react'
 import { Popover } from 'radix-ui'
 import { Button } from '@/components/ui/button'
+import { describePing, formatPingLoss, pingReading, pingTaskAverage } from '@/utils/pingDisplay'
 import type { PingTaskInfo } from '@/utils/rpc'
 
-const latency = (value?: number) => (value === undefined ? undefined : `${Math.round(value)} ms`)
+const latency = (value?: number) => (value == null ? undefined : describePing(pingReading(value)))
 
 export default function PingTaskDetails({ task }: { task: PingTaskInfo }) {
+  const average = pingTaskAverage(task)
+  const latencyMetrics =
+    task.total === 0 || average === 'lost'
+      ? [['状态', describePing(average)] as const]
+      : ([
+          ['最新', latency(task.latest)],
+          ['平均', latency(task.avg)],
+          ['最小', latency(task.min)],
+          ['最大', latency(task.max)],
+          ['P50', latency(task.p50)],
+          ['P99', latency(task.p99)],
+          ['波动率', task.p99_p50_ratio?.toFixed(2)],
+        ] as const)
   const metrics = [
-    ['最新', latency(task.latest)],
-    ['平均', latency(task.avg)],
-    ['最小', latency(task.min)],
-    ['最大', latency(task.max)],
-    ['P50', latency(task.p50)],
-    ['P99', latency(task.p99)],
-    ['波动率', task.p99_p50_ratio?.toFixed(2)],
-    ['丢包', `${task.loss.toFixed(2)}%`],
+    ...latencyMetrics,
+    ['丢包率', task.total === 0 ? undefined : formatPingLoss(task.loss, 2)],
     ['间隔', task.interval === undefined ? undefined : `${task.interval} s`],
     ['类型', task.type?.toUpperCase()],
     ['样本数', task.total],
@@ -56,7 +64,7 @@ export default function PingTaskDetails({ task }: { task: PingTaskInfo }) {
                 value != null && (
                   <div key={label} className="flex items-baseline justify-between gap-1">
                     <dt className="text-muted-foreground">{label}</dt>
-                    <dd className="num font-medium">{value}</dd>
+                    <dd className="num text-end font-medium">{value}</dd>
                   </div>
                 ),
             )}

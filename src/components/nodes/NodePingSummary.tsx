@@ -1,9 +1,12 @@
 import type { NodeData } from '@/stores/nodes'
 import { Icon } from '@iconify/react'
 import { Fragment } from 'react'
+import PingValue from '@/components/PingValue'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { useNodePingDisplay } from '@/hooks/useNodePingDisplay'
 import { cn } from '@/lib/utils'
+import { describePing } from '@/utils/pingDisplay'
+import { pingStackLabel } from '@/utils/pingStack'
 
 export default function NodePingSummary({
   node,
@@ -23,7 +26,7 @@ export default function NodePingSummary({
     },
     {
       metric: 'loss',
-      label: '丢包',
+      label: '丢包率',
       rows: pingRows.map(row => ({ key: `${row.stack}`, bars: row.lossBars })),
     },
   ]
@@ -32,8 +35,9 @@ export default function NodePingSummary({
     <button
       type="button"
       aria-haspopup="dialog"
-      className="group/ping -mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer flex-col gap-1.5 rounded-lg px-1.5 py-1 text-left text-2xs transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group/ping -mx-1.5 flex min-h-[5.75rem] w-[calc(100%+0.75rem)] cursor-pointer flex-col gap-1.5 rounded-lg px-1.5 py-1 text-left text-2xs transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`${node.name} 延迟详情`}
+      aria-description={pingTable?.description ?? emptyText}
       onClick={event => {
         event.stopPropagation()
         onClick?.(node, event.currentTarget)
@@ -45,7 +49,10 @@ export default function NodePingSummary({
             {trendPanels.map(panel => (
               <span key={panel.metric} className="flex flex-col gap-1">
                 <span className="flex items-center justify-between text-2xs leading-none text-muted-foreground">
-                  {panel.label}
+                  <span>
+                    {panel.label}
+                    {panel.metric === 'latency' && <span className="ml-1 text-3xs">ms</span>}
+                  </span>
                   {panel.metric === 'loss' && (
                     <span className="inline-flex items-center gap-0.5 text-3xs group-hover/ping:text-foreground group-focus-visible/ping:text-foreground">
                       图表
@@ -83,23 +90,24 @@ export default function NodePingSummary({
             ))}
           </span>
 
-          <span
-            className="num grid items-baseline gap-x-2 gap-y-0.5"
-            style={{
-              gridTemplateColumns: `1.1rem repeat(${pingTable.headers.length}, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 1fr)`,
-            }}
-          >
+          <span className="num grid min-h-[3.125rem] auto-rows-[1rem] grid-cols-[1.75rem_repeat(4,minmax(0,1fr))_minmax(5ch,1fr)] content-start items-baseline gap-x-1.5 gap-y-px text-end text-xs">
             <span />
-            {pingTable.headers.map(header => (
-              <span key={header} className="truncate text-right font-sans text-2xs text-muted-foreground">
+            {pingTable.headers.map((header, index) => (
+              <span
+                key={`${index}-${header}`}
+                title={header}
+                className="truncate font-sans text-2xs text-muted-foreground"
+              >
                 {header}
               </span>
             ))}
-            <span className="text-right font-sans text-2xs text-muted-foreground">均值</span>
-            <span className="text-right font-sans text-2xs text-muted-foreground">丢包</span>
+            <span className="col-start-5 font-sans text-2xs text-muted-foreground">均值</span>
+            <span className="font-sans text-2xs text-muted-foreground">丢包率</span>
             {pingTable.rows.map(row => (
               <Fragment key={`${row.stack}`}>
-                <span className="text-2xs text-muted-foreground">{row.stack ?? ''}</span>
+                <span className="col-start-1 text-start text-2xs text-muted-foreground">
+                  {pingStackLabel(row.stack)}
+                </span>
                 {row.cells.map(cell => (
                   <DataTooltip
                     as="span"
@@ -108,21 +116,19 @@ export default function NodePingSummary({
                     content={cell.tooltip}
                     contentClass="whitespace-pre-wrap w-max"
                   >
-                    <span className={cn('block text-right text-xs', cell.toneClass)}>{cell.latency}</span>
+                    <PingValue value={cell.latency} />
                   </DataTooltip>
                 ))}
-                <span className={cn('text-right text-xs font-semibold', row.latencyTone)}>
-                  {row.latency}
-                  {row.latency !== '--' && <span className="ml-px text-3xs font-normal text-muted-foreground">ms</span>}
-                </span>
-                <span className={cn('text-right text-xs', row.lossTone)}>{row.loss}</span>
+                <DataTooltip as="span" className="col-start-5" content={`平均延迟 ${describePing(row.latency)}`}>
+                  <PingValue value={row.latency} className="font-semibold" />
+                </DataTooltip>
+                <span className={row.lossTone}>{row.loss ?? <PingValue value="missing" />}</span>
               </Fragment>
             ))}
           </span>
         </>
       ) : (
-        // 与「趋势条 + 单栈表」同高（标签 11px + 4px + 趋势 14px + 6px + 表 34px），空状态居中
-        <span className="flex min-h-[4.3125rem] items-center justify-center gap-1.5 text-2xs text-muted-foreground">
+        <span className="flex flex-1 items-center justify-center gap-1.5 text-2xs text-muted-foreground">
           <Icon icon="lucide:activity" width="12" height="12" className="opacity-70" />
           {emptyText}
           <Icon icon="lucide:chevron-right" className="size-3" />

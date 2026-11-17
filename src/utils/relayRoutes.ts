@@ -102,19 +102,3 @@ export function summarizeRelayLeg(config: RelayLegConfig, records: readonly Ping
     samples,
   }
 }
-
-export const relayStateLabel: Record<RelayLegState, string> = {
-  ok: '正常',
-  lost: '探测失败',
-  stale: '数据过期',
-  missing: '无数据',
-}
-
-/** 与节点卡片的延迟阈值保持一致。 */
-export function relayLatencyTone(value: number | null): string {
-  if (value === null) return 'text-muted-foreground'
-  if (value <= 80) return 'text-emerald-700 dark:text-emerald-400'
-  if (value <= 180) return 'text-foreground'
-  if (value <= 240) return 'text-amber-700 dark:text-amber-400'
-  return 'text-red-600 dark:text-red-400'
-}

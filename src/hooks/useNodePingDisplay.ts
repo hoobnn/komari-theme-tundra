@@ -1,9 +1,18 @@
 import type { NodePingHistoryPoint, NodePingPerTaskStat, NodePingStatsState } from '@/hooks/useNodePingStats'
+import type { PingReading } from '@/utils/pingDisplay'
 import type { PingStack } from '@/utils/pingStack'
 import { useMemo } from 'react'
 import { NODE_PING_BAR_COUNT, useNodePingStats } from '@/hooks/useNodePingStats'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime } from '@/utils/helper'
+import {
+  describePing,
+  formatPingLoss,
+  pingLatencyTone,
+  pingLossTone,
+  pingReading,
+  pingStatusLabel,
+} from '@/utils/pingDisplay'
 import { groupPingTasksByStack, pingStackLabel } from '@/utils/pingStack'
 
 type NodePingMetric = 'latency' | 'loss'
@@ -14,8 +23,6 @@ const PING_RECORDS_QUERY_HOURS = 1
 // 三网延迟固定展示的线路数量
 const PING_NETWORK_DISPLAY_COUNT = 3
 
-const MUTED_TONE = 'text-muted-foreground/50'
-
 export interface NodePingBar {
   key: string
   className: string
@@ -24,9 +31,7 @@ export interface NodePingBar {
 
 export interface NodePingTableCell {
   key: string
-  /** 不带单位的毫秒数、超时或缺测占位。 */
-  latency: string
-  toneClass: string
+  latency: PingReading
   tooltip: string
 }
 
@@ -34,9 +39,8 @@ export interface NodePingTableRow {
   /** 无后缀任务为 null，行首不显示协议栈标签 */
   stack: PingStack | null
   cells: NodePingTableCell[]
-  latency: string
-  latencyTone: string
-  loss: string
+  latency: PingReading
+  loss: string | null
   lossTone: string
   latencyBars: NodePingBar[]
   lossBars: NodePingBar[]
@@ -45,68 +49,7 @@ export interface NodePingTableRow {
 export interface NodePingTable {
   headers: string[]
   rows: NodePingTableRow[]
-}
-
-// 文字与柱条共用同一组阈值：延迟 快 ≤80 / 正常 ≤180 / 慢 ≤240 / 差；丢包 正常 ≤1 / 偏高 ≤6 / 差
-type PingTier = 'fast' | 'normal' | 'slow' | 'bad'
-
-function latencyTier(value: number): PingTier {
-  if (value <= 80) return 'fast'
-  if (value <= 180) return 'normal'
-  if (value <= 240) return 'slow'
-  return 'bad'
-}
-
-function lossTier(loss: number): PingTier {
-  if (loss <= 1) return 'fast'
-  if (loss <= 6) return 'slow'
-  return 'bad'
-}
-
-// 文字色：正常保持中性，只有很快 / 偏慢 / 很差才上色（浅色用 700 档保证小字对比度）
-const LATENCY_TEXT_TONES: Record<PingTier, string> = {
-  fast: 'text-emerald-700 dark:text-emerald-400',
-  normal: 'text-foreground',
-  slow: 'text-amber-700 dark:text-amber-400',
-  bad: 'text-red-600 dark:text-red-400',
-}
-
-// 丢包低于 1% 视为正常，文字不上色
-const LOSS_TEXT_TONES: Record<PingTier, string> = {
-  ...LATENCY_TEXT_TONES,
-  fast: 'text-muted-foreground',
-}
-
-// 柱条：快 / 丢包正常为柔和翡翠绿，延迟正常为更浅的翡翠绿（不用灰，避免和「无数据」混淆）；
-// 整体降低饱和度，让偏慢和很差的柱子自然跳出来
-const BAR_TONES: Record<PingTier, string> = {
-  fast: 'bg-emerald-500/85 dark:bg-emerald-400/80',
-  normal: 'bg-sky-400/80 dark:bg-sky-400/65',
-  slow: 'bg-amber-400 dark:bg-amber-400/90',
-  bad: 'bg-red-500 dark:bg-red-500/90',
-}
-
-// 0 ms 是同城探测的真实值；没有样本的情况在上游用 -1 或 hasData 区分
-function latencyTextTone(value: number): string {
-  if (value < 0) return 'text-muted-foreground'
-  return LATENCY_TEXT_TONES[latencyTier(value)]
-}
-
-function lossTextTone(loss: number): string {
-  return LOSS_TEXT_TONES[lossTier(loss)]
-}
-
-function barTone(metric: NodePingMetric, value: number): string {
-  return BAR_TONES[metric === 'latency' ? latencyTier(value) : lossTier(value)]
-}
-
-function formatTaskLatency(stat: NodePingPerTaskStat) {
-  if (stat.avgLatency < 0) return { latency: '超时', toneClass: LATENCY_TEXT_TONES.bad }
-  const ms = Math.round(stat.avgLatency)
-  return {
-    latency: String(ms),
-    toneClass: latencyTextTone(stat.avgLatency),
-  }
+  description: string
 }
 
 /** 去掉各线路名的公共前缀：四川电信、四川联通 → 电信、联通 */
@@ -123,17 +66,17 @@ function buildBars(metric: NodePingMetric, points: NodePingHistoryPoint[], label
     const value = point[metric]
     const time = `${prefix}${formatDateTime(point.time, 'HH:mm:ss')}`
     if (value === null) {
-      const timedOut = metric === 'latency' && point.loss === 100
+      const state = metric === 'latency' && point.loss === 100 ? 'lost' : 'missing'
       return {
         key: `${label}${point.time}-${index}`,
-        className: timedOut ? BAR_TONES.bad : 'bg-muted-foreground/15',
-        tooltip: `${time}\n${timedOut ? '超时（100% 丢包）' : '无数据'}`,
+        className: pingLatencyTone(state).bar,
+        tooltip: `${time}\n${pingStatusLabel[state]}`,
       }
     }
     return {
       key: `${label}${point.time}-${index}`,
-      className: barTone(metric, value),
-      tooltip: metric === 'latency' ? `${time}\n${Math.round(value)} ms` : `${time}\n${value.toFixed(1)}%`,
+      className: (metric === 'latency' ? pingLatencyTone(value) : pingLossTone(value)).bar,
+      tooltip: `${time}\n${metric === 'latency' ? describePing(value) : formatPingLoss(value)}`,
     }
   })
 }
@@ -182,24 +125,15 @@ function buildPingTable(
   }
 
   const rows = stacks.map((stack): NodePingTableRow => {
-    const cells = groups.map((group): NodePingTableCell => {
+    const cells = groups.map((group, index): NodePingTableCell => {
       // 无后缀任务视为 v4
       const found = stack ? group.items.find(entry => (entry.stack ?? 'v4') === stack) : group.items[0]
       const label = stack ? `${group.base} ${pingStackLabel(stack)}` : group.base
-      if (!found) {
-        return {
-          key: `${group.base}-${stack}`,
-          latency: '--',
-          toneClass: MUTED_TONE,
-          tooltip: `${label} 无数据`,
-        }
-      }
-      const { latency, toneClass } = formatTaskLatency(found.item)
+      const latency = pingReading(found?.item.avgLatency)
       return {
-        key: String(found.item.taskId),
+        key: found ? String(found.item.taskId) : `missing-${index}`,
         latency,
-        toneClass,
-        tooltip: `${label} ${found.item.avgLatency < 0 ? '超时（100% 丢包）' : `${latency} ms`}`,
+        tooltip: `${label} ${describePing(latency)}`,
       }
     })
 
@@ -208,18 +142,19 @@ function buildPingTable(
     const avgLoss = part ? part.avgLoss : stats.avgLoss
     const label = pingStackLabel(stack)
     const rowHasData = part ? part.hasData : hasData
-    const hasLatency = rowHasData && avgLatency >= 0
+    const latency = pingReading(rowHasData ? avgLatency : null)
     const rowBars = (metric: NodePingMetric) => {
       if (!part) return overallBars(metric)
-      return part.hasData ? buildBars(metric, part.history, label) : buildPlaceholderBars(metric, `${label} 无数据`)
+      return part.hasData
+        ? buildBars(metric, part.history, label)
+        : buildPlaceholderBars(metric, `${label} ${pingStatusLabel.missing}`)
     }
     return {
       stack,
       cells,
-      latency: hasLatency ? `${Math.round(avgLatency)}` : '--',
-      latencyTone: hasLatency ? latencyTextTone(avgLatency) : MUTED_TONE,
-      loss: rowHasData ? `${avgLoss.toFixed(1)}%` : '--',
-      lossTone: rowHasData ? lossTextTone(avgLoss) : MUTED_TONE,
+      latency,
+      loss: rowHasData ? formatPingLoss(avgLoss) : null,
+      lossTone: rowHasData ? pingLossTone(avgLoss).text : 'text-muted-foreground',
       latencyBars: rowBars('latency'),
       lossBars: rowBars('loss'),
     }
@@ -228,6 +163,9 @@ function buildPingTable(
   return {
     headers: stripCommonPrefix(groups.map(group => group.base)),
     rows,
+    description: rows
+      .map(row => [...row.cells.map(cell => cell.tooltip), `丢包率 ${row.loss ?? pingStatusLabel.missing}`].join('，'))
+      .join('。'),
   }
 }
 
@@ -235,11 +173,10 @@ function buildPingTable(
 export function useNodePingDisplay(uuid: string) {
   const configuredNames = useAppStore(state => state.settings.pingNetworkOrder)
   const { stats, loading, error } = useNodePingStats(uuid, { hours: PING_RECORDS_QUERY_HOURS })
-  const placeholderTooltip = loading ? '加载中' : error ? '加载失败' : 'N/A'
+  const placeholderTooltip = loading ? pingStatusLabel.loading : error ? pingStatusLabel.error : pingStatusLabel.missing
   const pingTable = useMemo(
     () => buildPingTable(stats, configuredNames, placeholderTooltip),
     [stats, configuredNames, placeholderTooltip],
   )
-  const emptyText = loading ? '正在读取延迟数据' : error ? '延迟数据加载失败' : '暂无近期延迟数据'
-  return { pingTable, emptyText }
+  return { pingTable, emptyText: placeholderTooltip }
 }

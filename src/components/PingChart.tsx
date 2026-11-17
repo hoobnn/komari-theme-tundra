@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { format } from 'echarts/core'
 import { Fragment, useState } from 'react'
 import { EChart } from '@/components/EChart'
+import PingValue from '@/components/PingValue'
 import PingTaskDetails from '@/components/charts/PingTaskDetails'
 import { Button } from '@/components/ui/button'
 import { DataTooltip } from '@/components/ui/data-tooltip'
@@ -22,8 +23,9 @@ import {
   SERIES_PALETTE_V6_LIGHT,
 } from '@/utils/chartTheme'
 import { buildChartViews, PING_CHART_VIEWS } from '@/utils/chartViews'
+import { describePing, formatPingLoss, pingLossTone, pingStatusLabel, pingTaskAverage } from '@/utils/pingDisplay'
 import { HISTORY_MAX_POINTS } from '@/utils/pingHistory'
-import { groupPingTasksByStack } from '@/utils/pingStack'
+import { groupPingTasksByStack, pingStackLabel } from '@/utils/pingStack'
 import { cutPeakValues, interpolateNullsLinear } from '@/utils/recordHelper'
 import { CARD_SURFACE_CLASS, segmentClass, TAB_TRIGGER_CLASS, TOGGLE_BASE_CLASS, toggleClass } from '@/utils/uiClasses'
 
@@ -175,7 +177,8 @@ function PingChart({ uuid, className }: PingChartProps) {
 
   // 双栈：同一线路（如「四川电信 v4 / v6」）用同色系，v6 换深浅一档并用虚线
   const taskMeta = new Map<number, { color: string; stack: 'v4' | 'v6' | null; base: string }>()
-  groupPingTasksByStack(tasks, t => t.name).forEach((group, groupIndex) => {
+  const taskGroups = groupPingTasksByStack(tasks, t => t.name)
+  taskGroups.forEach((group, groupIndex) => {
     const paletteIndex = groupIndex % SERIES_PALETTE.length
     const v6Palette = isDark ? SERIES_PALETTE_V6_DARK : SERIES_PALETTE_V6_LIGHT
     for (const { stack, item } of group.items) {
@@ -191,35 +194,6 @@ function PingChart({ uuid, className }: PingChartProps) {
   function getTaskColor(taskId: number): string {
     return taskMeta.get(taskId)?.color ?? SERIES_PALETTE[0]
   }
-
-  // 最新值统计（从服务端 tasks 获取，保持颜色顺序）
-  const latestValues = (() => {
-    if (!tasks.length) return []
-
-    const latestMap = new Map<number, number | null>()
-    for (const task of tasks) {
-      for (let i = remoteData.length - 1; i >= 0; i--) {
-        const rec = remoteData[i]
-        if (rec && rec.task_id === task.id && rec.value >= 0) {
-          latestMap.set(task.id, rec.value)
-          break
-        }
-      }
-    }
-
-    return tasks.map(task => {
-      const meta = taskMeta.get(task.id)
-      return {
-        ...task,
-        latestValue: latestMap.get(task.id) ?? null,
-        color: meta?.color ?? SERIES_PALETTE[0],
-        stack: meta?.stack ?? null,
-      }
-    })
-  })()
-
-  // 统计卡片按线路分组，组内 v4 / v6 各占一行
-  const latestValueGroups = groupPingTasksByStack(latestValues, t => t.name)
 
   const selectedTasks = tasks.filter(t => selectedTaskIds.includes(t.id))
 
@@ -625,15 +599,15 @@ function PingChart({ uuid, className }: PingChartProps) {
               )}
             </div>
 
-            {/* 最新值统计卡片：按线路分组，组内每个协议栈一行（点击行切换选中） */}
-            {latestValueGroups.length > 0 && (
+            {/* 时段统计按线路分组，每个协议栈一行 */}
+            {taskGroups.length > 0 && (
               <div
                 className="grid shrink-0 gap-3"
                 style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 16rem), 1fr))' }}
               >
-                {latestValueGroups.map(group => (
+                {taskGroups.map(group => (
                   <div
-                    key={group.base}
+                    key={group.items[0].item.id}
                     className={cn(
                       'flex flex-col gap-1.5 p-3',
                       pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs'),
@@ -643,14 +617,14 @@ function PingChart({ uuid, className }: PingChartProps) {
                     <div className="flex min-w-0 items-center gap-2">
                       <div
                         className="h-4 w-1 shrink-0 rounded"
-                        style={{ backgroundColor: group.items[0]?.item.color }}
+                        style={{ backgroundColor: getTaskColor(group.items[0].item.id) }}
                       />
                       <span className="truncate text-compact font-semibold">{group.base}</span>
                     </div>
-                    <div className="grid grid-cols-[2.7rem_minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,0.8fr)_1.75rem] items-center gap-x-1 gap-y-0.5">
+                    <div className="grid grid-cols-[3.25rem_minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,0.8fr)_1.75rem] items-center gap-x-1 gap-y-0.5">
                       <span />
-                      <span className="text-right text-2xs text-muted-foreground">延迟</span>
-                      <span className="text-right text-2xs text-muted-foreground">丢包</span>
+                      <span className="text-end text-2xs text-muted-foreground">平均延迟</span>
+                      <span className="text-end text-2xs text-muted-foreground">丢包率</span>
                       <span
                         className="text-right text-2xs text-muted-foreground"
                         title="P99 与 P50 的比值，越大越不稳定"
@@ -660,12 +634,15 @@ function PingChart({ uuid, className }: PingChartProps) {
                       <span />
                       {group.items.map(({ stack, item: task }) => {
                         const selected = selectedTaskIds.includes(task.id)
+                        const average = pingTaskAverage(task)
+                        const loss = task.total === 0 ? null : formatPingLoss(task.loss, 2)
                         return (
                           <Fragment key={task.id}>
                             <button
                               type="button"
                               aria-pressed={selected}
                               aria-label={`${task.name} 曲线`}
+                              aria-description={`平均延迟 ${describePing(average)}，丢包率 ${loss ?? pingStatusLabel.missing}`}
                               className={cn(
                                 'col-span-4 grid min-h-8 cursor-pointer grid-cols-subgrid items-center rounded-md text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring',
                                 !selected && 'text-muted-foreground',
@@ -680,16 +657,32 @@ function PingChart({ uuid, className }: PingChartProps) {
                                 />
                                 <span
                                   className={cn('border-b-2 text-2xs', stack === 'v6' && 'border-dashed')}
-                                  style={{ borderColor: task.color }}
+                                  style={{ borderColor: getTaskColor(task.id) }}
                                 >
-                                  {stack ?? 'Ping'}
+                                  {pingStackLabel(stack) || 'Ping'}
                                 </span>
                               </span>
-                              <span className="num text-right font-medium" title="平均延迟">
-                                {task.avg !== undefined ? `${Math.round(task.avg)} ms` : '--'}
+                              <span className="text-end font-medium" title={`平均延迟 ${describePing(average)}`}>
+                                <PingValue
+                                  value={average}
+                                  unit
+                                  className={
+                                    !selected && typeof average === 'number' ? 'text-muted-foreground' : undefined
+                                  }
+                                />
                               </span>
-                              <span className="num text-right">{task.loss.toFixed(2)}%</span>
-                              <span className="num text-right">{task.p99_p50_ratio?.toFixed(2) ?? '--'}</span>
+                              <span
+                                className={cn('num text-end', selected && loss != null && pingLossTone(task.loss).text)}
+                              >
+                                {loss ?? <PingValue value="missing" />}
+                              </span>
+                              <span className="num text-end">
+                                {typeof average === 'number' && task.p99_p50_ratio != null ? (
+                                  task.p99_p50_ratio.toFixed(2)
+                                ) : (
+                                  <PingValue value="missing" />
+                                )}
+                              </span>
                             </button>
                             <PingTaskDetails task={task} />
                           </Fragment>

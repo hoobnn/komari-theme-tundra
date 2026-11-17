@@ -1,19 +1,23 @@
 import type { PingRecord } from '@/utils/rpc'
 import type { RelayRouteConfig } from '@/utils/relayRoutes'
+import type { PingReading } from '@/utils/pingDisplay'
 import { Fragment, useLayoutEffect, useRef, useState } from 'react'
+import PingValue from '@/components/PingValue'
+import { DataTooltip } from '@/components/ui/data-tooltip'
 import { useSharedPingRecords } from '@/hooks/useNodePingStats'
 import { useThemeSettings } from '@/stores/app'
 import { cn } from '@/lib/utils'
-import { relayLatencyTone, relayStateLabel, summarizeRelayLeg } from '@/utils/relayRoutes'
+import { summarizeRelayLeg } from '@/utils/relayRoutes'
+import { describePing, pingLatencyTone, pingStatusLabel } from '@/utils/pingDisplay'
+import { pingStackLabel } from '@/utils/pingStack'
 
-type RelayLeg = ReturnType<typeof summarizeRelayLeg>
 type Stack = 'v4' | 'v6' | null
 
 interface RouteLine {
   route: RelayRouteConfig
   stack: Stack
-  legs: RelayLeg[]
-  total: number | null
+  legs: PingReading[]
+  total: PingReading
 }
 
 const parseStack = (name: string): { stack: Stack; base: string } => {
@@ -44,20 +48,7 @@ interface SummaryProps {
   name: string
   nodes: string[]
   lines: RouteLine[]
-  status: string
   order: number
-}
-
-const stackLabel = (stack: Stack) => (stack === 'v4' ? 'IPv4' : stack === 'v6' ? 'IPv6' : 'Ping')
-
-/** 每段线的颜色与卡片延迟同一阈值：快绿、常规天蓝、慢琥珀、差或失败红。 */
-function legBorder(leg: RelayLeg): string {
-  if (leg.state === 'lost') return 'border-red-500/80'
-  if (leg.latency === null) return 'border-foreground/15'
-  if (leg.latency <= 80) return 'border-emerald-500/80'
-  if (leg.latency <= 180) return 'border-sky-500/70 dark:border-sky-400/70'
-  if (leg.latency <= 240) return 'border-amber-500/80'
-  return 'border-red-500/80'
 }
 
 function StackSwatch({ stack }: { stack: Stack }) {
@@ -70,36 +61,21 @@ function StackSwatch({ stack }: { stack: Stack }) {
   )
 }
 
-/** 合计：有完整数据显示毫秒数；有段探测失败显示「中断」，其余显示加载 / 刷新状态。 */
-function LineTotal({ line, status }: { line: RouteLine; status: string }) {
-  if (line.total !== null) {
-    return (
-      <span
-        className={cn('num whitespace-nowrap text-compact font-semibold leading-none', relayLatencyTone(line.total))}
-      >
-        {line.total.toFixed(1)}
-        <span className="ml-0.5 text-3xs font-normal text-muted-foreground">ms</span>
-      </span>
-    )
+function relayTotal(legs: PingReading[]): PingReading {
+  if (legs.includes('lost')) return 'lost'
+  let sum = 0
+  for (const leg of legs) {
+    if (typeof leg !== 'number') return leg
+    sum += leg
   }
-  const broken = line.legs.some(leg => leg.state === 'lost')
-  return (
-    <span
-      className={cn(
-        'whitespace-nowrap text-xs font-medium leading-none',
-        broken ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
-      )}
-    >
-      {broken ? '中断' : status}
-    </span>
-  )
+  return sum
 }
 
 /** 合并同一协议内相邻的正常段，每个连续区间播放一道流光。 */
-function connectedSpans(legs: RelayLeg[]) {
+function connectedSpans(legs: PingReading[]) {
   const spans: { start: number; length: number }[] = []
   for (const [index, leg] of legs.entries()) {
-    if (leg.state !== 'ok') continue
+    if (typeof leg !== 'number') continue
     const previous = spans.at(-1)
     if (previous && previous.start + previous.length === index) previous.length += 1
     else spans.push({ start: index, length: 1 })
@@ -120,33 +96,29 @@ function RouteLane({ line, row, order }: { line: RouteLine; row: number; order: 
       {line.legs.map((leg, index) => {
         // 站点和探测段交替占列，各协议共享同一组列宽。
         const gridColumn = index * 2 + 2
-        const label = `${stackLabel(line.stack)} ${line.route.nodes[index]} → ${line.route.nodes[index + 1]}`
+        const label = `${pingStackLabel(line.stack) || 'Ping'} ${line.route.nodes[index]} → ${line.route.nodes[index + 1]}`
         return (
           <Fragment key={index}>
-            <span
-              title={label}
+            <DataTooltip
+              as="span"
+              content={`${label} · ${describePing(leg, 1)}`}
               style={{ gridColumn, gridRow: below ? 2 : 1 }}
               className={cn(
                 'num relative flex justify-center px-1 text-xs font-medium leading-none',
                 below ? 'items-start' : 'items-end',
-                leg.state === 'lost' ? 'text-red-600 dark:text-red-400' : relayLatencyTone(leg.latency),
               )}
             >
               <span className="sr-only">{label} </span>
-              {leg.latency === null ? (
-                <span className="text-3xs">{relayStateLabel[leg.state]}</span>
-              ) : (
-                leg.latency.toFixed(1)
-              )}
-            </span>
+              <PingValue value={leg} decimals={1} />
+            </DataTooltip>
             <span
               aria-hidden="true"
-              data-flowing={leg.state === 'ok' || undefined}
+              data-flowing={typeof leg === 'number' || undefined}
               style={{ gridColumn, gridRow: trackRow }}
               className={cn(
                 'relay-routes-track relative self-center border-t-2',
                 line.stack === 'v6' && 'border-dashed',
-                legBorder(leg),
+                pingLatencyTone(leg).line,
               )}
             />
           </Fragment>
@@ -174,7 +146,7 @@ function RouteLane({ line, row, order }: { line: RouteLine; row: number; order: 
   )
 }
 
-function PathSummary({ name, nodes, lines, status, order }: SummaryProps) {
+function PathSummary({ name, nodes, lines, order }: SummaryProps) {
   const trackRef = useRef<HTMLSpanElement>(null)
   const [overflows, setOverflows] = useState(false)
   useLayoutEffect(() => {
@@ -193,12 +165,25 @@ function PathSummary({ name, nodes, lines, status, order }: SummaryProps) {
         <span className="min-w-0 wrap-anywhere text-compact font-semibold tracking-tight">{name}</span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {lines.map(line => (
-            <span key={line.route.name} className="flex items-center gap-1.5">
+            <span
+              key={line.route.name}
+              className="inline-grid grid-cols-[auto_minmax(6.5ch,auto)] items-baseline gap-x-1 text-compact"
+            >
               <span className="flex items-center gap-1 text-3xs text-muted-foreground">
                 <StackSwatch stack={line.stack} />
-                {line.stack ? stackLabel(line.stack) : '合计'}
+                {pingStackLabel(line.stack) || '合计'}
               </span>
-              <LineTotal line={line} status={status} />
+              <DataTooltip
+                as="span"
+                className="text-end font-semibold leading-none"
+                content={`分段合计 ${describePing(line.total, 1)}`}
+              >
+                {line.total === 'loading' || line.total === 'error' ? (
+                  <span className="text-xs font-normal text-muted-foreground">{pingStatusLabel[line.total]}</span>
+                ) : (
+                  <PingValue value={line.total} decimals={1} unit />
+                )}
+              </DataTooltip>
             </span>
           ))}
         </span>
@@ -243,7 +228,6 @@ function RouteGroup({
   nodes,
   routes,
   records,
-  loading,
   error,
   now,
   order,
@@ -252,26 +236,24 @@ function RouteGroup({
   nodes: string[]
   routes: { route: RelayRouteConfig; stack: Stack }[]
   records: Map<string, PingRecord[]> | undefined
-  loading: boolean
   error: string | null
   now: number
   order: number
 }) {
+  const missing = error ? 'error' : records ? 'missing' : 'loading'
   const lines: RouteLine[] = routes.map(({ route, stack }) => {
-    const legs = route.legs.map(leg => summarizeRelayLeg(leg, records?.get(leg.client) ?? [], now))
-    const complete = legs.every(leg => leg.state === 'ok')
-    return { route, stack, legs, total: complete ? legs.reduce((sum, leg) => sum + (leg.latency ?? 0), 0) : null }
+    const legs = route.legs.map((config): PingReading => {
+      const leg = summarizeRelayLeg(config, records?.get(config.client) ?? [], now)
+      return leg.state === 'lost' || leg.state === 'stale' ? leg.state : (leg.latency ?? missing)
+    })
+    return { route, stack, legs, total: relayTotal(legs) }
   })
-  const status = loading && !records ? '加载中' : error ? '刷新失败' : '数据不全'
   const summaryTitle = lines
-    .map(
-      line =>
-        `${line.route.name}：${nodes.join(' → ')}，${line.legs.some(leg => leg.state === 'lost') ? '中断' : line.total === null ? status : `分段合计 ${line.total.toFixed(1)} ms`}`,
-    )
+    .map(line => `${line.route.name} · ${nodes.join(' → ')} · 分段合计 ${describePing(line.total, 1)}`)
     .join('\n')
   return (
     <div title={summaryTitle} className="relay-route @container min-w-0 rounded-xl border bg-card px-4 py-3 shadow-xs">
-      <PathSummary name={name} nodes={nodes} lines={lines} status={status} order={order} />
+      <PathSummary name={name} nodes={nodes} lines={lines} order={order} />
     </div>
   )
 }
@@ -303,7 +285,6 @@ export default function RelayRoutes() {
               {...group}
               order={index}
               records={snapshot.data?.recordsByClient}
-              loading={snapshot.loading}
               error={snapshot.error}
               now={snapshot.observedAt}
             />
