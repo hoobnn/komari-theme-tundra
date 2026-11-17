@@ -24,7 +24,7 @@ export interface NodePingBar {
 
 export interface NodePingTableCell {
   key: string
-  /** 不带单位的数值，缺失时为 -- */
+  /** 不带单位的毫秒数、超时或缺测占位。 */
   latency: string
   toneClass: string
   tooltip: string
@@ -101,7 +101,7 @@ function barTone(metric: NodePingMetric, value: number): string {
 }
 
 function formatTaskLatency(stat: NodePingPerTaskStat) {
-  if (stat.avgLatency < 0) return { latency: '--', toneClass: 'text-red-600 dark:text-red-400' }
+  if (stat.avgLatency < 0) return { latency: '超时', toneClass: LATENCY_TEXT_TONES.bad }
   const ms = Math.round(stat.avgLatency)
   return {
     latency: String(ms),
@@ -122,8 +122,14 @@ function buildBars(metric: NodePingMetric, points: NodePingHistoryPoint[], label
   return points.map((point, index) => {
     const value = point[metric]
     const time = `${prefix}${formatDateTime(point.time, 'HH:mm:ss')}`
-    if (value === null)
-      return { key: `${label}${point.time}-${index}`, className: 'bg-muted-foreground/15', tooltip: `${time} N/A` }
+    if (value === null) {
+      const timedOut = metric === 'latency' && point.loss === 100
+      return {
+        key: `${label}${point.time}-${index}`,
+        className: timedOut ? BAR_TONES.bad : 'bg-muted-foreground/15',
+        tooltip: `${time}\n${timedOut ? '超时（100% 丢包）' : '无数据'}`,
+      }
+    }
     return {
       key: `${label}${point.time}-${index}`,
       className: barTone(metric, value),
@@ -193,7 +199,7 @@ function buildPingTable(
         key: String(found.item.taskId),
         latency,
         toneClass,
-        tooltip: `${label} ${latency === '--' ? latency : `${latency}ms`}`,
+        tooltip: `${label} ${found.item.avgLatency < 0 ? '超时（100% 丢包）' : `${latency} ms`}`,
       }
     })
 

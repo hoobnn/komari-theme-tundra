@@ -18,7 +18,7 @@ interface NodePingStackStats {
 }
 
 export interface NodePingStatsState {
-  /** 节点有 v6 任务时按协议栈拆分（无后缀任务归入 v4，某一栈没有可用样本时其 hasData 为 false），否则为 null */
+  /** 节点有 v6 任务时按协议栈拆分；无后缀任务归入 v4，收到失败样本也算有数据。 */
   byStack: { v4: NodePingStackStats; v6: NodePingStackStats } | null
   avgLatency: number
   avgLoss: number
@@ -76,16 +76,11 @@ export function useSharedPingRecords(hours: number, enabled: boolean) {
   }, [entry, hours, enabled])
   return snapshot
 }
-const CACHE_VERSION = 9
+const CACHE_VERSION = 10
 const CACHE_KEY_PREFIX = 'komari-theme-tundra:node-ping-stats'
 const FULL_LOSS_EPSILON = 1e-6
 const PING_RECORD_REFRESH_INTERVAL_MS = 60_000
 const sharedPingRecordsCache = new Map<number, SharedPingRecordsEntry>()
-
-interface TaskRecordSummary {
-  total: number
-  success: number
-}
 
 function createEmptyStats(): NodePingStatsState {
   return {
@@ -106,31 +101,6 @@ function average(values: number[]): number {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
-}
-
-function summarizeTaskRecords(records: PingRecord[]): Map<number, TaskRecordSummary> {
-  const summaries = new Map<number, TaskRecordSummary>()
-
-  for (const record of records) {
-    const summary = summaries.get(record.task_id) ?? { total: 0, success: 0 }
-    summary.total += 1
-    if (record.value >= 0) {
-      summary.success += 1
-    }
-    summaries.set(record.task_id, summary)
-  }
-
-  return summaries
-}
-
-function getIncludedTaskIds(records: PingRecord[]): Set<number> {
-  const recordSummaries = summarizeTaskRecords(records)
-
-  return new Set(
-    [...recordSummaries.entries()]
-      .filter(([, summary]) => summary.total > 0 && summary.success > 0)
-      .map(([taskId]) => taskId),
-  )
 }
 
 function getCacheKey(uuid: string, hours: number): string {
@@ -232,7 +202,7 @@ function buildRecordsByClient(records: PingRecord[]): Map<string, PingRecord[]> 
   const grouped = new Map<string, PingRecord[]>()
 
   for (const record of records) {
-    if (!record.client) continue
+    if (!record.client || !Number.isFinite(record.value) || !Number.isFinite(Date.parse(record.time))) continue
 
     const clientRecords = grouped.get(record.client) ?? []
     clientRecords.push(record)
@@ -338,7 +308,7 @@ function buildPingHistory(records: PingRecord[]): NodePingHistoryPoint[] {
 
   const firstTime = sortedRecords[0]?.timestamp ?? 0
   const lastTime = sortedRecords.at(-1)?.timestamp ?? firstTime
-  const bucketCount = Math.min(NODE_PING_BAR_COUNT, sortedRecords.length)
+  const bucketCount = Math.min(NODE_PING_BAR_COUNT, sortedRecords.length, lastTime - firstTime + 1)
   const bucketSize = Math.max(1, (lastTime - firstTime) / bucketCount)
 
   return Array.from({ length: bucketCount }, (_, index) => {
@@ -375,32 +345,20 @@ function getPercentile(values: number[], percentile: number): number | null {
 }
 
 function buildStats(records: PingRecord[], tasks: PingTaskInfo[], splitStacks = true): NodePingStatsState {
-  const includedTaskIds = getIncludedTaskIds(records)
-
-  if (!includedTaskIds.size) return createEmptyStats()
-
-  const filteredRecords = records.filter(record => includedTaskIds.has(record.task_id))
-  const history = buildPingHistory(filteredRecords)
+  if (!records.length) return createEmptyStats()
   const taskRecords = new Map<number, PingRecord[]>()
 
-  for (const record of filteredRecords) {
+  for (const record of records) {
     const currentRecords = taskRecords.get(record.task_id) ?? []
     currentRecords.push(record)
     taskRecords.set(record.task_id, currentRecords)
   }
 
-  const latencyValues: number[] = []
-  const taskLossValues: number[] = []
+  const taskOrderMap = new Map(tasks.map((t, index) => [t.id, index]))
+  const taskNameMap = new Map(tasks.map(t => [t.id, t.name]))
   const volatilityValues: number[] = []
-
-  for (const recordsByTask of taskRecords.values()) {
-    const validValues = recordsByTask.map(record => record.value).filter(value => value >= 0)
-
-    if (!validValues.length) continue
-
-    latencyValues.push(average(validValues))
-    taskLossValues.push(((recordsByTask.length - validValues.length) / recordsByTask.length) * 100)
-
+  const perTaskStats: NodePingPerTaskStat[] = Array.from(taskRecords, ([taskId, samples]) => {
+    const validValues = samples.map(record => record.value).filter(value => value >= 0)
     if (validValues.length > 1) {
       const p50 = getPercentile(validValues, 0.5)
       const p99 = getPercentile(validValues, 0.99)
@@ -408,37 +366,20 @@ function buildStats(records: PingRecord[], tasks: PingTaskInfo[], splitStacks = 
         volatilityValues.push(p99 / p50)
       }
     }
-  }
-
-  const historyLatencyValues = history.map(point => point.latency).filter(isFiniteNumber)
-  const historyLossValues = history.map(point => point.loss).filter(isFiniteNumber)
-
-  // 全部丢包时没有有效延迟样本，用 -1 区分，避免显示成 0 ms
-  const avgLatency = latencyValues.length
-    ? average(latencyValues)
-    : historyLatencyValues.length
-      ? average(historyLatencyValues)
-      : -1
-  const avgLoss = taskLossValues.length ? average(taskLossValues) : average(historyLossValues)
-  const avgVolatility = average(volatilityValues)
-  const hasData = history.length > 0 || latencyValues.length > 0 || taskLossValues.length > 0
-
-  const taskOrderMap = new Map(tasks.map((t, index) => [t.id, index]))
-  const taskNameMap = new Map(tasks.map(t => [t.id, t.name]))
-  const perTaskStats: NodePingPerTaskStat[] = Array.from(taskRecords.entries(), ([taskId, taskRecs]) => {
-    const validValues = taskRecs.map(r => r.value).filter(v => v >= 0)
-    const avgLatency = validValues.length ? average(validValues) : -1
-    const loss = taskRecs.length ? ((taskRecs.length - validValues.length) / taskRecs.length) * 100 : 100
-    const name = taskNameMap.get(taskId) ?? `Ping ${taskId}`
-    return { taskId, name, avgLatency, loss }
+    return {
+      taskId,
+      name: taskNameMap.get(taskId) ?? `Ping ${taskId}`,
+      avgLatency: validValues.length ? average(validValues) : -1,
+      loss: ((samples.length - validValues.length) / samples.length) * 100,
+    }
   }).sort((a, b) => (taskOrderMap.get(a.taskId) ?? 0) - (taskOrderMap.get(b.taskId) ?? 0))
+  const measuredLatencies = perTaskStats.map(task => task.avgLatency).filter(latency => latency >= 0)
 
   let byStack: NodePingStatsState['byStack'] = null
   if (splitStacks) {
     const v6TaskIds = new Set(
       perTaskStats.filter(stat => parsePingTaskName(stat.name).stack === 'v6').map(stat => stat.taskId),
     )
-    // v4 全部没有可用样本时也要拆分，否则 v4 行会套用 v6 的均值和柱条
     if (v6TaskIds.size) {
       const pick = (state: NodePingStatsState): NodePingStackStats => ({
         hasData: state.hasData,
@@ -449,14 +390,14 @@ function buildStats(records: PingRecord[], tasks: PingTaskInfo[], splitStacks = 
       byStack = {
         v4: pick(
           buildStats(
-            filteredRecords.filter(r => !v6TaskIds.has(r.task_id)),
+            records.filter(r => !v6TaskIds.has(r.task_id)),
             tasks,
             false,
           ),
         ),
         v6: pick(
           buildStats(
-            filteredRecords.filter(r => v6TaskIds.has(r.task_id)),
+            records.filter(r => v6TaskIds.has(r.task_id)),
             tasks,
             false,
           ),
@@ -467,11 +408,11 @@ function buildStats(records: PingRecord[], tasks: PingTaskInfo[], splitStacks = 
 
   return {
     byStack,
-    avgLatency,
-    avgLoss,
-    avgVolatility,
-    history,
-    hasData,
+    avgLatency: measuredLatencies.length ? average(measuredLatencies) : -1,
+    avgLoss: average(perTaskStats.map(task => task.loss)),
+    avgVolatility: average(volatilityValues),
+    history: buildPingHistory(records),
+    hasData: true,
     perTaskStats,
   }
 }
