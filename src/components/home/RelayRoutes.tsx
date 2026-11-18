@@ -329,40 +329,40 @@ function RouteGroup({
       aria-label={name}
       className="relay-route @container min-w-0 rounded-xl border bg-card px-3.5 pt-2.5 pb-1.5 shadow-xs sm:px-4"
     >
-      <header className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-2">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-          <h3 className="min-w-0 wrap-anywhere text-value font-semibold tracking-tight">{name}</h3>
+      <header className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b pb-2 @min-[19rem]:gap-x-4">
+        <h3 className="min-w-0 wrap-anywhere text-value font-semibold tracking-tight">{name}</h3>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 @min-[19rem]:ms-auto">
           {lines.some(line => line.stack) && <span className="text-2xs text-muted-foreground">分段合计</span>}
+          <dl
+            aria-label="分段合计"
+            className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs leading-5"
+          >
+            {lines.map(line => (
+              <div key={line.route.name} className="flex items-baseline gap-1.5 whitespace-nowrap">
+                <dt
+                  className={cn(
+                    'text-2xs text-muted-foreground',
+                    line.stack && 'relative ps-3.5 [text-box:trim-both_cap_alphabetic]',
+                  )}
+                >
+                  {line.stack && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'absolute start-0 top-1/2 w-[1em] -translate-y-1/2 border-t-[1.5px] border-muted-foreground/75',
+                        line.stack === 'v6' && 'border-dashed',
+                      )}
+                    />
+                  )}
+                  {pingStackLabel(line.stack) || '合计'}
+                </dt>
+                <dd className="font-medium">
+                  <RelayReading value={line.total} />
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <dl
-          aria-label="分段合计"
-          className="ms-auto flex min-w-0 flex-wrap items-baseline justify-end gap-x-3.5 gap-y-1 text-xs leading-5"
-        >
-          {lines.map(line => (
-            <div key={line.route.name} className="whitespace-nowrap">
-              <dt
-                className={cn(
-                  'inline-block text-muted-foreground',
-                  line.stack && 'relative ps-4 [text-box:trim-both_cap_alphabetic]',
-                )}
-              >
-                {line.stack && (
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'absolute start-0 top-1/2 w-3 -translate-y-1/2 border-t-[1.5px] border-muted-foreground/75',
-                      line.stack === 'v6' && 'border-dashed',
-                    )}
-                  />
-                )}
-                {pingStackLabel(line.stack) || '合计'}
-              </dt>
-              <dd className="ms-1 inline font-medium">
-                <RelayReading value={line.total} />
-              </dd>
-            </div>
-          ))}
-        </dl>
       </header>
       <RoutePath nodes={nodes} lines={lines} order={order} />
     </article>
