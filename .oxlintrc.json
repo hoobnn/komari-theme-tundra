@@ -19,6 +19,8 @@
     "typescript/no-misused-promises": "error",
     "typescript/consistent-type-imports": "error",
     "import/no-cycle": "error",
+    "import/no-unassigned-import": ["warn", { "allow": ["./styles/main.css", "@/utils/echarts"] }],
+    "eslint/no-underscore-dangle": ["warn", { "allow": ["__BUILD_VERSION__", "__BUILD_GIT_HASH__"] }],
     "unicorn/no-array-sort": "off",
     "typescript/no-unsafe-type-assertion": "off",
     "unicorn/prefer-add-event-listener": "off",

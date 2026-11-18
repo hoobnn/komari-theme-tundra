@@ -120,9 +120,7 @@ const EXPLICIT_CURRENCY_ALIASES: Record<string, CurrencyCode> = {
 const CURRENCY_SYMBOL_ALIASES = createCurrencySymbolAliases()
 
 export function normalizeCurrency(currency: string | null | undefined): CurrencyCode {
-  const value = String(currency || 'CNY')
-    .trim()
-    .toUpperCase()
+  const value = (currency || 'CNY').trim().toUpperCase()
 
   if (isSupportedCurrency(value)) return value
 
@@ -215,6 +213,7 @@ export function calculateMonthlyAverageCostCNY(node: NodeData, exchangeRates: Ex
   const priceCNY = getPriceCNY(node, exchangeRates)
   if (priceCNY <= 0) return 0
 
+  // oxlint-disable-next-line typescript/no-unnecessary-type-conversion -- 兼容服务端返回的数字字符串。
   const billingCycle = Number(node.billing_cycle)
   if (!Number.isFinite(billingCycle) || billingCycle <= 0) return 0
 
@@ -235,6 +234,7 @@ export function calculateRemainingValueCNY(node: NodeData, exchangeRates: Exchan
 
   if (diffYears > LONG_TERM_YEARS) return priceCNY
 
+  // oxlint-disable-next-line typescript/no-unnecessary-type-conversion -- 兼容服务端返回的数字字符串。
   const billingCycle = Number(node.billing_cycle)
   const billingCycleMs = billingCycle * MS_PER_DAY
   if (diffMs > 0 && billingCycleMs > 0) return priceCNY * (diffMs / billingCycleMs)
@@ -301,6 +301,7 @@ export async function getDailyExchangeRates(): Promise<{
 }
 
 function getPriceCNY(node: NodeData, exchangeRates: ExchangeRates): number {
+  // oxlint-disable-next-line typescript/no-unnecessary-type-conversion -- 兼容服务端返回的数字字符串。
   const price = Number(node.price)
   if (!Number.isFinite(price) || price <= 0) return 0
 

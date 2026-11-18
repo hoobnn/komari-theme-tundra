@@ -23,7 +23,7 @@ function ProgressThin({
   style,
   ...props
 }: ProgressThinProps) {
-  const clamped = Math.max(0, Math.min(100, Number(percentage) || 0))
+  const clamped = Math.max(0, Math.min(100, percentage || 0))
 
   return (
     <div

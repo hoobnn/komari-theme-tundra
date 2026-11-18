@@ -54,7 +54,6 @@ interface GlobeLatest {
   clusters: RegionCluster[]
   markers: Marker[]
   arcs: Arc[]
-  colors: GlobeColors
   autoRotate: boolean
   reducedMotion: boolean
   shouldRender: boolean
@@ -118,7 +117,6 @@ function createCtx(): GlobeCtx {
       clusters: [],
       markers: [],
       arcs: [],
-      colors: getThemeColors(false),
       autoRotate: true,
       reducedMotion: false,
       shouldRender: false,
@@ -283,7 +281,7 @@ function syncRafState(ctx: GlobeCtx) {
   }
 }
 
-function startGlobe(ctx: GlobeCtx, earthViewMode: string) {
+function startGlobe(ctx: GlobeCtx, earthViewMode: string, colors: GlobeColors) {
   const canvas = ctx.canvas
   if (!canvas) return
   if (earthViewMode === 'earth-stop') {
@@ -291,7 +289,6 @@ function startGlobe(ctx: GlobeCtx, earthViewMode: string) {
     triggerStaticRedrawWindow(ctx)
   }
   const { latest } = ctx
-  const colors = latest.colors
   const { width, height } = getRenderSize(ctx)
   const options: COBEOptions = {
     devicePixelRatio: getCappedDpr(),
@@ -355,7 +352,7 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const ctxRef = useRef<GlobeCtx | null>(null)
 
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [{ width, height }, setSize] = useState({ width: 0, height: 0 })
   const [documentVisible, setDocumentVisible] = useState(
     () => typeof document === 'undefined' || document.visibilityState === 'visible',
   )
@@ -407,7 +404,6 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
 
   const shouldRender = documentVisible && elementVisible && !suspendMotion
   const shouldAutoRotate = earthViewMode !== 'earth-stop' && !rotationPaused && !reducedMotion
-  const colors = getThemeColors(isDark)
 
   // 同步最新渲染数据给命令式循环（须排在其他 effect 之前）
   useEffect(() => {
@@ -416,12 +412,11 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
       clusters: regionClusters,
       markers,
       arcs,
-      colors,
       autoRotate: shouldAutoRotate,
       reducedMotion,
       shouldRender,
-      width: size.width,
-      height: size.height,
+      width,
+      height,
     }
     ctx.container = containerRef.current
     ctx.canvas = canvasRef.current
@@ -448,20 +443,20 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
       intersectionObserver.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [])
+  }, [containerRef])
 
   // 创建 / 销毁 globe；切换主题时重建。StrictMode 下 create → destroy → create 不会残留第二个循环
   useEffect(() => {
     const ctx = getCtx(ctxRef)
-    startGlobe(ctx, useAppStore.getState().settings.earthViewMode)
+    startGlobe(ctx, useAppStore.getState().settings.earthViewMode, getThemeColors(isDark))
     return () => stopGlobe(ctx)
   }, [ctxRef, isDark])
 
   useEffect(() => {
     const ctx = getCtx(ctxRef)
-    if (!ctx.globe || size.width <= 0 || size.height <= 0) return
+    if (!ctx.globe || width <= 0 || height <= 0) return
     updateGlobeFrame(ctx)
-  }, [ctxRef, size.width, size.height])
+  }, [ctxRef, width, height])
 
   useEffect(() => {
     const ctx = getCtx(ctxRef)
@@ -480,12 +475,14 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
     ctx.globe.update({ markers: ctx.latest.markers, arcs: ctx.latest.arcs })
     syncClusterOverlayPositions(ctx)
     if (!ctx.latest.autoRotate) triggerStaticRedrawWindow(ctx, 600)
+    // oxlint-disable-next-line react/exhaustive-deps -- 签名变化时才把最新标记与弧线同步到 WebGL。
   }, [ctxRef, clusterSignature, userCoordSignature])
 
   useEffect(() => {
     const ctx = getCtx(ctxRef)
     if (!ctx.globe) return
-    syncRafState(ctx)
+    if (shouldRender) syncRafState(ctx)
+    else pauseRaf(ctx)
   }, [ctxRef, shouldRender])
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
