@@ -1,18 +1,20 @@
 <h3 align="center"> Komari Tundra </h3>
 <p align="center">
-简洁现代的 Komari Monitor 主题，基于 React 19 + Vite + Radix UI + Tailwind CSS v4
+以极地观测图册为视觉主题的 Komari Monitor 面板，基于 React 19 + Vite + Radix UI + Tailwind CSS v4
 </p>
 
-![preview](/docs/preview.png)
+![Tundra 桌面端深色预览](/docs/preview.png)
+
+[手机端浅色预览](./docs/preview-mobile.png) · [延迟与丢包图表](./docs/ping-history-preview.png)
 
 ## 特性
 
 - 节点卡片：指标、费用、延迟分区排列，跨卡片对齐
-- IPv4 / IPv6 双栈延迟：同一张表里各占一行，丢包与延迟分开看；详情图里 v6 用深色虚线
-- GPU 使用率与温度图表（需 agent 上报 GPU 数据）
-- 列表视图的「网络」列与卡片共用同一套数据
-- 可配置的首页多段线路延迟与流光，展开查看近期曲线与丢包（[配置说明](./docs/relay-routes.md)）
-- 中性冷灰底色、白色卡片、翡翠绿点缀，字体为 Geist，数字等宽
+- 双栈延迟曲线与丢包时间线按时间对齐，可逐点查看原始采样、时段均值和丢包率
+- 负载图可固定在同一采样时刻，联动查看 CPU、内存、网络和 GPU 温度（需 Agent 上报 GPU 数据）
+- 卡片和列表支持按分组、在线状态和关键词筛选，手机列表支持比较 CPU、内存和打开延迟图
+- 可配置的首页中继线路卡片，显示各段延迟、双栈合计和沿途流光（[配置说明](./docs/relay-routes.md)）
+- 冰湾版头配合宋体章节标题，界面与读数使用 Geist，支持浅色、深色和跟随系统
 
 延迟任务名以 ` v4` / ` v6` 结尾时会自动按双栈合并，例如 `四川电信 v4`、`四川电信 v6`。
 

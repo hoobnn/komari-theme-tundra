@@ -31,7 +31,7 @@ export default function NodePingDialog({
       {node && (
         <DialogContent
           className={cn(
-            'flex h-[min(46rem,calc(100dvh-2rem))] max-w-6xl flex-col gap-0 overflow-hidden rounded-xl p-0 shadow-xl',
+            'flex h-auto max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-6xl sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-xl p-0 shadow-xl',
             pickSurfaceClass('bg-background', 'bg-background/60'),
           )}
           aria-describedby={undefined}
@@ -45,13 +45,13 @@ export default function NodePingDialog({
         >
           <DialogHeader className="flex h-13 shrink-0 flex-row items-center border-b ps-4 pe-12">
             <DialogTitle className="flex min-w-0 flex-col gap-0.5 text-left sm:flex-row sm:items-baseline sm:gap-2">
-              <span className="shrink-0">延迟与丢包</span>
+              <span className="shrink-0 font-atlas text-value font-semibold">延迟与丢包</span>
               <span className="truncate text-xs font-normal text-muted-foreground" title={node.name}>
                 {node.name}
               </span>
             </DialogTitle>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+          <div className="min-h-0 overflow-y-auto overscroll-contain p-2 sm:p-4">
             <Suspense fallback={<ChartPlaceholder />}>
               <PingChart uuid={node.uuid} />
             </Suspense>

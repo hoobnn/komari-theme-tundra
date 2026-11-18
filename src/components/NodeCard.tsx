@@ -39,60 +39,64 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
   return (
     <CardX
       contentClass="flex flex-1 flex-col pb-3"
-      headerClass="pb-1.5 pt-2.5"
+      headerClass="pt-2.5 pb-1.5"
       className={cn(
-        'node-card group/card h-full w-full cursor-pointer rounded-xl border bg-card shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-foreground/20 hover:shadow-lg has-[:focus-visible]:border-ring/60',
+        'node-card group/card h-full w-full cursor-pointer rounded-xl border bg-card shadow-xs motion-safe:transition-[border-color,box-shadow] hover:border-foreground/25 hover:shadow-lg has-[:focus-visible]:border-ring/70',
         pickSurfaceClass('', 'backdrop-blur-sm'),
       )}
       onClick={() => onClick?.(node)}
       header={
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={cn(
-              'size-1.5 shrink-0 rounded-full ring-[3px]',
-              node.online
-                ? 'bg-emerald-600 ring-emerald-600/15 dark:bg-emerald-400 dark:ring-emerald-400/15'
-                : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15',
-            )}
-          />
-          <Link
-            to={`/instance/${node.uuid}`}
-            onClick={event => event.stopPropagation()}
-            className="min-w-0 truncate rounded-sm text-value font-semibold tracking-tight decoration-foreground/35 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-            title={node.name}
-          >
-            {node.name}
-          </Link>
-        </div>
-      }
-      headerExtra={
-        <div className="flex items-center gap-2">
-          <img src={getOSImage(node.os)} alt={getOSName(node.os)} className="size-4 opacity-80" />
-          {hasRegion(node.region) && (
-            <img
-              src={getFlagSrc(node.region)}
-              alt={getRegionDisplayName(node.region)}
-              className="h-3.5 w-5 shrink-0 rounded-[2px] object-cover ring-1 ring-foreground/10"
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="relative flex size-7 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
+            <img src={getOSImage(node.os)} alt={getOSName(node.os)} className="size-4.5" />
+            <span
+              aria-hidden="true"
+              className={cn(
+                'absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-card',
+                node.online ? 'bg-emerald-500' : 'bg-red-500',
+              )}
             />
-          )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <Link
+              to={`/instance/${node.uuid}`}
+              title={node.name}
+              onClick={event => event.stopPropagation()}
+              className="flex min-h-6 min-w-0 items-center justify-between gap-1 rounded-sm text-value font-semibold tracking-tight decoration-foreground/35 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <span className="truncate">{node.name}</span>
+              {hasRegion(node.region) && (
+                <img
+                  src={getFlagSrc(node.region)}
+                  alt={getRegionDisplayName(node.region)}
+                  className="ml-auto h-3 w-4 shrink-0 rounded-[2px] object-cover"
+                />
+              )}
+              <Icon
+                icon="lucide:chevron-right"
+                aria-hidden="true"
+                className="size-3.5 shrink-0 text-muted-foreground/70 group-hover/card:text-foreground"
+              />
+            </Link>
+          </div>
         </div>
       }
     >
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border/70 pb-2 text-2xs text-muted-foreground">
-          {node.online && (
-            <span className="inline-flex items-center gap-1">
-              <Icon icon="lucide:clock-3" width="12" height="12" className="opacity-70" />
-              <span>
-                在线{' '}
-                <span className="num text-foreground/80">{node.uptime > 0 ? formatUptime(node.uptime) : '--'}</span>
-              </span>
-            </span>
-          )}
-          {!node.online && <span className="font-medium text-red-600 dark:text-red-400">离线</span>}
-          <DataTooltip placement="top" content={expiredDate} contentClass="whitespace-nowrap">
-            <span className="num inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
-              <Icon icon="lucide:wallet" width="12" height="12" className="opacity-70" />
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 pb-2 text-2xs leading-4 text-muted-foreground">
+        {node.online ? (
+          <span>在线{node.uptime > 0 && <span className="num ml-1">{formatUptime(node.uptime)}</span>}</span>
+        ) : (
+          <span className="font-medium text-red-600 dark:text-red-400">离线</span>
+        )}
+        {priceTags.length > 0 && (
+          <DataTooltip
+            placement="top"
+            content={expiredDate}
+            contentClass="whitespace-nowrap"
+            className="text-2xs text-muted-foreground"
+          >
+            <span className="num inline-flex flex-wrap items-center gap-x-1.5">
+              <Icon icon="lucide:wallet" width="12" height="12" />
               {priceTags.map(tag => (
                 <span key={tag.text} className={tag.highlight ? remainingTimeTagClass : ''}>
                   {tag.text}
@@ -100,8 +104,9 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
               ))}
             </span>
           </DataTooltip>
-        </div>
-
+        )}
+      </div>
+      <div className="flex flex-1 flex-col gap-2 border-t border-border/80 pt-2.5">
         {node.online ? (
           <>
             <NodeResourceMetrics node={node} />
@@ -137,9 +142,8 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
           <NodePingSummary node={node} onClick={onPingClick} />
         </div>
 
-        {/* 底部只放自定义标签，没有就不渲染 */}
         {customTags.length > 0 && (
-          <div className="mt-auto flex flex-wrap items-center gap-1">
+          <div className="mt-auto flex min-w-0 flex-wrap gap-1">
             {customTags.map((tag, index) => (
               <Badge
                 key={index}

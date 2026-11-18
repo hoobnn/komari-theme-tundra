@@ -1,9 +1,10 @@
 import { useDeferredValue, useEffect, useState } from 'react'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { selectNodeViewMode, useAppStore } from '@/stores/app'
 import { useNodeGroups, useNodesStore } from '@/stores/nodes'
 import { isNodeInGroup } from '@/utils/groupHelper'
 import { isNodeMatchSearch } from '@/utils/nodeSearch'
+
+export type NodeStatusFilter = 'all' | 'online' | 'offline'
 
 /** 首页的筛选与视图策略；不包含 DOM、导航或卡片布局。 */
 export function useHomeNodes() {
@@ -15,8 +16,8 @@ export function useHomeNodes() {
   const offlineNodesLast = useAppStore(state => state.settings.offlineNodesLast)
   const savedViewMode = useAppStore(selectNodeViewMode)
   const setViewMode = useAppStore(state => state.setNodeViewMode)
-  const isWideScreen = useMediaQuery('(min-width: 1024px)')
   const [searchText, setSearchText] = useState('')
+  const [statusFilter, setStatusFilter] = useState<NodeStatusFilter>('all')
   const query = useDeferredValue(searchText.trim())
 
   useEffect(() => {
@@ -27,7 +28,10 @@ export function useHomeNodes() {
   const groupNodes = nodes.filter(node => isNodeInGroup(node.group, selectedGroup))
   const globeNodes = earthNodes.filter(node => isNodeInGroup(node.group, selectedGroup))
   const matches = groupNodes.filter(node => isNodeMatchSearch(node, query))
-  const visibleNodes = offlineNodesLast ? [...matches].sort((a, b) => Number(b.online) - Number(a.online)) : matches
+  const onlineCount = matches.filter(node => node.online).length
+  const filtered =
+    statusFilter === 'all' ? matches : matches.filter(node => node.online === (statusFilter === 'online'))
+  const visibleNodes = offlineNodesLast ? [...filtered].sort((a, b) => Number(b.online) - Number(a.online)) : filtered
 
   function clearSearch() {
     setSearchText('')
@@ -44,9 +48,11 @@ export function useHomeNodes() {
     searchText,
     setSearchText,
     query,
+    statusFilter,
+    setStatusFilter,
+    statusCounts: { online: onlineCount, offline: matches.length - onlineCount },
     clearSearch,
-    viewMode: isWideScreen ? savedViewMode : ('card' as const),
+    viewMode: savedViewMode,
     setViewMode,
-    isWideScreen,
   }
 }

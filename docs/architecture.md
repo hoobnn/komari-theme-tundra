@@ -22,38 +22,40 @@ views（页面组合）→ components（独立界面区域）→ components/ui�
 
 ## 常见调整入口
 
-| 要调整的内容                                     | 入口                                                                          |
-| ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| 首页区域顺序                                     | `src/views/HomeView.tsx`                                                      |
-| 首页线路流光、分段配置与状态                     | `src/components/home/RelayRoutes.tsx`、`src/utils/relayRoutes.ts`             |
-| 分组、搜索、视图按钮及窄屏布局                   | `src/components/home/NodeToolbar.tsx`                                         |
-| 搜索字段、匹配规则                               | `src/utils/nodeSearch.ts`                                                     |
-| 分组过滤、离线置后、视图断点                     | `src/hooks/useHomeNodes.ts`                                                   |
-| 首页滚动恢复                                     | `src/hooks/useHomeScrollRestoration.ts`                                       |
-| 卡片网格、空结果、入场动画                       | `src/components/home/NodeResults.tsx`                                         |
-| 延迟弹窗布局                                     | `src/components/home/NodePingDialog.tsx`                                      |
-| 节点标题、在线时长、费用、标签                   | `src/components/NodeCard.tsx`                                                 |
-| 资源表（CPU / 内存 / 硬盘 / 流量，列与容器查询） | `src/components/nodes/NodeResourceMetrics.tsx`                                |
-| 实时与累计上下行                                 | `src/components/nodes/NodeNetworkMetrics.tsx`                                 |
-| 卡片延迟表与合并趋势条                           | `src/components/nodes/NodePingSummary.tsx`、`src/hooks/useNodePingDisplay.ts` |
-| 延迟统计、线路归组                               | `src/hooks/useNodePingStats.ts`、`src/hooks/useNodePingDisplay.ts`            |
-| 延迟状态、丢包率和配色阈值                       | `src/utils/pingDisplay.ts`、`src/components/PingValue.tsx`                    |
-| 列表排序                                         | `src/utils/nodeSort.ts`                                                       |
-| 地球连线几何与退化端点过滤                       | `src/utils/globeGeometry.ts`                                                  |
-| 地球按帧时间积分、惯性与阻尼                     | `src/utils/globeMotion.ts`                                                    |
-| 概览布局、地球 / 地图占位                        | `src/components/NodeGeneralCards.tsx`                                         |
-| 概览统计和单位                                   | `src/hooks/useNodeOverview.ts`                                                |
-| 概览面板与格子外观                               | `src/components/NodeGeneralCards.tsx`、`src/utils/uiClasses.ts`               |
-| 费用 / 汇率弹层                                  | `src/components/overview/OverviewFinanceCard.tsx`                             |
-| 详情页费用面板与规格表                           | `src/views/InstanceDetail.tsx`                                                |
-| 负载请求、轮询、GPU 温度                         | `src/hooks/useLoadRecords.ts`                                                 |
-| 负载图曲线、坐标轴、提示内容                     | `src/utils/charts/loadChartOptions.ts`                                        |
-| 负载图卡片布局                                   | `src/components/LoadChart.tsx`                                                |
-| 延迟图请求与任务选择生命周期                     | `src/hooks/usePingChartData.ts`                                               |
-| 延迟图曲线和任务筛选 UI                          | `src/components/PingChart.tsx`                                                |
-| 可滚动标签与选中项自动显露                       | `src/components/ui/tabs/scrollable-tabs-list.tsx`                             |
-| 页面顶栏、底部浮层                               | `src/components/Header.tsx`、`Footer.tsx`、`VisitorInfoCard.tsx`              |
-| 主题色与全局排版                                 | `src/styles/main.css`                                                         |
+| 要调整的内容                                     | 入口                                                                            |
+| ------------------------------------------------ | ------------------------------------------------------------------------------- |
+| 首页区域顺序                                     | `src/views/HomeView.tsx`                                                        |
+| 首页线路流光、分段配置与状态                     | `src/components/home/RelayRoutes.tsx`、`src/utils/relayRoutes.ts`               |
+| 分组、搜索、视图按钮及窄屏布局                   | `src/components/home/NodeToolbar.tsx`                                           |
+| 搜索字段、匹配规则                               | `src/utils/nodeSearch.ts`                                                       |
+| 分组、在线状态过滤与离线置后                     | `src/hooks/useHomeNodes.ts`                                                     |
+| 首页滚动恢复                                     | `src/hooks/useHomeScrollRestoration.ts`                                         |
+| 卡片网格、空结果、入场动画                       | `src/components/home/NodeResults.tsx`                                           |
+| 延迟弹窗布局                                     | `src/components/home/NodePingDialog.tsx`                                        |
+| 节点标题、在线时长、费用、标签                   | `src/components/NodeCard.tsx`                                                   |
+| 资源表（CPU / 内存 / 硬盘 / 流量，列与容器查询） | `src/components/nodes/NodeResourceMetrics.tsx`                                  |
+| 实时与累计上下行                                 | `src/components/nodes/NodeNetworkMetrics.tsx`                                   |
+| 卡片延迟表与合并趋势条                           | `src/components/nodes/NodePingSummary.tsx`、`src/hooks/useNodePingDisplay.ts`   |
+| 延迟统计、线路归组                               | `src/hooks/useNodePingStats.ts`、`src/hooks/useNodePingDisplay.ts`              |
+| 延迟状态、丢包率和配色阈值                       | `src/utils/pingDisplay.ts`、`src/components/PingValue.tsx`                      |
+| 列表列布局、排序                                 | `src/components/NodeList.tsx`、`src/utils/nodeSort.ts`                          |
+| 地球连线几何与退化端点过滤                       | `src/utils/globeGeometry.ts`                                                    |
+| 地球按帧时间积分、惯性与阻尼                     | `src/utils/globeMotion.ts`                                                      |
+| 概览布局、地球 / 地图与地区索引                  | `src/components/overview/OverviewGeography.tsx`                                 |
+| 概览统计和单位                                   | `src/hooks/useNodeOverview.ts`                                                  |
+| 概览面板与格子外观                               | `src/components/NodeGeneralCards.tsx`、`src/utils/uiClasses.ts`                 |
+| 费用 / 汇率弹层                                  | `src/components/overview/OverviewFinanceCard.tsx`                               |
+| 详情页费用面板与规格表                           | `src/components/detail/NodeSpecifications.tsx`                                  |
+| 负载请求、轮询、GPU 温度                         | `src/hooks/useLoadRecords.ts`                                                   |
+| 负载图曲线、坐标轴、提示内容                     | `src/utils/charts/loadChartOptions.ts`                                          |
+| 负载图卡片布局                                   | `src/components/LoadChart.tsx`                                                  |
+| 延迟图请求与任务选择生命周期                     | `src/hooks/usePingChartData.ts`                                                 |
+| 延迟监测读数、协议和任务筛选                     | `src/components/PingChart.tsx`                                                  |
+| 延迟曲线与丢包时间线                             | `src/components/charts/PingHistoryPlot.tsx`、`src/utils/charts/pingTimeline.ts` |
+| 按时刻查看图表采样                               | `src/hooks/useChartCursor.ts`、`src/components/charts/ChartTimeCursor.tsx`      |
+| 可滚动标签与选中项自动显露                       | `src/components/ui/tabs/scrollable-tabs-list.tsx`                               |
+| 页面顶栏、底部浮层                               | `src/components/Header.tsx`、`Footer.tsx`、`VisitorInfoCard.tsx`                |
+| 主题色与全局排版                                 | `src/styles/main.css`                                                           |
 
 ## 必须保留的边界
 
@@ -61,6 +63,7 @@ views（页面组合）→ components（独立界面区域）→ components/ui�
 - 卡片和列表共享延迟统计，拆分不能重复拉取记录。
 - 主页面、节点卡、列表、图表与地理可视化维持延迟加载；拆分时不在入口导入 ECharts 或地球实现。
 - 分组内容与节点使用稳定身份，不以分组名重新挂载整张结果区。退出分组的节点可卸载，仍需显示的节点保留 DOM 和订阅；只有新出现的节点进入动画。
+- 详情页以 `#load`、`#latency`、`#specifications` 选择章节。隐藏章节通过 React Activity 保留图表选择、暂停副作用。
 - 首页通过 React Activity 保留状态。分组、搜索和滚动不能因详情页往返而丢失。
 - 地球动画只在尺寸变化时重设 WebGL 绘图缓冲区；角速度按真实帧间隔计算，停止、离屏及后台时释放动画循环。
 - 负载轮询串行执行；节点或范围变化时旧响应不能写回新视图。

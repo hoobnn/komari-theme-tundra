@@ -48,7 +48,7 @@ export function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) return '0 B'
 
   const k = 1024
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const i = Math.max(0, Math.min(BYTE_UNITS.length - 1, Math.floor(Math.log(bytes) / Math.log(k))))
   const unit = BYTE_UNITS[i] ?? LAST_BYTE_UNIT
   return `${(bytes / k ** i).toFixed(decimals)} ${unit}`
 }
@@ -85,7 +85,7 @@ export function formatBytesSplit(bytes: number, config?: ByteDecimalsConfig): { 
   }
 
   const k = 1024
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const i = Math.max(0, Math.min(BYTE_UNITS.length - 1, Math.floor(Math.log(bytes) / Math.log(k))))
   // PB 及以上单位使用 TB 的精度配置
   const decimalsAt = (index: number) => {
     const unitKey = BYTE_UNITS[index]

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { DataTooltip } from '@/components/ui/data-tooltip'
 import { ProgressThin } from '@/components/ui/progress-thin'
 import { useBackgroundSurface } from '@/hooks/useBackgroundSurface'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useNodeFormatters } from '@/hooks/useNodeFormatters'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app'
@@ -32,7 +33,7 @@ interface ColumnConfig {
   key: string
   label: string
   width?: string
-  sortable?: boolean
+  firstDirection?: 1 | -1
 }
 
 interface NodeListProps {
@@ -45,18 +46,30 @@ const rowStaggerMs = 16
 const rowStaggerLimit = 6
 
 // 给读数留出稳定列宽，其余空间优先留给节点名。
-const columns: ColumnConfig[] = [
-  { key: 'status', label: '状态', width: '3.25rem', sortable: true },
-  { key: 'os', label: '系统', width: '3.25rem', sortable: true },
-  { key: 'name', label: '节点', sortable: true },
-  { key: 'tags', label: '标签', width: '12%' },
-  { key: 'cpu', label: 'CPU', width: '4.75rem', sortable: true },
-  { key: 'mem', label: '内存', width: '4.75rem', sortable: true },
-  { key: 'disk', label: '硬盘', width: '4.75rem', sortable: true },
-  { key: 'traffic', label: '流量', width: '4.75rem', sortable: true },
-  { key: 'rate', label: '速率', width: '5.25rem', sortable: true },
+const desktopColumns: ColumnConfig[] = [
+  { key: 'name', label: '节点', firstDirection: 1 },
+  { key: 'status', label: '状态', width: '4rem', firstDirection: 1 },
+  { key: 'os', label: '系统', width: '3.25rem', firstDirection: 1 },
+  { key: 'cpu', label: 'CPU', width: '4.75rem', firstDirection: -1 },
+  { key: 'mem', label: '内存', width: '4.75rem', firstDirection: -1 },
+  { key: 'disk', label: '硬盘', width: '4.75rem', firstDirection: -1 },
+  { key: 'traffic', label: '流量', width: '4.75rem', firstDirection: -1 },
+  { key: 'rate', label: '速率', width: '5.25rem', firstDirection: -1 },
   { key: 'networks', label: '延迟与丢包', width: '14.75rem' },
 ]
+
+const compactColumns: ColumnConfig[] = [
+  { key: 'name', label: '节点', firstDirection: 1 },
+  { key: 'cpu', label: 'CPU', width: '3.25rem', firstDirection: -1 },
+  { key: 'mem', label: '内存', width: '3.25rem', firstDirection: -1 },
+  { key: 'ping', label: '延迟', width: '3rem' },
+]
+const tabletColumns = [
+  ...compactColumns.slice(0, 3),
+  ...desktopColumns.filter(col => col.key === 'disk' || col.key === 'rate'),
+  compactColumns[3],
+]
+const liveColumns = ['cpu', 'mem', 'disk', 'traffic', 'rate']
 
 function ResourceValue({ value, tone }: { value: number; tone: string }) {
   const status = getStatus(value)
@@ -79,14 +92,17 @@ function ResourceValue({ value, tone }: { value: number; tone: string }) {
 interface NodeRowProps {
   node: NodeData
   index: number
+  columns: ColumnConfig[]
   animate: boolean
   onClick?: (node: NodeData) => void
   onPingClick?: (node: NodeData, trigger: HTMLElement) => void
 }
 
-const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowProps) => {
+const NodeRow = memo(({ node, index, columns, animate, onClick, onPingClick }: NodeRowProps) => {
   const lang = useAppStore(state => state.lang)
   const { formatBytes, formatBytesPerSecond, formatUptime } = useNodeFormatters()
+
+  const compact = columns !== desktopColumns
 
   // 每行只算一次，避免模板里重复调用
   const priceTags = getPriceTags(node, lang)
@@ -99,8 +115,12 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
       // 在线状态指示器
       case 'status':
         return (
-          <div className="flex justify-center" title={node.online ? '在线' : '离线'}>
-            <span className="sr-only">{node.online ? '在线' : '离线'}</span>
+          <div
+            className={cn(
+              'flex items-center justify-center gap-1.5 text-2xs',
+              node.online ? 'text-muted-foreground' : 'text-red-600 dark:text-red-400',
+            )}
+          >
             <span
               className={cn(
                 'size-1.5 rounded-full ring-[3px]',
@@ -109,6 +129,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                   : 'bg-red-600 ring-red-600/15 dark:bg-red-400 dark:ring-red-400/15',
               )}
             />
+            {node.online ? '在线' : '离线'}
           </div>
         )
 
@@ -133,8 +154,15 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 {node.name}
               </Link>
             </div>
-            <div className="flex flex-row gap-x-2 text-2xs text-muted-foreground">
-              {!node.online && <span className="shrink-0 text-red-600 dark:text-red-400">离线</span>}
+            <div className="flex flex-wrap items-center gap-x-2 text-2xs text-muted-foreground">
+              {compact && (
+                <span
+                  className={cn('inline-flex items-center gap-1', !node.online && 'text-red-600 dark:text-red-400')}
+                >
+                  <span className={cn('size-1.5 rounded-full', node.online ? 'bg-emerald-500' : 'bg-red-500')} />
+                  {node.online ? '在线' : '离线'}
+                </span>
+              )}
               {node.online && (
                 <DataTooltip
                   content={formatUptime(node.uptime ?? 0)}
@@ -145,7 +173,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                   <span>{formatUptime(node.uptime ?? 0, 'day')}</span>
                 </DataTooltip>
               )}
-              {priceTags.length > 0 && (
+              {!compact && priceTags.length > 0 && (
                 <DataTooltip
                   placement="left"
                   content={formatDateTime(node.expired_at, 'YYYY-MM-DD')}
@@ -161,32 +189,41 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
                 </DataTooltip>
               )}
             </div>
-          </div>
-        )
-
-      // 标签
-      case 'tags':
-        return (
-          <div>
-            {/* 窄屏时标签最多两行，超出部分隐藏，悬停看全部 */}
-            <div
-              className="flex max-h-[44px] flex-wrap items-center gap-1 overflow-hidden"
-              title={customTags.join('、')}
-            >
-              {customTags.map((tag, tagIndex) => (
-                <Badge
-                  key={tagIndex}
-                  variant="outline"
-                  className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
+            {!compact && customTags.length > 0 && (
+              <div
+                className="flex max-h-[44px] flex-wrap items-center gap-1 overflow-hidden"
+                title={customTags.join('、')}
+              >
+                {customTags.map((tag, tagIndex) => (
+                  <Badge
+                    key={tagIndex}
+                    variant="outline"
+                    className="h-5 rounded-md border-border/80 bg-transparent px-1.5 !text-2xs font-normal text-muted-foreground"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         )
 
       // 网络
+      case 'ping':
+        return (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-label={`查看 ${node.name} 的延迟与丢包`}
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:size-11"
+            onClick={event => {
+              event.stopPropagation()
+              onPingClick?.(node, event.currentTarget)
+            }}
+          >
+            <Icon icon="lucide:activity" aria-hidden="true" className="size-4" />
+          </button>
+        )
       case 'networks':
         return (
           <div className="flex flex-col gap-0.5">
@@ -205,7 +242,7 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
       case 'os':
         return (
           <div className="flex justify-center">
-            <img src={getOSImage(node.os)} alt={getOSName(node.os)} className="size-4" />
+            <img src={getOSImage(node.os)} alt={getOSName(node.os)} className="size-4" title={getOSName(node.os)} />
           </div>
         )
 
@@ -362,7 +399,11 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
         // 离线时实时值没有参考意义，保留可操作的节点名、标签与历史延迟。
         if (!node.online && col.key === 'cpu')
           return (
-            <td key={col.key} colSpan={5} className="px-2 text-xs text-muted-foreground">
+            <td
+              key={col.key}
+              colSpan={columns.filter(item => liveColumns.includes(item.key)).length}
+              className="px-2 text-xs text-muted-foreground"
+            >
               {node.time ? (
                 <>
                   最后上报{' '}
@@ -375,11 +416,16 @@ const NodeRow = memo(({ node, index, animate, onClick, onPingClick }: NodeRowPro
               )}
             </td>
           )
-        if (!node.online && ['mem', 'disk', 'traffic', 'rate'].includes(col.key)) return null
+        if (!node.online && liveColumns.includes(col.key)) return null
+        const Cell = col.key === 'name' ? 'th' : 'td'
         return (
-          <td key={col.key} className="px-1.5 py-1">
+          <Cell
+            key={col.key}
+            scope={col.key === 'name' ? 'row' : undefined}
+            className="px-1 py-1.5 font-normal first:pl-3 last:pr-1 sm:px-2 sm:first:pl-4 sm:last:pr-3"
+          >
             {renderCell(col.key)}
-          </td>
+          </Cell>
         )
       })}
     </tr>
@@ -391,20 +437,22 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
   const disablePageAnimation = useAppStore(state => state.settings.disablePageAnimation)
   const { pickSurfaceClass } = useBackgroundSurface()
 
-  const [sortKey, setSortKey] = useState('')
-  const [sortDir, setSortDir] = useState<1 | -1>(1)
+  const wide = useMediaQuery('(min-width: 64rem)')
+  const tablet = useMediaQuery('(min-width: 36rem)')
+  const columns = wide ? desktopColumns : tablet ? tabletColumns : compactColumns
+  const [sort, setSort] = useState<{ key: string; direction: 1 | -1 } | null>(null)
 
-  function handleSort(col: ColumnConfig) {
-    if (!col.sortable) return
-    if (sortKey === col.key) {
-      setSortDir(sortDir === 1 ? -1 : 1)
-    } else {
-      setSortKey(col.key)
-      setSortDir(1)
-    }
+  function handleSort({ key, firstDirection }: ColumnConfig) {
+    if (!firstDirection) return
+    setSort(current => {
+      if (current?.key !== key) return { key, direction: firstDirection }
+      if (current.direction === firstDirection) return { key, direction: firstDirection === 1 ? -1 : 1 }
+      return null
+    })
   }
 
-  const sortedNodes = sortNodes(nodes, sortKey, sortDir)
+  const sortedNodes =
+    sort && columns.some(col => col.key === sort.key) ? sortNodes(nodes, sort.key, sort.direction) : nodes
 
   return (
     <div
@@ -413,7 +461,7 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
         pickSurfaceClass('bg-card shadow-xs', 'bg-card/80 backdrop-blur-sm'),
       )}
     >
-      <table aria-label="节点列表" className="w-full min-w-[60rem] table-fixed border-collapse text-left">
+      <table aria-label="节点列表" className="w-full table-fixed border-collapse text-left">
         <colgroup>
           {columns.map(col => (
             <col key={col.key} style={{ width: col.width }} />
@@ -425,23 +473,26 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
               <th
                 key={col.key}
                 scope="col"
-                className={cn('px-1.5 py-1.5 text-xs font-medium', ['status', 'os'].includes(col.key) && 'text-center')}
-                aria-sort={sortKey === col.key ? (sortDir === 1 ? 'ascending' : 'descending') : undefined}
+                className={cn(
+                  'px-1 py-1.5 text-xs font-medium first:pl-3 last:pr-1 sm:px-2 sm:first:pl-4 sm:last:pr-3',
+                  ['status', 'os'].includes(col.key) && 'text-center',
+                )}
+                aria-sort={sort?.key === col.key ? (sort.direction === 1 ? 'ascending' : 'descending') : undefined}
               >
-                {col.sortable ? (
+                {col.firstDirection ? (
                   <button
                     type="button"
                     className={cn(
-                      'group/sort -mx-1 inline-flex min-h-7 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-md px-1 text-xs transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      sortKey === col.key ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground',
+                      'group/sort -mx-1 inline-flex min-h-7 pointer-coarse:min-h-11 pointer-coarse:min-w-11 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-md px-1 text-xs transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      sort?.key === col.key ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground',
                     )}
                     onClick={() => handleSort(col)}
                   >
                     {col.label}
                     <Icon
                       icon={
-                        sortKey === col.key
-                          ? sortDir === 1
+                        sort?.key === col.key
+                          ? sort.direction === 1
                             ? 'lucide:arrow-up'
                             : 'lucide:arrow-down'
                           : 'lucide:arrow-up-down'
@@ -449,7 +500,7 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
                       aria-hidden="true"
                       width="11"
                       height="11"
-                      className={sortKey === col.key ? 'text-foreground' : 'opacity-40 group-hover/sort:opacity-80'}
+                      className={sort?.key === col.key ? 'text-foreground' : 'opacity-40 group-hover/sort:opacity-80'}
                     />
                   </button>
                 ) : (
@@ -465,6 +516,7 @@ export default function NodeList({ nodes, onClick, onPingClick }: NodeListProps)
               key={node.uuid}
               node={node}
               index={index}
+              columns={columns}
               animate={!disablePageAnimation}
               onClick={onClick}
               onPingClick={onPingClick}

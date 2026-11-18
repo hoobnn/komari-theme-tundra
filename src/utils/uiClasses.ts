@@ -25,11 +25,11 @@ export function segmentClass(active: boolean): string {
 }
 
 /** 概览面板的一格（指标与费用按钮共用）：外框和分隔线由面板统一绘制 */
-export const OVERVIEW_CELL_CLASS = 'flex min-w-0 flex-col gap-1.5 px-3 py-2 md:px-4 md:py-2.5'
+export const OVERVIEW_CELL_CLASS = '@container/metric flex min-w-0 flex-col gap-1.5 px-3 py-2 sm:px-4 sm:py-3'
 
 /** 概览大数：随宽度从 base 增到 display */
 export const OVERVIEW_VALUE_CLASS =
-  'num min-w-0 truncate text-value font-semibold leading-none tracking-tight min-[360px]:text-stat lg:text-display'
+  'num min-w-0 truncate text-stat font-semibold leading-none tracking-tight @min-[12rem]/metric:text-display'
 
 /** 概览格子的身份色图标底块，与节点卡片的资源图标一致 */
 export const OVERVIEW_TONES = {

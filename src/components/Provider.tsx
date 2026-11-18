@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { BackTop } from '@/components/ui/back-top'
 import { useAppStore, useIsDark } from '@/stores/app'
 
@@ -8,10 +8,21 @@ export default function Provider({ children }: { children: ReactNode }) {
   const isDark = useIsDark()
   const backgroundEnabled = useAppStore(state => state.settings.backgroundEnabled)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement
+    const changed = root.classList.contains('dark') !== isDark
+    if (changed) root.dataset.switchingAppearance = ''
     root.classList.toggle('dark', isDark)
     root.style.colorScheme = isDark ? 'dark' : 'light'
+    if (!changed) return undefined
+    // 让底色、文字和表单控件在同一帧换色，再恢复交互过渡。
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => delete root.dataset.switchingAppearance)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      delete root.dataset.switchingAppearance
+    }
   }, [isDark])
 
   useEffect(() => {

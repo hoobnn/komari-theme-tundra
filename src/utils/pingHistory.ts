@@ -6,6 +6,8 @@ import dayjs from 'dayjs'
 import { sortTasksByPublicOrder } from '@/utils/pingTaskOrder'
 import { getSharedRpc, RpcError } from '@/utils/rpc'
 
+export type PingLatencyRecord = Omit<PingRecord, 'value'> & { value: number | null }
+
 export interface PingLossRecord {
   task_id: number
   time: string
@@ -13,8 +15,8 @@ export interface PingLossRecord {
 }
 
 export interface PingHistoryData {
-  /** 按时间升序；value = -1 表示该点丢包或断点 */
-  records: PingRecord[]
+  /** null 表示未得到延迟，显式的负延迟才表示超时。 */
+  records: PingLatencyRecord[]
   tasks: PingTaskInfo[]
   lossRecords: PingLossRecord[]
 }
@@ -35,21 +37,9 @@ function getMetricTaskId(series: MetricSeries, point: MetricPoint): number | nul
   return Number.isInteger(taskId) ? taskId : null
 }
 
-/**
- * 将 metrics 延迟点转为图表记录。
- * 官方在 fill_empty=true 时会把丢包采样（latency=-1）转成 null；
- * 这里统一用 value=-1 表示断点/丢包，供合并与丢包标记复用。
- * 不要把 ping.loss 的聚合平均值（0~1）当成整点丢包写入延迟序列，
- * 否则 7 天等长范围会出现大量伪断点，曲线断断续续。
- */
-function toLatencyRecord(uuid: string, taskId: number, point: MetricPoint): PingRecord {
-  const value = point.value === null || point.value < 0 ? -1 : point.value
-  return {
-    client: uuid,
-    task_id: taskId,
-    time: point.time,
-    value,
-  }
+/** fill_empty 的 null 既可能是超时，也可能是空桶。丢包率由同一时间的 ping.loss 决定。 */
+function toLatencyRecord(uuid: string, taskId: number, point: MetricPoint): PingLatencyRecord {
+  return { client: uuid, task_id: taskId, time: point.time, value: point.value }
 }
 
 async function fetchMetricHistory(uuid: string, hours: number): Promise<PingHistoryData> {
@@ -81,7 +71,7 @@ async function fetchMetricHistory(uuid: string, hours: number): Promise<PingHist
     rpc.getPublicPingTasks().catch(() => []),
   ])
 
-  const records: PingRecord[] = []
+  const records: PingLatencyRecord[] = []
   for (const series of metricResult?.series ?? []) {
     if (series.metric_key !== 'ping.latency_ms') continue
     for (const point of series.points ?? []) {
@@ -95,7 +85,13 @@ async function fetchMetricHistory(uuid: string, hours: number): Promise<PingHist
     if (series.metric_key !== 'ping.loss') continue
     for (const point of series.points ?? []) {
       const taskId = getMetricTaskId(series, point)
-      if (taskId !== null && point.value !== null && point.value > 0)
+      if (
+        taskId !== null &&
+        point.value !== null &&
+        Number.isFinite(point.value) &&
+        point.value >= 0 &&
+        point.value <= 1
+      )
         lossRecords.push({ task_id: taskId, time: point.time, loss: point.value })
     }
   }
@@ -142,7 +138,9 @@ async function fetchLegacyHistory(uuid: string, hours: number): Promise<PingHist
   return {
     records: result?.records ?? [],
     tasks: sortTasksByPublicOrder(result?.tasks ?? [], publicTaskList),
-    lossRecords: [],
+    lossRecords: (result?.records ?? [])
+      .filter(record => Number.isFinite(record.value))
+      .map(record => ({ task_id: record.task_id, time: record.time, loss: record.value < 0 ? 1 : 0 })),
   }
 }
 

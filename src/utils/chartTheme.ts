@@ -49,9 +49,9 @@ export const SERIES_PALETTE_V6_LIGHT = [
 ] as const
 
 export const SERIES_PALETTE_V6_DARK = [
-  '#059669',
-  '#2563EB',
-  '#7C3AED',
+  '#0CA982',
+  '#3982D9',
+  '#9774E1',
   '#D97706',
   '#0891B2',
   '#65A30D',
@@ -79,10 +79,10 @@ export function getChartThemeColors(isDark: boolean): ChartThemeColors {
         textSecondary: 'rgba(255, 255, 255, 0.55)',
         textTertiary: 'rgba(255, 255, 255, 0.35)',
         borderColor: 'rgba(255, 255, 255, 0.1)',
-        splitLineColor: 'rgba(255, 255, 255, 0.06)',
+        splitLineColor: 'rgba(174, 191, 209, 0.13)',
         tooltipBg: 'rgba(28, 30, 36, 0.95)',
         tooltipShadow: 'rgba(0, 0, 0, 0.4)',
-        crosshairColor: 'rgba(255, 255, 255, 0.15)',
+        crosshairColor: 'rgba(205, 218, 230, 0.48)',
         pointerLabelBg: '#E4E4E7',
         pointerLabelText: '#18181B',
       }
@@ -91,10 +91,10 @@ export function getChartThemeColors(isDark: boolean): ChartThemeColors {
         textSecondary: 'rgba(0, 0, 0, 0.55)',
         textTertiary: 'rgba(0, 0, 0, 0.35)',
         borderColor: 'rgba(0, 0, 0, 0.1)',
-        splitLineColor: 'rgba(0, 0, 0, 0.06)',
+        splitLineColor: 'rgba(58, 77, 98, 0.11)',
         tooltipBg: 'rgba(255, 255, 255, 0.96)',
         tooltipShadow: 'rgba(0, 0, 0, 0.08)',
-        crosshairColor: 'rgba(0, 0, 0, 0.1)',
+        crosshairColor: 'rgba(68, 86, 105, 0.45)',
         pointerLabelBg: '#18181B',
         pointerLabelText: '#FAFAFA',
       }
@@ -115,7 +115,8 @@ export function pointerLabelStyle(colors: ChartThemeColors) {
 export function buildBaseTooltip(colors: ChartThemeColors, blur: boolean) {
   return {
     trigger: 'axis' as const,
-    confine: false,
+    confine: true,
+    transitionDuration: 0,
     backgroundColor: colors.tooltipBg,
     borderColor: 'transparent',
     borderWidth: 0,
@@ -128,7 +129,7 @@ export function buildBaseTooltip(colors: ChartThemeColors, blur: boolean) {
     },
     extraCssText: `${blur ? 'backdrop-filter: blur(5px);' : ''}z-index:9;box-shadow:0 0 0 1px ${colors.tooltipShadow}, 0 4px 16px ${colors.tooltipShadow}`,
     axisPointer: {
-      type: 'cross' as const,
+      type: 'line' as const,
       crossStyle: {
         color: colors.textTertiary,
       },
@@ -159,10 +160,11 @@ export function areaStops(hex: string) {
 export function buildLegend(colors: ChartThemeColors, data: Array<string | { name: string; icon?: string }>) {
   return {
     data,
-    bottom: 4,
+    type: 'scroll' as const,
+    bottom: 1,
     itemWidth: 12,
-    itemHeight: 12,
-    itemGap: 20,
+    itemHeight: 3,
+    itemGap: 14,
     icon: 'roundRect',
     textStyle: { fontSize: 11, color: colors.textSecondary },
   }
@@ -180,7 +182,7 @@ const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const
  */
 export function niceByteAxis(maxValue: number, segments = 4): { min: number; max: number; interval: number } {
   if (!Number.isFinite(maxValue) || maxValue <= 0) return { min: 0, max: 1024, interval: 256 }
-  const exp = Math.min(Math.floor(Math.log(maxValue) / Math.log(1024)), BYTE_UNITS.length - 1)
+  const exp = Math.max(0, Math.min(Math.floor(Math.log(maxValue) / Math.log(1024)), BYTE_UNITS.length - 1))
   const unit = 1024 ** exp
   const scaled = maxValue / unit
   const mantissa = BYTE_STEP_MANTISSAS.find(m => Math.ceil(scaled / m) <= segments) ?? 1024
@@ -191,7 +193,7 @@ export function niceByteAxis(maxValue: number, segments = 4): { min: number; max
 /** 字节轴标签：整数不带小数（200 MB），非整数最多一位 */
 export function formatAxisBytes(value: number, suffix = ''): string {
   if (value === 0) return `0 B${suffix}`
-  const exp = Math.min(Math.floor(Math.log(value) / Math.log(1024)), BYTE_UNITS.length - 1)
+  const exp = Math.max(0, Math.min(Math.floor(Math.log(value) / Math.log(1024)), BYTE_UNITS.length - 1))
   const scaled = value / 1024 ** exp
   const text = Number.isInteger(scaled) ? String(scaled) : scaled.toFixed(1).replace(/\.0$/, '')
   return `${text} ${BYTE_UNITS[exp]}${suffix}`

@@ -36,7 +36,7 @@ export default function PingTaskDetails({ task }: { task: PingTaskInfo }) {
           size="icon-sm"
           aria-label={`${task.name} 线路详情`}
           title="线路详情"
-          className="size-7 text-muted-foreground"
+          className="size-7 text-muted-foreground pointer-coarse:size-11"
         >
           <Icon icon="lucide:info" className="size-3.5" />
         </Button>
@@ -53,7 +53,13 @@ export default function PingTaskDetails({ task }: { task: PingTaskInfo }) {
           <div className="mb-2 flex items-center justify-between gap-2 border-b pb-2">
             <h3 className="min-w-0 wrap-anywhere text-compact font-semibold">{task.name}</h3>
             <Popover.Close asChild>
-              <Button type="button" size="icon-sm" variant="ghost" aria-label="关闭线路详情" className="size-7">
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="关闭线路详情"
+                className="size-7 pointer-coarse:size-11"
+              >
                 <Icon icon="lucide:x" />
               </Button>
             </Popover.Close>

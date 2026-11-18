@@ -19,6 +19,7 @@ export default function HomeView() {
   const navigate = useNavigate()
   const earthViewMode = useAppStore(state => state.settings.earthViewMode)
   const home = useHomeNodes()
+  const inventoryRef = useRef<HTMLElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const homeRef = useHomeScrollRestoration()
   const [pingDialog, setPingDialog] = useState<{ uuid: string; open: boolean } | null>(null)
@@ -37,7 +38,7 @@ export default function HomeView() {
   }, [])
 
   return (
-    <div ref={homeRef} className="home-view space-y-4">
+    <div ref={homeRef} className="home-view space-y-3 pt-3 sm:space-y-4 sm:pt-5">
       <HomeNotices />
       {earthViewMode !== 'hide' ? (
         <Suspense fallback={null}>
@@ -46,16 +47,22 @@ export default function HomeView() {
             globeNodes={home.globeNodes}
             transitionKey={home.selectedGroup}
             suspendMotion={pingDialog !== null && pingNode !== null}
+            onShowStatus={value => {
+              home.clearSearch()
+              home.setStatusFilter(value)
+              inventoryRef.current?.focus({ preventScroll: true })
+              inventoryRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+            }}
           >
             <RelayRoutes />
           </NodeGeneralCards>
         </Suspense>
       ) : (
-        <div className="px-4">
+        <div className="mx-4 empty:hidden">
           <RelayRoutes />
         </div>
       )}
-      <section aria-label="节点" className="relative z-10 px-4">
+      <section ref={inventoryRef} tabIndex={-1} aria-label="节点" className="relative z-10 px-4 outline-none">
         <Tabs value={home.selectedGroup} onValueChange={home.setSelectedGroup} className="flex-col gap-3">
           <NodeToolbar
             groupNames={home.groupNames}
@@ -65,18 +72,21 @@ export default function HomeView() {
             searchText={home.searchText}
             searchRef={searchRef}
             onSearchChange={home.setSearchText}
-            onClearSearch={home.clearSearch}
+            statusFilter={home.statusFilter}
+            statusCounts={home.statusCounts}
+            onStatusChange={home.setStatusFilter}
             viewMode={home.viewMode}
             onViewModeChange={home.setViewMode}
-            showViewModes={home.isWideScreen}
           />
           <TabsContent value={home.selectedGroup}>
             <NodeResults
               nodes={home.visibleNodes}
               viewMode={home.viewMode}
               query={home.query}
-              clearSearch={() => {
+              statusFilter={home.statusFilter}
+              resetFilters={() => {
                 home.clearSearch()
+                home.setStatusFilter('all')
                 searchRef.current?.focus()
               }}
               onNodeClick={openNode}

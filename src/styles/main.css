@@ -2,7 +2,25 @@
 @import 'tw-animate-css';
 @import '@fontsource-variable/geist/wght.css';
 
+@font-face {
+  font-family: 'Tundra Atlas';
+  src: url('../assets/atlas-headings.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range:
+    U+4E0E, U+4E22, U+5206, U+5305, U+5E03, U+5E8F, U+5EF6, U+63A2, U+6570, U+65F6, U+683C, U+6982, U+6D4B, U+70B9,
+    U+7528, U+7EBF, U+8282, U+884C, U+89C4, U+89C8, U+8BFB, U+8D1F, U+8D39, U+8DEF, U+8F7D, U+8FD0, U+8FDF;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
+
+html[data-switching-appearance] *,
+html[data-switching-appearance] *::before,
+html[data-switching-appearance] *::after {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
 
 * {
   scrollbar-color: var(--ring) transparent;
@@ -14,7 +32,7 @@
  * 中性色带极轻的冷调，避免暖米色和灰绿色带来的复古感。
  */
 :root {
-  --background: oklch(0.976 0.003 250);
+  --background: oklch(0.972 0.005 255);
   --foreground: oklch(0.21 0.006 265);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.21 0.006 265);
@@ -25,7 +43,7 @@
   --secondary: oklch(0.965 0.003 250);
   --secondary-foreground: oklch(0.25 0.006 265);
   --muted: oklch(0.962 0.003 250);
-  --muted-foreground: oklch(0.55 0.012 260);
+  --muted-foreground: oklch(0.505 0.016 260);
   --accent: oklch(0.955 0.004 250);
   --accent-foreground: oklch(0.25 0.006 265);
   --destructive: oklch(0.6 0.2 25);
@@ -55,18 +73,18 @@
 }
 
 .dark {
-  --background: oklch(0.145 0.004 265);
+  --background: oklch(0.156 0.008 260);
   --foreground: oklch(0.96 0.003 250);
-  --card: oklch(0.182 0.005 265);
+  --card: oklch(0.205 0.009 260);
   --card-foreground: oklch(0.96 0.003 250);
-  --popover: oklch(0.2 0.005 265);
+  --popover: oklch(0.235 0.009 260);
   --popover-foreground: oklch(0.96 0.003 250);
   --primary: oklch(0.765 0.165 162);
   --primary-foreground: oklch(0.17 0.01 165);
   --secondary: oklch(0.24 0.006 265);
   --secondary-foreground: oklch(0.96 0.003 250);
   --muted: oklch(0.235 0.006 265);
-  --muted-foreground: oklch(0.68 0.01 260);
+  --muted-foreground: oklch(0.735 0.014 255);
   --accent: oklch(0.25 0.006 265);
   --accent-foreground: oklch(0.96 0.003 250);
   --destructive: oklch(0.68 0.19 24);
@@ -77,7 +95,7 @@
   --success-foreground: oklch(0.17 0.01 165);
   --info: oklch(0.7 0.15 250);
   --info-foreground: oklch(0.17 0.01 165);
-  --border: oklch(1 0 0 / 7.5%);
+  --border: oklch(0.88 0.02 255 / 14%);
   --input: oklch(1 0 0 / 12%);
   /* 深色模式阴影几乎不可见，改用顶部一像素高光表达层次 */
   --elevation-1: inset 0 1px 0 oklch(1 0 0 / 0.035), 0 1px 2px oklch(0 0 0 / 0.3);
@@ -91,6 +109,9 @@
 }
 
 @theme inline {
+  --font-atlas: 'Tundra Atlas', 'Songti SC', 'Noto Serif CJK SC', serif;
+  --text-masthead: 2.5rem;
+  --text-masthead--line-height: 1.1;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -207,6 +228,25 @@
   }
 }
 
+/* 版头的文字与控件始终落在冰湾的暗部，窄屏保留冰壁和水面的交界。 */
+.atlas-plate {
+  background-color: #102630;
+  background-image: url('../assets/ice-fjord.webp');
+  background-size: cover;
+  background-position: center 51%;
+  color: white;
+  isolation: isolate;
+  position: relative;
+}
+.atlas-plate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: rgb(5 20 33 / 22%);
+  pointer-events: none;
+}
+
 /* ---- VisitorInfoCard：展开时新出现的行入场（原 visitor-pill TransitionGroup） ---- */
 @keyframes visitor-pill-in {
   from {
@@ -320,6 +360,23 @@
   }
 }
 
+.relay-itinerary {
+  --relay-stop-width: clamp(3.25rem, 20cqi, 6.75rem);
+  grid-template-columns: repeat(
+      var(--relay-legs),
+      fit-content(var(--relay-stop-width)) minmax(2.75rem, 1fr)
+    ) fit-content(var(--relay-stop-width));
+}
+.relay-route:focus-within .relay-routes-flow,
+.relay-route:has([data-state='open']) .relay-routes-flow {
+  animation-play-state: paused;
+}
+@media (hover: hover) {
+  .relay-route:hover .relay-routes-flow {
+    animation-play-state: paused;
+  }
+}
+
 /* The carrier spans consecutive healthy legs, including their intermediate stops. */
 @keyframes relay-routes-sweep {
   0% {
@@ -327,10 +384,10 @@
     opacity: 0;
   }
   6% {
-    opacity: 1;
+    opacity: 0.68;
   }
   72% {
-    opacity: 1;
+    opacity: 0.68;
   }
   84%,
   100% {
@@ -409,5 +466,80 @@
   }
   .page-enter {
     animation: none;
+  }
+}
+
+.tundra-chart-tooltip {
+  max-width: min(20rem, 100%);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.plot-tip-time {
+  color: var(--muted-foreground);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.25rem;
+}
+.plot-tip-row {
+  display: grid;
+  grid-template-columns: 0.8rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.45rem;
+}
+.plot-tip-row i {
+  border-top-width: 2px;
+}
+.plot-tip-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plot-tip-row b {
+  padding-inline-start: 0.5rem;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.chart-time-cursor input[type='range'] {
+  appearance: none;
+  height: 1.5rem;
+  background: transparent;
+  border-radius: 0.25rem;
+}
+.chart-time-cursor input::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 99px;
+  background: var(--border);
+}
+.chart-time-cursor input::-moz-range-track {
+  height: 3px;
+  border-radius: 99px;
+  background: var(--border);
+}
+.chart-time-cursor input::-webkit-slider-thumb {
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  border: 2px solid var(--card);
+  background: var(--foreground);
+  box-shadow: 0 0 0 1px var(--ring);
+}
+.chart-time-cursor input::-moz-range-thumb {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--card);
+  background: var(--foreground);
+  box-shadow: 0 0 0 1px var(--ring);
+}
+@media (forced-colors: active) {
+  .chart-time-cursor input[type='range'] {
+    appearance: auto;
+  }
+}
+
+@media (hover: none) {
+  .tundra-chart-tooltip {
+    display: none !important;
   }
 }

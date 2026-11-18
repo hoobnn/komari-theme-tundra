@@ -1,5 +1,6 @@
 import type { NodeData } from '@/stores/nodes'
 import type { NodeViewMode } from '@/stores/app'
+import type { NodeStatusFilter } from '@/hooks/useHomeNodes'
 import { lazy, Suspense, useDeferredValue } from 'react'
 import { Button } from '@/components/ui/button'
 import { Empty } from '@/components/ui/empty'
@@ -15,7 +16,8 @@ interface NodeResultsProps {
   nodes: NodeData[]
   viewMode: NodeViewMode
   query: string
-  clearSearch: () => void
+  statusFilter: NodeStatusFilter
+  resetFilters: () => void
   onNodeClick: (node: NodeData) => void
   onPingClick: (node: NodeData, trigger: HTMLElement) => void
 }
@@ -24,13 +26,15 @@ export default function NodeResults({
   nodes,
   viewMode,
   query,
-  clearSearch,
+  statusFilter,
+  resetFilters,
   onNodeClick,
   onPingClick,
 }: NodeResultsProps) {
   const animateItems = !useAppStore(state => state.settings.disablePageAnimation)
   // 首次切换还要下载对应视图，加载期间保留当前内容和页面高度。
   const visibleMode = useDeferredValue(viewMode)
+  const statusLabel = statusFilter === 'offline' ? '离线' : statusFilter === 'online' ? '在线' : ''
   return (
     <Suspense fallback={null}>
       {nodes.length !== 0 && visibleMode === 'card' ? (
@@ -51,20 +55,24 @@ export default function NodeResults({
         </div>
       ) : nodes.length !== 0 && visibleMode === 'list' ? (
         <NodeList nodes={nodes} onClick={onNodeClick} onPingClick={onPingClick} />
-      ) : query.length > 0 ? (
+      ) : (
         <Empty
           className="min-h-44 wrap-anywhere rounded-xl border bg-card text-center shadow-xs [&>svg]:size-8"
-          description={`没有匹配「${query}」的节点`}
+          description={
+            query
+              ? `没有匹配「${query}」的${statusLabel}节点`
+              : statusLabel
+                ? `当前分组没有${statusLabel}节点`
+                : '暂无节点'
+          }
           extra={
-            <Button variant="outline" size="sm" onClick={clearSearch}>
-              清除搜索
-            </Button>
+            (query || statusLabel) && (
+              <Button variant="outline" size="sm" onClick={resetFilters}>
+                {query && statusLabel ? '清除搜索和状态筛选' : query ? '清除搜索' : '查看全部状态'}
+              </Button>
+            )
           }
         />
-      ) : (
-        <div className="text-muted-foreground text-center py-8">
-          <Empty description="暂无节点" />
-        </div>
       )}
     </Suspense>
   )

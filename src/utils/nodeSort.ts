@@ -8,7 +8,9 @@ function compareText(a: string, b: string): number {
 export function sortNodes(source: NodeData[], key: string, dir: 1 | -1): NodeData[] {
   const nodes = [...source]
   if (!key) return nodes
+  const needsLiveValue = ['cpu', 'mem', 'disk', 'traffic', 'rate'].includes(key)
   return nodes.sort((a, b) => {
+    if (needsLiveValue && (!a.online || !b.online)) return Number(b.online) - Number(a.online)
     switch (key) {
       case 'status':
         return dir * ((a.online ? 1 : 0) - (b.online ? 1 : 0))

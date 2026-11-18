@@ -172,18 +172,18 @@ function getThemeColors(isDark: boolean): GlobeColors {
     return {
       dark: 1,
       mapBrightness: 4,
-      baseColor: [0.32, 0.33, 0.4],
+      baseColor: [0.3, 0.42, 0.51],
       markerColor: [0.2, 0.83, 0.6],
-      glowColor: [0.2, 0.25, 0.45],
+      glowColor: [0.18, 0.39, 0.48],
       arcColor: [0.2, 0.83, 0.6],
     }
   }
   return {
     dark: 0,
     mapBrightness: 6,
-    baseColor: [1, 1, 1],
+    baseColor: [0.79, 0.88, 0.93],
     markerColor: [0.02, 0.59, 0.41],
-    glowColor: [1, 1, 1],
+    glowColor: [0.87, 0.94, 0.97],
     arcColor: [0.06, 0.73, 0.51],
   }
 }
@@ -522,20 +522,13 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
     syncRafState(ctx)
   }
 
-  const totalServers = displayNodes.length
-  const onlineServers = displayNodes.filter(node => node.online).length
-  const offlineServers = totalServers - onlineServers
-
   function formatRate(bytesPerSec: number): string {
     const { value, unit } = formatBytesPerSecondSplit(bytesPerSec, byteDecimals)
     return `${value} ${unit}`
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={cn('relative aspect-square w-full max-w-md mx-auto -translate-y-6 md:-translate-y-12', className)}
-    >
+    <div ref={containerRef} className={cn('relative w-full', className)}>
       <canvas
         ref={canvasRef}
         className="earth-globe-canvas absolute inset-0 w-full h-full select-none touch-pan-y cursor-grab active:cursor-grabbing"
@@ -582,32 +575,13 @@ export default function NodeEarthGlobe({ nodes, className, suspendMotion = false
         )
       })}
 
-      {/* 在线统计与自转开关并排，固定在地球左上角，不再各自漂在两端 */}
-      <div className="pointer-events-none absolute top-7 left-1 z-10 flex items-center gap-0.5 md:top-12 md:left-0 md:gap-1.5">
-        {totalServers > 0 && (
-          <div className="flex items-center gap-2 px-2 py-0.5 text-2xs text-foreground/75">
-            {onlineServers > 0 && (
-              <div className="flex items-center gap-1">
-                <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
-                <span>在线</span>
-                <span className="num font-medium text-foreground">{onlineServers}</span>
-              </div>
-            )}
-            {offlineServers > 0 && (
-              <div className="flex items-center gap-1">
-                <span className="inline-block size-1.5 rounded-full bg-red-500" />
-                <span>离线</span>
-                <span className="num font-medium text-red-600 dark:text-red-400">{offlineServers}</span>
-              </div>
-            )}
-          </div>
-        )}
+      <div className="absolute bottom-1.5 right-2 z-10">
         {earthViewMode !== 'earth-stop' && !reducedMotion && (
           <button
             type="button"
             aria-label={rotationPaused ? '继续地球自转' : '暂停地球自转'}
             title={rotationPaused ? '继续地球自转' : '暂停地球自转'}
-            className="pointer-events-auto flex size-11 items-center justify-center rounded-md text-foreground/75 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:size-8"
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring pointer-coarse:size-11"
             onClick={() => setRotationPaused(paused => !paused)}
           >
             <Icon icon={rotationPaused ? 'lucide:play' : 'lucide:pause'} width={14} height={14} />

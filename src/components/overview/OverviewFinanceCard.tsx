@@ -132,7 +132,7 @@ export default function OverviewFinanceCard({ nodes, transitionKey }: { nodes: N
                 {formattedMonthlyAverageCost.value}
               </span>
             </span>
-            <span className="hidden truncate xl:inline">
+            <span className="hidden truncate @min-[14rem]/metric:inline">
               总值{' '}
               <span className="text-foreground/80">
                 {formattedTotalValue.symbol}

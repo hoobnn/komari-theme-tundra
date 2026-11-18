@@ -1,18 +1,18 @@
-import type { PingLossRecord } from '@/utils/pingHistory'
-import type { PingRecord, PingTaskInfo } from '@/utils/rpc'
+import type { PingLatencyRecord, PingLossRecord } from '@/utils/pingHistory'
+import type { PingTaskInfo } from '@/utils/rpc'
 import { useEffect, useState } from 'react'
 import { fetchPingHistory } from '@/utils/pingHistory'
 
 interface FetchResult {
   uuid: string
   key: string
-  records: PingRecord[]
+  records: PingLatencyRecord[]
   lossRecords: PingLossRecord[]
   tasks: PingTaskInfo[]
   error: string | null
 }
 
-const EMPTY_RECORDS: PingRecord[] = []
+const EMPTY_RECORDS: PingLatencyRecord[] = []
 const EMPTY_LOSS: PingLossRecord[] = []
 const EMPTY_TASKS: PingTaskInfo[] = []
 
@@ -22,8 +22,8 @@ export function usePingChartData(uuid: string, selectedHours: number) {
   const [result, setResult] = useState<FetchResult | null>(null)
   const fetchKey = `${uuid}|${selectedHours}`
   const loading = Boolean(uuid) && result?.key !== fetchKey
-  // 切换节点后旧节点的数据视为空；仅切换范围时保留旧数据到新数据到达
-  const current = result?.uuid === uuid ? result : null
+  // 记录只显示在对应的节点和时段，选择的线路独立保留
+  const current = result?.key === fetchKey ? result : null
   const remoteData = current?.records ?? EMPTY_RECORDS
   const lossRecordsData = current?.lossRecords ?? EMPTY_LOSS
   const tasks = current?.tasks ?? EMPTY_TASKS

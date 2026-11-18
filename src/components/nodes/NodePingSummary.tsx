@@ -35,7 +35,7 @@ export default function NodePingSummary({
     <button
       type="button"
       aria-haspopup="dialog"
-      className="group/ping @container/ping -mx-1.5 flex min-h-[5.75rem] w-[calc(100%+0.75rem)] cursor-pointer flex-col gap-1.5 rounded-lg px-1.5 py-1 text-left text-2xs transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group/ping @container/ping -mx-1.5 flex min-h-11 w-[calc(100%+0.75rem)] cursor-pointer flex-col gap-1.5 rounded-lg px-1.5 py-1 text-left text-2xs transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`${node.name} 延迟详情`}
       aria-description={pingTable?.description ?? emptyText}
       onClick={event => {
@@ -87,7 +87,7 @@ export default function NodePingSummary({
             ))}
           </span>
 
-          <span className="num grid min-h-[3.125rem] auto-rows-[1rem] grid-cols-[1.75rem_repeat(4,minmax(0,1fr))_max-content] content-start items-baseline gap-x-1.5 gap-y-px text-end text-2xs @max-[18rem]/ping:grid-cols-[1.5rem_repeat(4,minmax(0,1fr))_max-content] @max-[18rem]/ping:gap-x-0.75">
+          <span className="num grid auto-rows-[1rem] grid-cols-[1.75rem_repeat(4,minmax(0,1fr))_max-content] content-start items-baseline gap-x-1.5 gap-y-px text-end text-2xs @max-[18rem]/ping:grid-cols-[1.5rem_repeat(4,minmax(0,1fr))_max-content] @max-[18rem]/ping:gap-x-0.75">
             <span />
             {pingTable.headers.map((header, index) => (
               <span

@@ -1,323 +1,321 @@
+import type { EChartsCoreOption } from 'echarts/core'
+import type { ReactNode } from 'react'
 import { Icon } from '@iconify/react'
 import { useState } from 'react'
 import { EChart } from '@/components/EChart'
-import { CardX } from '@/components/ui/card-x'
+import ChartTimeCursor from '@/components/charts/ChartTimeCursor'
 import { Empty } from '@/components/ui/empty'
 import { ProgressThin } from '@/components/ui/progress-thin'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, ScrollableTabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBackgroundSurface } from '@/hooks/useBackgroundSurface'
+import { useChartCursor } from '@/hooks/useChartCursor'
 import { useLoadRecords } from '@/hooks/useLoadRecords'
 import { cn } from '@/lib/utils'
 import { useAppStore, useIsDark } from '@/stores/app'
 import { useNode } from '@/stores/nodes'
 import { buildLoadChartOptions } from '@/utils/charts/loadChartOptions'
+import { chartTimeLabel } from '@/utils/charts/chartTime'
 import { buildChartViews, LOAD_CHART_VIEWS } from '@/utils/chartViews'
-import { formatBytes } from '@/utils/helper'
+import { formatBytes, formatBytesSplit } from '@/utils/helper'
 import { CARD_SURFACE_CLASS, TAB_TRIGGER_CLASS } from '@/utils/uiClasses'
 
-interface LoadChartProps {
-  uuid: string
-  className?: string
+function Readout({ value, unit, bytes }: { value: number | undefined; unit?: string; bytes?: boolean }) {
+  if (value == null || !Number.isFinite(value)) return <span className="text-muted-foreground">—</span>
+  const formatted = bytes
+    ? formatBytesSplit(value, { B: value > 0 && value < 1 ? 2 : 0, KB: 1 })
+    : { value: unit === '%' ? value.toFixed(1) : String(Math.round(value)), unit: '' }
+  return (
+    <span className="num whitespace-nowrap font-semibold">
+      {formatted.value}
+      <small className="ms-0.5 text-2xs font-normal text-muted-foreground">
+        {formatted.unit}
+        {unit}
+      </small>
+    </span>
+  )
 }
 
-function gpuMemoryPercent(used: number, total: number): number {
-  return total > 0 ? (used / total) * 100 : 0
+function LoadPlot({
+  title,
+  icon,
+  tone,
+  reading,
+  option,
+  cursor,
+  className,
+  children,
+}: {
+  title: string
+  icon: string
+  tone: string
+  reading: ReactNode
+  option: EChartsCoreOption
+  cursor: ReturnType<typeof useChartCursor>
+  className: string
+  children?: ReactNode
+}) {
+  return (
+    <section aria-label={title} className={cn('min-w-0 overflow-hidden', className)}>
+      <header className="mx-3 flex min-h-12 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b py-1.5">
+        <h3 className="flex items-center gap-2 text-compact font-semibold">
+          <Icon icon={icon} className={cn('size-4', tone)} />
+          {title}
+        </h3>
+        <div className="flex min-w-0 flex-wrap items-baseline justify-end gap-x-2.5 gap-y-0.5 text-value">
+          {reading}
+        </div>
+      </header>
+      <EChart
+        option={option}
+        onTimePick={cursor.pick}
+        cursorTime={cursor.pinned ? cursor.time : undefined}
+        label={`${title}时序，选中时刻的读数见卡头`}
+        className="my-1 h-42 sm:h-46"
+      />
+      {children}
+    </section>
+  )
 }
 
-function gpuTempClass(temp: number): string {
-  if (temp >= 85) return 'text-red-500'
-  if (temp >= 75) return 'text-amber-500'
-  return ''
-}
-
-export default function LoadChart({ uuid, className }: LoadChartProps) {
+export default function LoadChart({ uuid, className }: { uuid: string; className?: string }) {
   const { pickSurfaceClass } = useBackgroundSurface()
   const isDark = useIsDark()
   const backgroundEnabled = useAppStore(s => s.settings.backgroundEnabled)
   const recordPreserveTime = useAppStore(s => s.publicSettings?.record_preserve_time)
   const rawInterval = useAppStore(s => s.publicSettings?.theme_settings?.dataUpdateInterval)
   const nodeInfo = useNode(uuid)
-
-  // 从 publicSettings 获取记录保留时间
-  const maxRecordPreserveTime = recordPreserveTime || 720
-
-  // 数据更新间隔（秒），默认 3 秒；确保值在合理范围内（1-60秒）
-  const dataUpdateInterval =
-    typeof rawInterval === 'number' && rawInterval >= 1 && rawInterval <= 60 ? rawInterval * 1000 : 3000
-
-  // 视图选项（与 PingChart 对齐，实时仅负载图有；60/90 天仅在实际保留时间足够时显示）
-  // 可用视图：实时 + 按记录保留时长裁剪的历史范围
-  const availableViews: Array<{ label: string; hours?: number }> = [
-    { label: '实时' },
-    ...buildChartViews(LOAD_CHART_VIEWS, maxRecordPreserveTime),
-  ]
-
-  // 当前选中的视图
-  const [selectedView, setSelectedView] = useState('实时')
-  const selectedHours = availableViews.find(v => v.label === selectedView)?.hours
-  const isRealtime = selectedView === '实时'
-
+  const views = [{ label: '实时', hours: undefined }, ...buildChartViews(LOAD_CHART_VIEWS, recordPreserveTime || 720)]
+  const [picked, setPicked] = useState('实时')
+  const view = views.find(v => v.label === picked) ?? views[0]
+  const realtime = view.hours === undefined
+  const interval = typeof rawInterval === 'number' && rawInterval >= 1 && rawInterval <= 60 ? rawInterval * 1000 : 3000
   const { remoteData, gpuTempsByTime, loading, error } = useLoadRecords(
     uuid,
-    isRealtime,
-    selectedHours,
-    dataUpdateInterval,
+    realtime,
+    view.hours,
+    interval,
     Boolean(nodeInfo?.gpu_detailed_info?.length),
   )
-
-  const {
-    cpuChartOption,
-    gpuChartOption,
-    memoryChartOption,
-    diskChartOption,
-    networkChartOption,
-    connectionsChartOption,
-    processChartOption,
-    gpuDevices,
-    hasGpu,
-  } = buildLoadChartOptions({
+  const charts = buildLoadChartOptions({
     remoteData,
     gpuTempsByTime,
     nodeInfo,
-    isRealtime,
-    selectedHours,
+    isRealtime: realtime,
+    selectedHours: view.hours,
     isDark,
     backgroundEnabled,
   })
-  const latestStatus = remoteData.at(-1) ?? null
-
-  const cardClass = pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/60 backdrop-blur-xs')
-
+  const cursor = useChartCursor(charts.times, `${uuid}|${view.label}`)
+  const sample = charts.measured[cursor.index]?.record
+  const surface = pickSurfaceClass(CARD_SURFACE_CLASS, 'rounded-xl border bg-card/70 backdrop-blur-xs')
+  const props = { cursor, className: surface }
+  const ramCapacity = sample?.ram_total || nodeInfo?.mem_total
+  const diskCapacity = sample?.disk_total || nodeInfo?.disk_total
+  const sampledTemperatures = sample ? gpuTempsByTime.get(sample.time) : undefined
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
-      {/* 时间选择器 */}
-      <Tabs value={selectedView} onValueChange={setSelectedView} className="w-full items-center">
-        <ScrollableTabsList
-          selectedValue={selectedView}
-          aria-label="负载时间范围"
-          scrollClassName="w-full"
-          className={pickSurfaceClass(
-            'h-8 bg-background/60 pointer-events-auto rounded-md',
-            'h-8 bg-background/50 backdrop-blur-xl pointer-events-auto rounded-md',
-          )}
-        >
-          {availableViews.map(view => (
-            <TabsTrigger key={view.label} value={view.label} className={TAB_TRIGGER_CLASS}>
-              {view.label}
-            </TabsTrigger>
-          ))}
-        </ScrollableTabsList>
-      </Tabs>
-
-      {/* 内容区域 */}
-      <Spinner show={loading}>
-        {error ? (
-          <div className="text-red-500 py-8 text-center">{error}</div>
-        ) : remoteData.length === 0 && !loading ? (
-          <div className="py-8">
-            <Empty description="暂无负载数据" />
-          </div>
-        ) : (
-          /* 图表网格 */
-          <div className="gap-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-            {/* CPU 卡片 */}
-            <CardX
-              size="small"
-              className={cardClass}
-              header={
-                <div className="flex items-center justify-between">
-                  <span className="text-compact font-semibold">CPU</span>
-                  {latestStatus?.cpu != null ? (
-                    <div className="num text-xs flex gap-0.5 items-baseline">
-                      <span>{latestStatus.cpu.toFixed(1)}</span>
-                      <span>%</span>
-                    </div>
-                  ) : (
-                    <span>--</span>
-                  )}
-                </div>
-              }
-            >
-              <div className="h-48">
-                <EChart option={cpuChartOption} />
-              </div>
-            </CardX>
-
-            {/* GPU 卡片（仅有 GPU 数据的节点显示） */}
-            {hasGpu && (
-              <CardX
-                size="small"
-                className={cardClass}
-                header={
-                  <div className="flex items-center justify-between">
-                    <span className="text-compact font-semibold">GPU</span>
-                    {latestStatus?.gpu != null ? (
-                      <div className="num text-xs flex gap-0.5 items-baseline">
-                        <span>{latestStatus.gpu.toFixed(1)}</span>
-                        <span>%</span>
-                      </div>
-                    ) : (
-                      <span>--</span>
-                    )}
-                  </div>
-                }
-              >
-                {/* 有设备详情时压缩图表高度，让单卡时与相邻卡片等高 */}
-                <div className={gpuDevices.length ? 'h-38' : 'h-48'}>
-                  <EChart option={gpuChartOption} />
-                </div>
-                {gpuDevices.length > 0 && (
-                  <div className="mt-2 flex flex-col gap-2">
-                    {gpuDevices.map((gpu, index) => (
-                      <div key={index} className="flex flex-col gap-1 text-xs">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-muted-foreground" title={gpu.name}>
-                            {gpu.name}
-                          </span>
-                          <div className="flex shrink-0 gap-2 items-baseline">
-                            <span>{gpu.utilization}%</span>
-                            <span className={gpuTempClass(gpu.temperature)}>
-                              {gpu.temperature > 0 ? `${gpu.temperature}°C` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ProgressThin
-                            percentage={gpuMemoryPercent(gpu.memory_used, gpu.memory_total)}
-                            status={gpuMemoryPercent(gpu.memory_used, gpu.memory_total) >= 90 ? 'warning' : 'info'}
-                            className="flex-1"
-                          />
-                          <span className="num shrink-0 text-muted-foreground">
-                            显存 <span className="text-foreground">{formatBytes(gpu.memory_used)}</span> 共{' '}
-                            {formatBytes(gpu.memory_total)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardX>
-            )}
-
-            {/* 内存卡片 */}
-            <CardX
-              size="small"
-              className={cardClass}
-              header={
-                <div className="flex items-center justify-between">
-                  <span className="text-compact font-semibold">内存</span>
-                  <div className="num flex items-baseline gap-1 text-xs">
-                    <span>{latestStatus?.ram != null ? formatBytes(latestStatus.ram) : '--'}</span>
-                    {nodeInfo?.mem_total ? (
-                      <span className="text-muted-foreground">共 {formatBytes(nodeInfo.mem_total)}</span>
-                    ) : null}
-                  </div>
-                </div>
-              }
-            >
-              <div className="h-48">
-                <EChart option={memoryChartOption} />
-              </div>
-            </CardX>
-
-            {/* 硬盘卡片 */}
-            <CardX
-              size="small"
-              className={cardClass}
-              header={
-                <div className="flex items-center justify-between">
-                  <span className="text-compact font-semibold">硬盘</span>
-                  <div className="num flex items-baseline gap-1 text-xs">
-                    <span>{latestStatus?.disk != null ? formatBytes(latestStatus.disk) : '--'}</span>
-                    {nodeInfo?.disk_total ? (
-                      <span className="text-muted-foreground">共 {formatBytes(nodeInfo.disk_total)}</span>
-                    ) : null}
-                  </div>
-                </div>
-              }
-            >
-              <div className="h-48">
-                <EChart option={diskChartOption} />
-              </div>
-            </CardX>
-
-            {/* 网络卡片 */}
-            <CardX
-              size="small"
-              className={cardClass}
-              header={
-                <div className="flex items-center justify-between">
-                  <span className="text-compact font-semibold">网络</span>
-                  <div className="num flex items-baseline gap-2 text-xs">
-                    <span className="flex items-center gap-0.5">
-                      <Icon
-                        icon="tabler:arrow-up"
-                        width="12"
-                        height="12"
-                        className="text-emerald-700 dark:text-emerald-300"
-                      />
-                      {latestStatus?.net_out != null ? `${formatBytes(latestStatus.net_out)}/s` : '--'}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Icon
-                        icon="tabler:arrow-down"
-                        width="12"
-                        height="12"
-                        className="text-sky-700 dark:text-sky-300"
-                      />
-                      {latestStatus?.net_in != null ? `${formatBytes(latestStatus.net_in)}/s` : '--'}
-                    </span>
-                  </div>
-                </div>
-              }
-            >
-              <div className="h-48">
-                <EChart option={networkChartOption} />
-              </div>
-            </CardX>
-
-            {/* 连接数卡片 */}
-            <CardX
-              size="small"
-              className={cardClass}
-              header={
-                <div className="flex items-center justify-between">
-                  <span className="text-compact font-semibold">连接</span>
-                  <div className="num flex items-baseline gap-2 text-xs">
-                    <span>
-                      <span className="text-muted-foreground">TCP</span> {latestStatus?.connections ?? '--'}
-                    </span>
-                    <span>
-                      <span className="text-muted-foreground">UDP</span> {latestStatus?.connections_udp ?? '--'}
-                    </span>
-                  </div>
-                </div>
-              }
-            >
-              <div className="h-48">
-                <EChart option={connectionsChartOption} />
-              </div>
-            </CardX>
-
-            {/* 进程卡片：有 GPU 时共 7 张，最后一张横跨整行，避免末行孤零零一张 */}
-            <CardX
-              size="small"
-              className={cn(cardClass, hasGpu && 'md:col-span-2 xl:col-span-3')}
-              header={
-                <div className="flex items-center justify-between">
-                  <span className="text-compact font-semibold">进程</span>
-                  <span className="num text-xs">{latestStatus?.process ?? '--'}</span>
-                </div>
-              }
-            >
-              <div className="h-48">
-                <EChart option={processChartOption} />
-              </div>
-            </CardX>
+    <div className={cn('@container flex min-w-0 flex-col gap-3', className)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <Tabs value={view.label} onValueChange={setPicked} className="min-w-0 max-w-full">
+          <ScrollableTabsList
+            selectedValue={view.label}
+            aria-label="负载时间范围"
+            scrollClassName="max-w-full"
+            className="h-auto min-h-8 w-max rounded-md bg-muted/75"
+          >
+            {views.map(v => (
+              <TabsTrigger key={v.label} value={v.label} className={cn(TAB_TRIGGER_CLASS, 'pointer-coarse:min-h-11')}>
+                {v.label}
+              </TabsTrigger>
+            ))}
+          </ScrollableTabsList>
+        </Tabs>
+        {!!charts.times.length && (
+          <div className="min-w-0 grow basis-64 @min-[45rem]:max-w-96">
+            <ChartTimeCursor times={charts.times} hours={view.hours ?? 1} cursor={cursor} />
           </div>
         )}
-      </Spinner>
+      </div>
+      {error && charts.times.length > 0 && (
+        <p role="status" className="text-xs text-amber-700 dark:text-amber-400">
+          刷新失败，最近一次采样为 {chartTimeLabel(charts.times[charts.times.length - 1])}，正在等待下次更新。
+        </p>
+      )}
+      {loading && !remoteData.length ? (
+        <Spinner className="min-h-60" description="正在读取负载记录…" />
+      ) : error && !charts.times.length ? (
+        <div role="status" className="py-8 text-center text-compact text-destructive">
+          {error}
+        </div>
+      ) : !charts.times.length ? (
+        <div className="py-8">
+          <Empty description="暂无负载数据" />
+        </div>
+      ) : (
+        <div className="grid min-w-0 grid-cols-1 gap-3 @min-[40rem]:grid-cols-2 @min-[68rem]:grid-cols-3">
+          <LoadPlot
+            {...props}
+            title="CPU"
+            icon="lucide:cpu"
+            tone="text-sky-600 dark:text-sky-400"
+            option={charts.cpuChartOption}
+            reading={
+              <>
+                <Readout value={sample?.cpu} unit="%" />
+                {cursor.pinned && (
+                  <small className="num text-2xs text-muted-foreground">
+                    系统负载 {sample?.load != null ? sample.load.toFixed(2) : '—'}
+                  </small>
+                )}
+              </>
+            }
+          />
+          {charts.hasGpu && (
+            <LoadPlot
+              {...props}
+              title="GPU"
+              icon="lucide:cpu"
+              tone="text-violet-600 dark:text-violet-400"
+              option={charts.gpuChartOption}
+              reading={
+                <>
+                  <Readout value={sample?.gpu} unit="%" />
+                  {cursor.pinned &&
+                    charts.gpuTemperatures.map(({ index, name }) => {
+                      const temp = sampledTemperatures?.[index]
+                      return (
+                        <small key={index} className="num text-2xs text-muted-foreground">
+                          {name} {temp != null && temp > 0 ? `${temp}°C` : '—'}
+                        </small>
+                      )
+                    })}
+                </>
+              }
+            >
+              {charts.gpuDevices.length > 0 && (
+                <div className="mx-3 mb-2 space-y-2 border-t pt-2">
+                  <h4 className="text-2xs text-muted-foreground">实时设备</h4>
+                  {charts.gpuDevices.map((gpu, i) => {
+                    const used = gpu.memory_total > 0 ? (gpu.memory_used / gpu.memory_total) * 100 : 0
+                    return (
+                      <div key={i} className="num space-y-1 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate" title={gpu.name}>
+                            {gpu.name}
+                          </span>
+                          <span className="shrink-0">
+                            {gpu.utilization}%{' '}
+                            <span
+                              className={cn(
+                                'ms-1',
+                                gpu.temperature >= 85
+                                  ? 'text-red-500'
+                                  : gpu.temperature >= 75
+                                    ? 'text-amber-500'
+                                    : 'text-muted-foreground',
+                              )}
+                            >
+                              {gpu.temperature > 0 ? `${gpu.temperature}°C` : '—'}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ProgressThin percentage={used} status={used >= 90 ? 'warning' : 'info'} className="flex-1" />
+                          <span className="text-2xs text-muted-foreground">
+                            显存 {formatBytes(gpu.memory_used)} 共 {formatBytes(gpu.memory_total)}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </LoadPlot>
+          )}
+          <LoadPlot
+            {...props}
+            title="内存"
+            icon="lucide:memory-stick"
+            tone="text-emerald-600 dark:text-emerald-400"
+            option={charts.memoryChartOption}
+            reading={
+              <>
+                <Readout bytes value={sample?.ram} />
+                {cursor.pinned && (
+                  <small className="num text-2xs text-muted-foreground">
+                    Swap {sample?.swap != null ? formatBytes(sample.swap) : '—'}
+                  </small>
+                )}
+                {!!ramCapacity && (
+                  <small className="text-2xs text-muted-foreground">共 {formatBytes(ramCapacity)}</small>
+                )}
+              </>
+            }
+          />
+          <LoadPlot
+            {...props}
+            title="网络"
+            icon="lucide:arrow-up-down"
+            tone="text-sky-600 dark:text-sky-400"
+            option={charts.networkChartOption}
+            reading={
+              <>
+                <span className="inline-flex items-center gap-1" aria-label="上行">
+                  <Icon icon="lucide:arrow-up" className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <Readout bytes value={sample?.net_out} unit="/s" />
+                </span>
+                <span className="inline-flex items-center gap-1" aria-label="下行">
+                  <Icon icon="lucide:arrow-down" className="size-3.5 text-sky-600 dark:text-sky-400" />
+                  <Readout bytes value={sample?.net_in} unit="/s" />
+                </span>
+              </>
+            }
+          />
+          <LoadPlot
+            {...props}
+            title="硬盘"
+            icon="lucide:hard-drive"
+            tone="text-orange-600 dark:text-orange-400"
+            option={charts.diskChartOption}
+            reading={
+              <>
+                <Readout bytes value={sample?.disk} />
+                {!!diskCapacity && (
+                  <small className="text-2xs text-muted-foreground">共 {formatBytes(diskCapacity)}</small>
+                )}
+              </>
+            }
+          />
+          <LoadPlot
+            {...props}
+            title="连接"
+            icon="lucide:network"
+            tone="text-sky-600 dark:text-sky-400"
+            option={charts.connectionsChartOption}
+            reading={
+              <>
+                <span>
+                  <small className="me-1 text-2xs text-muted-foreground">TCP</small>
+                  <Readout value={sample?.connections} />
+                </span>
+                <span>
+                  <small className="me-1 text-2xs text-muted-foreground">UDP</small>
+                  <Readout value={sample?.connections_udp} />
+                </span>
+              </>
+            }
+          />
+          <LoadPlot
+            {...props}
+            className={cn(surface, charts.hasGpu && '@min-[40rem]:col-span-2 @min-[68rem]:col-span-3')}
+            title="进程"
+            icon="lucide:activity"
+            tone="text-violet-600 dark:text-violet-400"
+            option={charts.processChartOption}
+            reading={<Readout value={sample?.process} />}
+          />
+        </div>
+      )}
     </div>
   )
 }
