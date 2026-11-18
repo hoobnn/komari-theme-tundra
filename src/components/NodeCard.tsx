@@ -138,7 +138,7 @@ function NodeCard({ node, onClick, onPingClick }: NodeCardProps) {
             </span>
           </div>
         )}
-        <div className="border-t border-border/70 pt-1">
+        <div className="flex flex-1 flex-col border-t border-border/70 pt-1">
           <NodePingSummary node={node} onClick={onPingClick} />
         </div>
 

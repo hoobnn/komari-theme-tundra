@@ -125,7 +125,7 @@ export default function LoadChart({ uuid, className }: { uuid: string; className
         aria-label="负载图表时间控制"
         className={cn(
           surface,
-          'grid min-w-0 max-w-full gap-y-1 p-1.5 @min-[42rem]:w-fit @min-[42rem]:grid-cols-[minmax(0,max-content)_19rem] @min-[42rem]:items-center',
+          'grid min-w-0 gap-y-1 p-1.5 @min-[42rem]:grid-cols-[minmax(0,max-content)_minmax(19rem,1fr)] @min-[42rem]:items-center',
         )}
       >
         <ScrollableTabsList
