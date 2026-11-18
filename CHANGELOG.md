@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.4.0] - 2026-11-18
+
 ### 新增
 
 - 首页支持按在线或离线状态筛选，可与分组和搜索组合使用，点击概览里的状态计数可直接查看对应节点
@@ -222,7 +224,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.8...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.8...v0.4.0
 [0.3.8]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.5...v0.3.6
