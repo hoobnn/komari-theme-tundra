@@ -4,6 +4,8 @@
 
 ## [未发布]
 
+## [0.4.1] - 2026-11-18
+
 ### 修复
 
 - 线路卡顶部的灰色实线和虚线居中对准协议名，协议名、延迟、单位与「超时」共用文字基线
@@ -229,7 +231,8 @@
 - IPv4 / IPv6 双栈延迟分行展示，详情图里 v6 用深色虚线
 - GPU 使用率与温度图表
 
-[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.4.0...HEAD
+[未发布]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.8...v0.4.0
 [0.3.8]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/hoobnn/komari-theme-tundra/compare/v0.3.6...v0.3.7
