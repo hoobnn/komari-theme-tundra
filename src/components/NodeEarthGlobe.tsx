@@ -172,18 +172,18 @@ function getThemeColors(isDark: boolean): GlobeColors {
     return {
       dark: 1,
       mapBrightness: 4,
-      baseColor: [0.3, 0.42, 0.51],
+      baseColor: [0.44, 0.44, 0.44],
       markerColor: [0.2, 0.83, 0.6],
-      glowColor: [0.18, 0.39, 0.48],
+      glowColor: [0.09, 0.09, 0.09],
       arcColor: [0.2, 0.83, 0.6],
     }
   }
   return {
     dark: 0,
     mapBrightness: 6,
-    baseColor: [0.79, 0.88, 0.93],
+    baseColor: [1, 1, 1],
     markerColor: [0.02, 0.59, 0.41],
-    glowColor: [0.87, 0.94, 0.97],
+    glowColor: [1, 1, 1],
     arcColor: [0.06, 0.73, 0.51],
   }
 }

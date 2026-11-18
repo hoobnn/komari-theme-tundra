@@ -329,24 +329,35 @@ function RouteGroup({
       aria-label={name}
       className="relay-route @container min-w-0 rounded-xl border bg-card px-3.5 pt-2.5 pb-1.5 shadow-xs sm:px-4"
     >
-      <header className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b pb-2">
+      <header className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-2">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           <h3 className="min-w-0 wrap-anywhere text-value font-semibold tracking-tight">{name}</h3>
           {lines.some(line => line.stack) && <span className="text-2xs text-muted-foreground">分段合计</span>}
         </div>
-        <dl aria-label="分段合计" className="ms-auto flex flex-wrap items-baseline justify-end gap-x-3 gap-y-1">
+        <dl
+          aria-label="分段合计"
+          className="ms-auto flex min-w-0 flex-wrap items-baseline justify-end gap-x-3.5 gap-y-1 text-xs leading-5"
+        >
           {lines.map(line => (
-            <div key={line.route.name} className="flex items-baseline gap-1">
-              <dt className="inline-flex items-center gap-1 text-2xs text-muted-foreground">
+            <div key={line.route.name} className="whitespace-nowrap">
+              <dt
+                className={cn(
+                  'inline-block text-muted-foreground',
+                  line.stack && 'relative ps-4 [text-box:trim-both_cap_alphabetic]',
+                )}
+              >
                 {line.stack && (
                   <span
                     aria-hidden="true"
-                    className={cn('w-3 border-t-2 border-current', line.stack === 'v6' && 'border-dashed')}
+                    className={cn(
+                      'absolute start-0 top-1/2 w-3 -translate-y-1/2 border-t-[1.5px] border-muted-foreground/75',
+                      line.stack === 'v6' && 'border-dashed',
+                    )}
                   />
                 )}
                 {pingStackLabel(line.stack) || '合计'}
               </dt>
-              <dd className="text-value font-semibold leading-none">
+              <dd className="ms-1 inline font-medium">
                 <RelayReading value={line.total} />
               </dd>
             </div>
